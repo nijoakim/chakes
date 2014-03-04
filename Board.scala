@@ -51,21 +51,21 @@ object Board {
 // Board class
 ////////////////////////////////////////////////////////////////
 
-/** A grid-based board
+/** A grid-based board.
  * 
- *  @constructor Creates a new baord with given properties
+ *  @constructor Creates a new board with given properties
  *  @param gameName Name of the game which is played on this board
  *  @param playerNames Names of the players who are playing on this board
  */
 class Board(val gameName: String, playerNames: Iterable[String]) {
 	import Board._
 	
-	/** Hash map of pieces on the board indexed by position */
+	/** Hash map of pieces on the board indexed by position. */
 	val pieces = new HashMap[(Int, Int), Piece]
 	
-	private val players = playerNames.toArray				// Players array
-	private val gamePath = GamesPath + gameName + LuaExt 	// Path to games
-	private val globals = JsePlatform.standardGlobals 		// Lua globals table
+	private val players = playerNames.toArray               // Players array
+	private val gamePath = GamesPath + gameName + LuaExt    // Path to games
+	private val globals = JsePlatform.standardGlobals       // Lua globals table
 	
 	// Dimensions
 	/** Width of the board. */
@@ -79,8 +79,8 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		globals.set(char, i)
 	}
 	
-	globals.load(new LuaLibChakes) 			// Add Chakes library
-	globals.get("dofile").call(gamePath) 	// Run game file
+	globals.load(new LuaLibChakes)          // Add Chakes library
+	globals.get("dofile").call(gamePath)    // Run game file
 	
 	private def isOnBoard(x: Int, y: Int) = (x >= 1 && x <= xSize && y >= 1 && y <= ySize)
 	
@@ -102,7 +102,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		piece
 	}
 	
-	/** Prints the board for debugging purposes */
+	/** Prints the board for debugging purposes. */
 	def printBoard = {
 		for (y <- ySize to 1 by -1; x <- 1 to xSize) {
 			print(if (x == 1) y.toString + " " else " ")
@@ -169,6 +169,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	// Lua library function class
 	////////////////////////////////////////////////////////////////
 	
+	// TODO: Document errors?
 	// Sets up library
 	private class LuaLibChakes() extends OneArgFunction {
 		override def call(env: LuaValue) = {
@@ -197,8 +198,13 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			libFuns
 		}
 		
-		//Sets the size of the board
-		private class LuaLibFun_SetBoardSize extends TwoArgFunction {
+		/*
+		--- Sets the size of the board.
+		 -- @param x x size
+		 -- @param y y size
+		 function setBoardSize(x, y)
+		*/
+		class LuaLibFun_SetBoardSize extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				xSize = x.checkint // Set x size
 				ySize = y.checkint // Set y size
@@ -207,12 +213,22 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Checks if position is within the bounds of the board
+		/*
+		--- Checks whether position is within the bounds of the board.
+		 -- @param x x position
+		 -- @param y y position
+		 -- @return true if position is on board, false otherwise
+		 function isOnBoard(x, y)
+		*/
 		private class LuaLibFun_IsOnBoard extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = isOnBoard(x.checkint, y.checkint)
 		}
 		
-		// Adds piece definition form piece files
+		/*
+		--- Adds piece definition form piece files.
+		 -- @param luaPieceNames Table of strings with piece names corresponding to the piece files
+		function addPieceDefs(luaPieceNames)
+		*/
 		private class LuaLibFun_AddPieceDefs extends OneArgFunction {
 			override def call(luaPieceNames: LuaValue): LuaValue = {
 				val pieceNames = (for (i <- 1 to luaPieceNames.checktable.length) yield luaPieceNames.get(i).checkjstring).toList // Get piece names
@@ -221,7 +237,16 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Creates an instance of a piece
+		// TODO: Check so that the place is empty
+		/*
+		--- Creates an instance of a piece
+		 -- @param x x position of the new piece
+		 -- @param y y position of the new piece
+		 -- @param name Name of piece
+		 -- @param owner Player ID
+		 -- @return Piece instance
+		function createPiece(x, y, name, owner)
+		*/
 		private class LuaLibFun_CreatePiece extends FourArgFunction {
 			override def call(x: LuaValue, y: LuaValue, name: LuaValue, owner: LuaValue): LuaValue = {
 				if (!isOnBoard(x.checkint, y.checkint)) throw new ChakesGameException("Cannot create piece outside board.")
@@ -234,7 +259,12 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Removes a piece without calling onDestroy() on it
+		/*
+		--- Removes piece at given position without calling onDestroy() on it.
+		 -- @param x x position of the piece to be removed
+		 -- @param y y position of the piece to be removed
+		function removePiece(x, y)
+		*/
 		private class LuaLibFun_RemovePiece extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint)
@@ -243,7 +273,12 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Destroys a piece and calls onDestroy() on it
+		/*
+		--- Destroys piece at given position and calls onDestroy() on it.
+		 -- @param x x position of the piece to be destroyed
+		 -- @param y y position of the piece to be destroyed
+		function destroyPiece(x, y)
+		*/
 		private class LuaLibFun_DestroyPiece extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint).onDestroy()
@@ -252,7 +287,14 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Moves a piece without calling onMove() on it, destroys any piece positioned at the destination and, in that case, calls onDestroy() on it
+		/*
+		--- Moves a piece without calling onMove() on it, destroys any piece positioned at the destination and, in that case, calls onDestroy() on it.
+		 -- @param x1 Initial x position
+		 -- @param y1 Initial y position
+		 -- @param x2 Final x position
+		 -- @param y2 Final y position
+		function movePiece(x1, y1, x2, y2)
+		*/
 		private class LuaLibFun_MovePiece extends FourArgFunction {
 			override def call(x1: LuaValue, y1: LuaValue, x2: LuaValue, y2: LuaValue): LuaValue = {
 				if (!isOnBoard(x1.checkint, y1.checkint)) throw new ChakesGameException("Tried to access piece from outside board.")
@@ -263,7 +305,12 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Hides piece at position
+		/*
+		--- Hides piece at given position.
+		 -- @param x x position at where to hide piece
+		 -- @param y y position at where to hide piece
+		function hidePiece(x, y)
+		*/
 		private class LuaLibFun_HidePiece extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				val piece = getPieceOrError(x.checkint, y.checkint)
@@ -273,7 +320,12 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Unhides piece at position
+		/*
+		--- Unhides piece at given position.
+		 -- @param x x position at where to unhide piece
+		 -- @param y y position at where to unhide piece
+		function unhidePiece(x, y)
+		*/
 		private class LuaLibFun_UnhidePiece extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				val piece = pieces.getOrElse((x.checkint, y.checkint), getPieceOrError(x.toint, y.toint))
@@ -283,7 +335,13 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Gets piece from position
+		/*
+		--- Gets piece from position.
+		 -- @param x position
+		 -- @param y position
+		 -- @return Piece instance at given position or nil of the position was empty
+		function getPiece(x, y)
+		*/
 		private class LuaLibFun_GetPiece extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				val piece = pieces.getOrElse((x.checkint, y.checkint), return LuaValue.NIL)     // Get piece or return nil if no piece
@@ -292,14 +350,26 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Gets owner from position
+		/*
+		--- Gets owner from position.
+		 -- @param x position
+		 -- @param y position
+		 -- @return Player ID which owns a piece at the given position
+		function getOwner(x, y)
+		*/
 		private class LuaLibFun_GetOwner extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint).owner
 			}
 		}
 		
-		// Sets owner of piece at position
+		/*
+		--- Sets owner of piece at given position.
+		 -- @param x x position at where to set owner
+		 -- @param y y position at where to set owner
+		 -- @param owner Player ID
+		function setOwner(x, y, owner)
+		*/
 		private class LuaLibFun_SetOwner extends ThreeArgFunction {
 			override def call(x: LuaValue, y: LuaValue, owner: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint).owner = owner.checkint
@@ -307,14 +377,26 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Gets freeze time of piece at position
+		/*
+		--- Gets freeze time of piece at given position.
+		 -- @param x x position at where to get freeze time from piece
+		 -- @param y y position at where to get freeze time from piece
+		 -- @return Freeze time of piece at given position
+		function getFreezeTime(x, y)
+		*/
 		private class LuaLibFun_GetFreezeTime extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint).freezeTime
 			}
 		}
 		
-		// Sets freeze time of piece at position
+		/*
+		--- Sets freeze time of piece at given position.
+		 -- @param x x position at where to set freeze time to piece
+		 -- @param y y position at where to set freeze time to piece
+		 -- @param freezeTime Freeze time of piece at given position
+		function setFreezeTime(x, y)
+		*/
 		private class LuaLibFun_SetFreezeTime extends ThreeArgFunction {
 			override def call(x: LuaValue, y: LuaValue, freezeTime: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint).freezeTime = freezeTime.checkdouble
@@ -322,7 +404,13 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			}
 		}
 		
-		// Returns whether a given position is under threat
+		/*
+		--- Returns whether a given position is under threat.
+		 -- @param x x position at where to check for threats
+		 -- @param y y position at where to check for threats
+		 -- @returns true if a threat was found, false otherwise
+		function isUnderThreat(x, y)
+		*/
 		private class LuaLibFun_IsUnderThreat extends ThreeArgFunction {
 			override def call(x: LuaValue, y: LuaValue, owner: LuaValue): LuaValue = {
 				x.checkint

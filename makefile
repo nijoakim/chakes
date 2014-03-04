@@ -1,15 +1,21 @@
 COMPILER=fsc
+INTERPRETER=scala
+
+# Scala compiler parameters
 FLAGS=-deprecation
 LIBS=lib/luaj-jse-3.0-alpha1.jar
-INTERPRETER=scala
-DOCUMENTER=scaladoc
-DOCUMENTATION=doc
 MAIN=runtime.Main
 CLASSES=classes
+SOURCE=*.scala
+
+# Documenters
+DOCUMENTATION=doc/
+DOCUMENTER_SCALA=scaladoc
+DOCUMENTER_LUA=luadoc
 
 build:
 	@mkdir -p $(CLASSES)
-	$(COMPILER) $(FLAGS) -d $(CLASSES) -cp $(LIBS) *.scala
+	$(COMPILER) $(FLAGS) -d $(CLASSES) -cp $(LIBS) $(SOURCE)
 
 run: build
 	$(INTERPRETER) -cp $(CLASSES):$(LIBS) $(MAIN)
@@ -21,6 +27,12 @@ clean:
 exit:
 	$(COMPILER) -shutdown
 
-document:
-	@mkdir -p $(DOCUMENTATION)
-	$(DOCUMENTER) -cp $(CLASSES):$(LIBS) -d $(DOCUMENTATION) *.scala
+doc-scala:
+	@mkdir -p $(DOCUMENTATION)/scala/
+	$(DOCUMENTER_SCALA) -cp $(CLASSES):$(LIBS) -d $(DOCUMENTATION)/scala/ $(SOURCE)
+
+doc-lua:
+	@mkdir -p $(DOCUMENTATION)/lua/
+	cp Board.scala $(DOCUMENTATION)chakes.lua
+	cd $(DOCUMENTATION); luadoc -d lua/ chakes.lua
+	rm -f $(DOCUMENTATION)lib.lua
