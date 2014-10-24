@@ -24,14 +24,14 @@ function Queen:symbol(x, y) return 'Q' end
 
 function Queen:legalMoves(x, y)
 	local moves = {}
-	addLegalMovesDelta(moves, x, y, 	1, 		0 	)
-	addLegalMovesDelta(moves, x, y, 	0, 		1 	)
-	addLegalMovesDelta(moves, x, y,  	-1, 	0 	)
-	addLegalMovesDelta(moves, x, y, 	0, 		-1 	)
-	addLegalMovesDelta(moves, x, y, 	1, 		1 	)
-	addLegalMovesDelta(moves, x, y, 	1, 		-1 	)
-	addLegalMovesDelta(moves, x, y,  	-1, 	1 	)
-	addLegalMovesDelta(moves, x, y, 	-1, 	-1 	)
+	addLegalMovesDelta(moves, x, y,  1,  0)
+	addLegalMovesDelta(moves, x, y,  0,  1)
+	addLegalMovesDelta(moves, x, y, -1,  0)
+	addLegalMovesDelta(moves, x, y,  0, -1)
+	addLegalMovesDelta(moves, x, y,  1,  1)
+	addLegalMovesDelta(moves, x, y,  1, -1)
+	addLegalMovesDelta(moves, x, y, -1,  1)
+	addLegalMovesDelta(moves, x, y, -1, -1)
 	return moves
 end
 
@@ -44,7 +44,7 @@ function Queen:onCreate(x, y)
 end
 
 function Queen: onDestroy()
-	print("LOLOLOL")
+	print("Ni skjuter som kratter")
 	return
 end
 

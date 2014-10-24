@@ -26,9 +26,9 @@ import luaj.interface.Implicits._
 import collection.mutable.HashMap
 import scala.util.control.Breaks._
 
-////////////////////////////////////////////////////////////////
+// ============
 // Board object
-////////////////////////////////////////////////////////////////
+// ============
 
 object Board {
 	// Constants
@@ -47,9 +47,9 @@ object Board {
 	private def numToAlpha(n: Int) = ('A' + n - 1).toChar
 }
 
-////////////////////////////////////////////////////////////////
+// ===========
 // Board class
-////////////////////////////////////////////////////////////////
+// ===========
 
 /** A grid-based board.
  * 
@@ -63,15 +63,13 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	/** Hash map of pieces on the board indexed by position. */
 	val pieces = new HashMap[(Int, Int), Piece]
 	
-	private val players = playerNames.toArray               // Players array
-	private val gamePath = GamesPath + gameName + LuaExt    // Path to games
-	private val globals = JsePlatform.standardGlobals       // Lua globals table
+	private val players = playerNames.toArray            // Players array
+	private val gamePath = GamesPath + gameName + LuaExt // Path to games
+	private val globals = JsePlatform.standardGlobals    // Lua globals table
 	
 	// Dimensions
-	/** Width of the board. */
-	var xSize = 0
-	/** Height o the board. */
-	var ySize = 0
+	var xSize = 0 /** Width of the board. */
+	var ySize = 0 /** Height o the board. */
 	
 	// Define letters as numbers
 	for (i <- 1 to 26) {
@@ -79,8 +77,8 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		globals.set(char, i)
 	}
 	
-	globals.load(new LuaLibChakes)          // Add Chakes library
-	globals.get("dofile").call(gamePath)    // Run game file
+	globals.load(new LuaLibChakes)       // Add Chakes library
+	globals.get("dofile").call(gamePath) // Run game file
 	
 	private def isOnBoard(x: Int, y: Int) = (x >= 1 && x <= xSize && y >= 1 && y <= ySize)
 	
@@ -165,9 +163,9 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		piece.y = y2
 	}
 	
-	////////////////////////////////////////////////////////////////
+	// ==========================
 	// Lua library function class
-	////////////////////////////////////////////////////////////////
+	// ==========================
 	
 	// TODO: Document errors?
 	// Sets up library
@@ -250,12 +248,12 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		private class LuaLibFun_CreatePiece extends FourArgFunction {
 			override def call(x: LuaValue, y: LuaValue, name: LuaValue, owner: LuaValue): LuaValue = {
 				if (!isOnBoard(x.checkint, y.checkint)) throw new ChakesGameException("Cannot create piece outside board.")
-				val piece = new Piece(globals, name.checkjstring, x.toint, y.toint, owner.checkint)     // Make new piece
-				pieces += (x.toint, y.toint) -> piece                                                   // Add piece to Scala
-				globals.set(piece.name, globals.get(name).invokemethod("new").arg1)                     // Add piece to Lua through its constructor
-				piece.loadMethods                                                                       // Load piece methods
-				piece.onCreate(x.toint, y.toint)                                                        // Call piece's onCreate() mehtod
-				globals.get(piece.name)                                                                 // Return piece instance
+				val piece = new Piece(globals, name.checkjstring, x.toint, y.toint, owner.checkint) // Make new piece
+				pieces += (x.toint, y.toint) -> piece                                               // Add piece to Scala
+				globals.set(piece.name, globals.get(name).invokemethod("new").arg1)                 // Add piece to Lua through its constructor
+				piece.loadMethods                                                                   // Load piece methods
+				piece.onCreate(x.toint, y.toint)                                                    // Call piece's onCreate() mehtod
+				globals.get(piece.name)                                                             // Return piece instance
 			}
 		}
 		
@@ -344,9 +342,9 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		*/
 		private class LuaLibFun_GetPiece extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
-				val piece = pieces.getOrElse((x.checkint, y.checkint), return LuaValue.NIL)     // Get piece or return nil if no piece
-				if (piece.hidden) return LuaValue.NIL                                           // Also return nil for hidden piece
-				globals.get(piece.name)                                                         // Return piece
+				val piece = pieces.getOrElse((x.checkint, y.checkint), return LuaValue.NIL) // Get piece or return nil if no piece
+				if (piece.hidden) return LuaValue.NIL                                       // Also return nil for hidden piece
+				globals.get(piece.name)                                                     // Return piece
 			}
 		}
 		
@@ -425,9 +423,9 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	}
 }
 
-////////////////////////////////////////////////////////////////
+// ==================================================
 // Lua lib function classes for more than 3 arguments
-////////////////////////////////////////////////////////////////
+// ==================================================
 
 private abstract class FourArgFunction extends LibFunction {	
 	def call(arg1: LuaValue, arg2: LuaValue, arg3: LuaValue, arg4: LuaValue): LuaValue

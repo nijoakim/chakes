@@ -24,10 +24,10 @@ function Rook:symbol(x, y) return 'r' end
 
 function Rook:legalMoves(x, y)
 	local moves = {}
-	addLegalMovesDelta(moves, x, y, 	1, 		0 	)
-	addLegalMovesDelta(moves, x, y, 	0, 		1 	)
-	addLegalMovesDelta(moves, x, y,  	-1, 	0 	)
-	addLegalMovesDelta(moves, x, y, 	0, 		-1 	)
+	addLegalMovesDelta(moves, x, y,  1,  0)
+	addLegalMovesDelta(moves, x, y,  0,  1)
+	addLegalMovesDelta(moves, x, y, -1,  0)
+	addLegalMovesDelta(moves, x, y,  0, -1)
 	return moves
 end
 

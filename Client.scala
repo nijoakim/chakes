@@ -22,9 +22,9 @@ import java.io._
 import scala.actors.Actor.actor
 import scala.collection._
 
-////////////////////////////////////////////////////////////////
+// =============
 // Example usage
-////////////////////////////////////////////////////////////////
+// =============
 
 object ClientMain extends App {
 	println("Client")
@@ -32,9 +32,9 @@ object ClientMain extends App {
 	val client = new Client("localhost", 4444, readLine)
 }
 
-////////////////////////////////////////////////////////////////
+// ============
 // Client class
-////////////////////////////////////////////////////////////////
+// ============
 
 class Client(host: String, port: Int, userName: String) {
 	val socket = new Socket(host, port)
