@@ -30,14 +30,14 @@ function King:legalMoves(x, y)
 	local rook
 	
 	-- Standard moves
-	addLegalMovesDelta(moves, x, y, 	1, 		0, 		1)
-	addLegalMovesDelta(moves, x, y, 	0, 		1, 		1)
-	addLegalMovesDelta(moves, x, y,  	-1, 	0, 		1)
-	addLegalMovesDelta(moves, x, y, 	0, 		-1, 	1)
-	addLegalMovesDelta(moves, x, y, 	1, 		1, 		1)
-	addLegalMovesDelta(moves, x, y, 	1, 		-1, 	1)
-	addLegalMovesDelta(moves, x, y,  	-1, 	1, 		1)
-	addLegalMovesDelta(moves, x, y, 	-1, 	-1, 	1)
+	addLegalMovesDelta(moves, x, y,  1,  0, 1)
+	addLegalMovesDelta(moves, x, y,  0,  1, 1)
+	addLegalMovesDelta(moves, x, y, -1,  0, 1)
+	addLegalMovesDelta(moves, x, y,  0, -1, 1)
+	addLegalMovesDelta(moves, x, y,  1,  1, 1)
+	addLegalMovesDelta(moves, x, y,  1, -1, 1)
+	addLegalMovesDelta(moves, x, y, -1,  1, 1)
+	addLegalMovesDelta(moves, x, y, -1, -1, 1)
 	
 	-- Checks whether a certain position is empty and not under threat if moves
 	local function isEmptyAndNotUnderThreatIfMove(xx, yy)
