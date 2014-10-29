@@ -63,9 +63,15 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	/** Hash map of pieces on the board indexed by position. */
 	val pieces = new HashMap[(Int, Int), Piece]
 	
+<<<<<<< HEAD
 	private val players  = playerNames.toArray                // Players array
 	private val gamePath = GamesPath + gameName + LuaFileExt  // Path to games
 	private val globals  = JsePlatform.standardGlobals        // Lua globals table
+=======
+	private val players = playerNames.toArray            // Players array
+	private val gamePath = GamesPath + gameName + LuaExt // Path to games
+	private val globals = JsePlatform.standardGlobals    // Lua globals table
+>>>>>>> bec8647c18ba63da7d35e77e83d08183812d0434
 	
 	// Dimensions
 	var xSize = 0 /** Width of the board. */
@@ -79,6 +85,11 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	
 	globals.load(new LuaLibChakes)       // Add Chakes library
 	globals.get("dofile").call(gamePath) // Run game file
+<<<<<<< HEAD
+=======
+	
+	private def isOnBoard(x: Int, y: Int) = (x >= 1 && x <= xSize && y >= 1 && y <= ySize)
+>>>>>>> bec8647c18ba63da7d35e77e83d08183812d0434
 	
 	// Returns whether a given position is on board
 	private def isOnBoard(x: Int, y: Int): Boolean = (
@@ -181,9 +192,15 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		piece.y = y2
 	}
 	
+<<<<<<< HEAD
 	// ======================================
 	// Lua library function private sub class
 	// ======================================
+=======
+	// ==========================
+	// Lua library function class
+	// ==========================
+>>>>>>> bec8647c18ba63da7d35e77e83d08183812d0434
 	
 	// TODO: Document errors?
 	// Sets up library
@@ -275,6 +292,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		*/
 		private class LuaLibFun_CreatePiece extends FourArgFunction {
 			override def call(x: LuaValue, y: LuaValue, name: LuaValue, owner: LuaValue): LuaValue = {
+<<<<<<< HEAD
 				// Exception if outside of board
 				if (!isOnBoard(x.checkint, y.checkint)) throw new ChakesGameException("Cannot create piece outside of board.")
 				
@@ -284,6 +302,14 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 				piece.loadMethods                                                                   // Load piece's methods
 				piece.onCreate(x.toint, y.toint)                                                    // Call onCreate() on piece
 				
+=======
+				if (!isOnBoard(x.checkint, y.checkint)) throw new ChakesGameException("Cannot create piece outside board.")
+				val piece = new Piece(globals, name.checkjstring, x.toint, y.toint, owner.checkint) // Make new piece
+				pieces += (x.toint, y.toint) -> piece                                               // Add piece to Scala
+				globals.set(piece.name, globals.get(name).invokemethod("new").arg1)                 // Add piece to Lua through its constructor
+				piece.loadMethods                                                                   // Load piece methods
+				piece.onCreate(x.toint, y.toint)                                                    // Call piece's onCreate() mehtod
+>>>>>>> bec8647c18ba63da7d35e77e83d08183812d0434
 				globals.get(piece.name)                                                             // Return piece instance
 			}
 		}
@@ -383,7 +409,10 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				val piece = pieces.getOrElse((x.checkint, y.checkint), return LuaValue.NIL) // Get piece or return nil if no piece
 				if (piece.hidden) return LuaValue.NIL                                       // Also return nil for hidden piece
+<<<<<<< HEAD
 				
+=======
+>>>>>>> bec8647c18ba63da7d35e77e83d08183812d0434
 				globals.get(piece.name)                                                     // Return piece
 			}
 		}
