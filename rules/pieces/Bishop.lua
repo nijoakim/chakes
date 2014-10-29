@@ -24,10 +24,7 @@ function Bishop:symbol(x, y) return 'b' end
 
 function Bishop:legalMoves(x, y)
 	local moves = {}
-<<<<<<< HEAD
 	permutations()
-=======
->>>>>>> bec8647c18ba63da7d35e77e83d08183812d0434
 	addLegalMovesDelta(moves, x, y,  1,  1)
 	addLegalMovesDelta(moves, x, y,  1, -1)
 	addLegalMovesDelta(moves, x, y, -1,  1)
