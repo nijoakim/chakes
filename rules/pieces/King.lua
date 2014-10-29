@@ -99,8 +99,8 @@ end
 
 function King:onMove(x1, y1, x2, y2)
 	local diff = x2 - x1
-	if diff == 2 	then chakes.movePiece(H, 1, F, 1); chakes.getPiece(F, 1):onMove(H, 1, F, 1) end -- Short castling
-	if diff == -2 	then chakes.movePiece(A, 1, D, 1); chakes.getPiece(D, 1):onMove(A, 1, D, 1) end -- Long castling
+	if diff == 2  then chakes.relocatePiece(H, 1, F, 1); chakes.getPiece(F, 1):onMove(H, 1, F, 1) end -- Short castling
+	if diff == -2 then chakes.relocatePiece(A, 1, D, 1); chakes.getPiece(D, 1):onMove(A, 1, D, 1) end -- Long castling
 	self.hasMoved = true
 	return
 end

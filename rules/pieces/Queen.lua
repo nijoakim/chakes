@@ -47,4 +47,3 @@ function Queen: onDestroy()
 	print("Ni skjuter som kratter")
 	return
 end
-

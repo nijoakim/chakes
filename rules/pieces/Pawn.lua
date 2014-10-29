@@ -69,4 +69,3 @@ function Pawn: onDestroy()
 	print("Bouuuu")
 	return
 end
-

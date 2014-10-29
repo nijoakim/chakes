@@ -14,7 +14,7 @@
      along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
--- Copy table
+-- Copies a table
 function table.copy(t)
 	local u = {}
 	for k, v in pairs(t) do u[k] = v end
@@ -50,6 +50,10 @@ chakes.createPiece(E, 8, "King", 2)
 for i = A, H do chakes.createPiece(i, 2, "Pawn", 1) end
 for i = A, H do chakes.createPiece(i, 7, "Pawn", 2) end
 
+function permutations()
+	return
+end
+
 -- Legal moves helper function
 function addLegalMovesDelta(t, x, y, dx, dy, range)
 	range = range or -1           -- Range default is infinity
@@ -62,7 +66,7 @@ function addLegalMovesDelta(t, x, y, dx, dy, range)
 		knewOwner = true
 	end
 	
-	-- Add poistions recursively
+	-- Add position recursively
 	x = x + dx
 	y = y + dy
 	if chakes.isOnBoard(x, y) then
@@ -78,4 +82,3 @@ function addLegalMovesDelta(t, x, y, dx, dy, range)
 	if knewOwner then owner = nil end
 	return
 end
-

@@ -42,7 +42,7 @@ object Board {
 		private val ResoursesPath = "rules/resources/"
 		
 		// Lua file type extension
-		private val LuaExt = ".lua"
+		private val LuaFileExt = ".lua"
 	
 	private def numToAlpha(n: Int) = ('A' + n - 1).toChar
 }
@@ -63,15 +63,15 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	/** Hash map of pieces on the board indexed by position. */
 	val pieces = new HashMap[(Int, Int), Piece]
 	
-	private val players = playerNames.toArray            // Players array
-	private val gamePath = GamesPath + gameName + LuaExt // Path to games
-	private val globals = JsePlatform.standardGlobals    // Lua globals table
+	private val players  = playerNames.toArray                // Players array
+	private val gamePath = GamesPath + gameName + LuaFileExt  // Path to games
+	private val globals  = JsePlatform.standardGlobals        // Lua globals table
 	
 	// Dimensions
 	var xSize = 0 /** Width of the board. */
 	var ySize = 0 /** Height o the board. */
 	
-	// Define letters as numbers
+	// [Lua] Define letters as numbers
 	for (i <- 1 to 26) {
 		val char: String = numToAlpha(i).toString
 		globals.set(char, i)
@@ -80,12 +80,18 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	globals.load(new LuaLibChakes)       // Add Chakes library
 	globals.get("dofile").call(gamePath) // Run game file
 	
-	private def isOnBoard(x: Int, y: Int) = (x >= 1 && x <= xSize && y >= 1 && y <= ySize)
-	
+	// Returns whether a given position is on board
+	private def isOnBoard(x: Int, y: Int): Boolean = (
+		(1 <= x && x <= xSize) &&
+		(1 <= y && y <= ySize)
+	)
+
+	// Destroys a piece at a given position an calls onDestroy() on it
 	private def destroyPiece(x: Int, y: Int): Unit = {
 		val pieceMaybe = pieces.get(x, y)
 		pieceMaybe match {
 			case Some(piece) => {
+				// Remove piece and call onDestroy() on it
 				piece.onDestroy()
 				pieces -= ((piece.x, piece.y): (Int, Int))
 			}
@@ -93,10 +99,11 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		}
 	}
 	
+	// Returns the piece at a given position or throws an error if empty
 	private def getPieceOrError(x: Int, y: Int): Piece = {
 		def throwExc = throw new ChakesGameException("Tried to access piece at empty position, "+ numToAlpha(x) + y +".")
 		val piece = pieces.getOrElse((x, y), throwExc)
-		if (piece.hidden) throwExc
+		if (piece.hidden) throwExc // Hidden pieces are not valid
 		piece
 	}
 	
@@ -132,17 +139,20 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	  * @return HashMap indexable by position giving `false` for illegal moves and `true` otherwise. 
 	  */ 
 	def getLegalMoves(piece: Piece): HashMap[(Int, Int), Boolean] = {
-		val moves = piece.legalMoves().arg1.checktable
-		val ret = new HashMap[(Int, Int), Boolean]() { override def default(key: (Int, Int)) = false }
-		for (i <- 1 to moves.length) {
-			val pair = moves.get(i).checktable
-			ret += (pair.get(1).checkint, pair.get(2).checkint) -> true
+		// Get lua table of legal moves
+		val movesLuaTable = piece.legalMoves().arg1.checktable
+		
+		// Iterate over moves and add them to hashmap
+		val movesHashmap = new HashMap[(Int, Int), Boolean]() { override def default(key: (Int, Int)) = false }
+		for (i <- 1 to movesLuaTable.length) {
+			val pair = movesLuaTable.get(i).checktable
+			movesHashmap += (pair.get(1).checkint, pair.get(2).checkint) -> true
 		}
-		ret
+		
+		movesHashmap
 	}
 	
-	/** Moves a piece from one position to another, destroying any piece already occupying the final
-	  * position and in that case also calling that piece's `onDestroy()` method.
+	/** Moves a piece from one position to another, destroying any piece already occupying the final position and in that case also calling that piece's `onDestroy()` method.
 	  * 
 	  * @param x1 initial x position of the piece to be moved.
 	  * @param y1 initial y position of the piece to be moved.
@@ -152,20 +162,28 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	  */
 	def movePiece(x1: Int, y1: Int, x2: Int, y2: Int): Unit = movePiece(x1, y1, x2, y2, true)
 	
+	// Same as movePiece above, but with extra argument determining whether to call onMove()
 	private def movePiece(x1: Int, y1: Int, x2: Int, y2: Int, callOnMove: Boolean): Unit = {
 		val piece: Piece = getPieceOrError(x1, y1)
-		if (!getLegalMoves(piece)(x2, y2)) throw new ChakesGameException("Illegal move. "+ piece.defName +" cannot move from "+ numToAlpha(x1) + y1 +" to "+ numToAlpha(x2) + y2 +".")
-		if (callOnMove) piece.onMove(x1, y1, x2, y2)
-		destroyPiece(x2, y2)
-		pieces += (x2, y2) -> piece
-		pieces -= ((x1, y1): (Int, Int))
+	
+		// Throw exeption if illegal move
+		if (!getLegalMoves(piece)(x2, y2)) {
+			throw new ChakesGameException("Illegal move. "+ piece.defName +" cannot move from "+ numToAlpha(x1) + y1 +" to "+ numToAlpha(x2) + y2 +".")
+		}
+		
+		if (callOnMove) piece.onMove(x1, y1, x2, y2) // Call onMove() if required
+		destroyPiece(x2, y2)                         // Destroy eventual piece at new position 
+		pieces += (x2, y2) -> piece                  // Put piece at new posion 
+		pieces -= ((x1, y1): (Int, Int))             // Remove piece from old position
+		
+		// Update piece position variables
 		piece.x = x2
 		piece.y = y2
 	}
 	
-	// ==========================
-	// Lua library function class
-	// ==========================
+	// ======================================
+	// Lua library function private sub class
+	// ======================================
 	
 	// TODO: Document errors?
 	// Sets up library
@@ -183,7 +201,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			libFuns.set("createPiece",      new LuaLibFun_CreatePiece)
 			libFuns.set("removePiece",      new LuaLibFun_RemovePiece)
 			libFuns.set("destroyPiece",     new LuaLibFun_DestroyPiece)
-			libFuns.set("movePiece",        new LuaLibFun_MovePiece)
+			libFuns.set("relocatePiece",    new LuaLibFun_RelocatePiece)
 			libFuns.set("hidePiece",        new LuaLibFun_HidePiece)
 			libFuns.set("unhidePiece",      new LuaLibFun_UnhidePiece)
 			libFuns.set("getPiece",         new LuaLibFun_GetPiece)
@@ -204,9 +222,19 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		*/
 		class LuaLibFun_SetBoardSize extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
-				xSize = x.checkint // Set x size
-				ySize = y.checkint // Set y size
-				for ((_, piece) <- pieces) if (!isOnBoard(piece.x, piece.y)) throw new ChakesGameException("Resize of board resulted in that piece placed at "+ numToAlpha(piece.x) + piece.y +" is no longer placed on the board.")
+				// Update board size
+				xSize = x.checkint
+				ySize = y.checkint
+				
+				// Exception if pieces end up outside of board boundary
+				for ((_, piece) <- pieces) if (!isOnBoard(piece.x, piece.y)) {
+					throw new ChakesGameException(
+						"Resize of board resulted in that piece placed at "+
+						numToAlpha(piece.x) + piece.y +
+						" is no longer placed on the board."
+					)
+				}
+				
 				LuaValue.NIL
 			}
 		}
@@ -230,8 +258,8 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		private class LuaLibFun_AddPieceDefs extends OneArgFunction {
 			override def call(luaPieceNames: LuaValue): LuaValue = {
 				val pieceNames = (for (i <- 1 to luaPieceNames.checktable.length) yield luaPieceNames.get(i).checkjstring).toList // Get piece names
-				for (pieceName <- pieceNames) globals.get("dofile").call(Board.PiecesPath + pieceName + Board.LuaExt)             // Run piece file for each name
-				LuaValue.NIL
+				for (pieceName <- pieceNames) globals.get("dofile").call(Board.PiecesPath + pieceName + Board.LuaFileExt)         // Run piece file for each name
+				return LuaValue.NIL
 			}
 		}
 		
@@ -247,12 +275,15 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		*/
 		private class LuaLibFun_CreatePiece extends FourArgFunction {
 			override def call(x: LuaValue, y: LuaValue, name: LuaValue, owner: LuaValue): LuaValue = {
-				if (!isOnBoard(x.checkint, y.checkint)) throw new ChakesGameException("Cannot create piece outside board.")
+				// Exception if outside of board
+				if (!isOnBoard(x.checkint, y.checkint)) throw new ChakesGameException("Cannot create piece outside of board.")
+				
 				val piece = new Piece(globals, name.checkjstring, x.toint, y.toint, owner.checkint) // Make new piece
 				pieces += (x.toint, y.toint) -> piece                                               // Add piece to Scala
 				globals.set(piece.name, globals.get(name).invokemethod("new").arg1)                 // Add piece to Lua through its constructor
-				piece.loadMethods                                                                   // Load piece methods
-				piece.onCreate(x.toint, y.toint)                                                    // Call piece's onCreate() mehtod
+				piece.loadMethods                                                                   // Load piece's methods
+				piece.onCreate(x.toint, y.toint)                                                    // Call onCreate() on piece
+				
 				globals.get(piece.name)                                                             // Return piece instance
 			}
 		}
@@ -267,6 +298,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint)
 				pieces -= ((x.toint, y.toint): (Int, Int))
+				
 				LuaValue.NIL
 			}
 		}
@@ -281,6 +313,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint).onDestroy()
 				pieces -= ((x.toint, y.toint): (Int, Int))
+				
 				LuaValue.NIL
 			}
 		}
@@ -291,14 +324,18 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		 -- @param y1 Initial y position
 		 -- @param x2 Final x position
 		 -- @param y2 Final y position
-		function movePiece(x1, y1, x2, y2)
+		function relocatePiece(x1, y1, x2, y2)
 		*/
-		private class LuaLibFun_MovePiece extends FourArgFunction {
+		private class LuaLibFun_RelocatePiece extends FourArgFunction {
 			override def call(x1: LuaValue, y1: LuaValue, x2: LuaValue, y2: LuaValue): LuaValue = {
-				if (!isOnBoard(x1.checkint, y1.checkint)) throw new ChakesGameException("Tried to access piece from outside board.")
+				// Exception if doing things outside of board
+				if (!isOnBoard(x1.checkint, y1.checkint)) throw new ChakesGameException("Tried to access piece from outside of board.")
+				if (!isOnBoard(x2.checkint, y2.checkint)) throw new ChakesGameException("Cannot move piece outside of board.")
+				
+				// Get and move piece
 				getPieceOrError(x1.toint, y1.toint)
-				if (!isOnBoard(x2.checkint, y2.checkint)) throw new ChakesGameException("Cannot move piece outside board.")
 				movePiece(x1.toint, y1.toint, x2.toint, y2.toint, false)
+				
 				LuaValue.NIL
 			}
 		}
@@ -312,8 +349,9 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		private class LuaLibFun_HidePiece extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				val piece = getPieceOrError(x.checkint, y.checkint)
-				if (piece.hidden) throw new ChakesGameException("Tried to hide hidden piece at "+ numToAlpha(y.toint) + x.toint + ".")
+				if (piece.hidden) throw new ChakesGameException("Tried to hide hidden piece at "+ numToAlpha(y.toint) + x.toint + ".") // Exception if already hidden
 				else piece.hidden = true
+				
 				LuaValue.NIL
 			}
 		}
@@ -327,8 +365,9 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		private class LuaLibFun_UnhidePiece extends TwoArgFunction {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				val piece = pieces.getOrElse((x.checkint, y.checkint), getPieceOrError(x.toint, y.toint))
-				if (!piece.hidden) throw new ChakesGameException("Tried to unhide non-hidden piece at "+ numToAlpha(y.toint) + x.toint + ".")
+				if (!piece.hidden) throw new ChakesGameException("Tried to unhide non-hidden piece at "+ numToAlpha(y.toint) + x.toint + ".") // Exception if not hidden
 				else piece.hidden = false
+				
 				LuaValue.NIL
 			}
 		}
@@ -344,6 +383,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			override def call(x: LuaValue, y: LuaValue): LuaValue = {
 				val piece = pieces.getOrElse((x.checkint, y.checkint), return LuaValue.NIL) // Get piece or return nil if no piece
 				if (piece.hidden) return LuaValue.NIL                                       // Also return nil for hidden piece
+				
 				globals.get(piece.name)                                                     // Return piece
 			}
 		}
@@ -371,6 +411,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		private class LuaLibFun_SetOwner extends ThreeArgFunction {
 			override def call(x: LuaValue, y: LuaValue, owner: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint).owner = owner.checkint
+				
 				LuaValue.NIL
 			}
 		}
@@ -398,6 +439,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		private class LuaLibFun_SetFreezeTime extends ThreeArgFunction {
 			override def call(x: LuaValue, y: LuaValue, freezeTime: LuaValue): LuaValue = {
 				getPieceOrError(x.checkint, y.checkint).freezeTime = freezeTime.checkdouble
+				
 				LuaValue.NIL
 			}
 		}
