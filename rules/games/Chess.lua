@@ -25,6 +25,13 @@ function table.copy(t)
 	return setmetatable(u, getmetatable(t))
 end
 
+-- Returns the sign of a number
+function math.signum(x)
+	if x > 0 then return 1
+	elseif x < 0 then return -1
+	else return 0 end
+end
+
 -- Legal moves helper function
 function addLegalMovesDelta(t, x, y, dx, dy, range)
 	range = range or -1           -- Range default is infinity

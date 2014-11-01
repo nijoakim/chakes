@@ -30,19 +30,21 @@ function Pawn:legalMoves(x, y)
 		table.insert(moves, {x, y + self.dy}) 
 	end
 	
-	-- 2 step move
-	if not self.hasMoved and not chakes.getPiece(x, y + self.dy * 2) then
+	-- 2-step move
+	if not self.hasMoved
+	and not chakes.getPiece(x, y + self.dy)
+	and not chakes.getPiece(x, y + self.dy * 2)
+	then
 		table.insert(moves, {x, y + self.dy * 2})
 	end
 	
-	-- Capture move right
-	if chakes.getPiece(x + 1, y + self.dy) and chakes.getOwner(x + 1, y + self.dy) ~= chakes.getOwner(x, y) then
-		table.insert(moves, {x + 1, y + self.dy})
-	end
-	
-	-- Capture move left
-	if chakes.getPiece(x - 1, y + self.dy) and chakes.getOwner(x - 1, y + self.dy) ~= chakes.getOwner(x, y) then
-		table.insert(moves, {x - 1, y + self.dy})
+	-- Capture move 
+	for i = -1, 1, 2 do
+		if chakes.getPiece(x + i, y + self.dy)
+		and chakes.getOwner(x + i, y + self.dy) ~= chakes.getOwner(x, y)
+		then
+			table.insert(moves, {x + i, y + self.dy})
+		end
 	end
 	
 	-- TODO: en passant

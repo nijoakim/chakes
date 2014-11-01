@@ -24,14 +24,18 @@ function Knight:symbol(x, y) return 'k' end
 
 function Knight:legalMoves(x, y)
 	local moves = {}
-	addLegalMovesDelta(moves, x, y,  1,  2, 1)
-	addLegalMovesDelta(moves, x, y,  2,  1, 1)
-	addLegalMovesDelta(moves, x, y,  1, -2, 1)
-	addLegalMovesDelta(moves, x, y,  2, -1, 1)
-	addLegalMovesDelta(moves, x, y, -1,  2, 1)
-	addLegalMovesDelta(moves, x, y, -2,  1, 1)
-	addLegalMovesDelta(moves, x, y, -1, -2, 1)
-	addLegalMovesDelta(moves, x, y, -2, -1, 1)
+	
+	for i = -2, 2 do
+		for j = -2, 2 do
+			if i ~= 0 and j ~= 0
+			and math.signum(i) ~= math.signum
+			then
+				addLegalMovesDelta(moves, x, y, i, j, 1)
+			end
+			
+		end
+	end
+	
 	return moves
 end
 

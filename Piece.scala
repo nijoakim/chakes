@@ -26,7 +26,7 @@ import luaj.interface.Implicits._
 import collection.mutable.HashMap
 
 // ======================
-// Piece signleton object
+// Piece singleton object
 // ======================
 
 object Piece {

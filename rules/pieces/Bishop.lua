@@ -24,10 +24,13 @@ function Bishop:symbol(x, y) return 'b' end
 
 function Bishop:legalMoves(x, y)
 	local moves = {}
-	addLegalMovesDelta(moves, x, y,  1,  1)
-	addLegalMovesDelta(moves, x, y,  1, -1)
-	addLegalMovesDelta(moves, x, y, -1,  1)
-	addLegalMovesDelta(moves, x, y, -1, -1)
+	
+	for i = -1, 1, 2 do
+		for j = -1, 1, 2 do
+			addLegalMovesDelta(moves, x, y, i, j)
+		end
+	end
+	
 	return moves
 end
 

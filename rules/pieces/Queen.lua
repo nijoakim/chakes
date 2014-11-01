@@ -24,14 +24,15 @@ function Queen:symbol(x, y) return 'Q' end
 
 function Queen:legalMoves(x, y)
 	local moves = {}
-	addLegalMovesDelta(moves, x, y,  1,  0)
-	addLegalMovesDelta(moves, x, y,  0,  1)
-	addLegalMovesDelta(moves, x, y, -1,  0)
-	addLegalMovesDelta(moves, x, y,  0, -1)
-	addLegalMovesDelta(moves, x, y,  1,  1)
-	addLegalMovesDelta(moves, x, y,  1, -1)
-	addLegalMovesDelta(moves, x, y, -1,  1)
-	addLegalMovesDelta(moves, x, y, -1, -1)
+	
+	for i = -1, 1 do
+		for j = -1, 1 do
+			if i ~= 0 or j ~= 0 then
+				addLegalMovesDelta(moves, x, y, i, j)
+			end
+		end
+	end
+	
 	return moves
 end
 
