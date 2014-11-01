@@ -280,7 +280,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 				
 				val piece = new Piece(globals, name.checkjstring, x.toint, y.toint, owner.checkint) // Make new piece
 				pieces += (x.toint, y.toint) -> piece                                               // Add piece to Scala
-				globals.set(piece.name, globals.get(name).invokemethod("new").arg1)                 // Add piece to Lua through its constructor
+				globals.set(piece.name, globals.get(name).invokemethod("new").arg1)                 // Add piece to Lua 
 				piece.loadMethods                                                                   // Load piece's methods
 				piece.onCreate(x.toint, y.toint)                                                    // Call onCreate() on piece
 				

@@ -22,8 +22,6 @@ end
 
 function King:symbol(x, y) return 'K' end
 
-
-
 function King:legalMoves(x, y)
 	local moves = {}
 	local oppOwner = 3 - chakes.getOwner(x, y)
