@@ -29,7 +29,7 @@ function King:legalMoves(x, y)
 	
 	-- Standard moves
 	for i = -1, 1 do
-		for j = 1, 1 do
+		for j = -1, 1 do
 			if i ~= 0 or j ~= 0 then
 				addLegalMovesDelta(moves, x, y, i, j, 1)
 			end
@@ -96,7 +96,7 @@ end
 
 function King:onMove(x1, y1, x2, y2)
 	local diff = x2 - x1
-	if diff == 2  then chakes.relocatePiece(H, 1, F, 1); chakes.getPiece(F, 1):onMove(H, 1, F, 1) end -- Short castling
+	if diff ==  2 then chakes.relocatePiece(H, 1, F, 1); chakes.getPiece(F, 1):onMove(H, 1, F, 1) end -- Short castling
 	if diff == -2 then chakes.relocatePiece(A, 1, D, 1); chakes.getPiece(D, 1):onMove(A, 1, D, 1) end -- Long castling
 	self.hasMoved = true
 	return

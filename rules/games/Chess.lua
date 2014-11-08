@@ -14,23 +14,12 @@
      along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+-- TODO: Change to require() (need to add stuff to path in Scala)
+dofile("rules/lib/Util.lua")
+
 -- ================
 -- Helper functions
 -- ================
-
--- Copies a table -- TODO: Move to 'util'/'misc'-like global file
-function table.copy(t)
-	local u = {}
-	for k, v in pairs(t) do u[k] = v end
-	return setmetatable(u, getmetatable(t))
-end
-
--- Returns the sign of a number
-function math.signum(x)
-	if x > 0 then return 1
-	elseif x < 0 then return -1
-	else return 0 end
-end
 
 -- Legal moves helper function
 function addLegalMovesDelta(t, x, y, dx, dy, range)
@@ -95,5 +84,3 @@ chakes.createPiece(E, 8, "King", 2)
 
 for i = A, H do chakes.createPiece(i, 2, "Pawn", 1) end
 for i = A, H do chakes.createPiece(i, 7, "Pawn", 2) end
-
-

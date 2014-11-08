@@ -107,7 +107,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		piece
 	}
 	
-	/** Prints the board for debugging purposes. */
+	/** Prints the board. */
 	def printBoard = {
 		for (y <- ySize to 1 by -1; x <- 1 to xSize) {
 			print(if (x == 1) y.toString + " " else " ")
@@ -117,7 +117,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		println(" "+ (for (x <- 1 to xSize) yield (" " + numToAlpha(x))).mkString + "\n")
 	}
 	
-	/** Prints the legal moves for a piece at a given position for debugging purposes.
+	/** Prints the legal moves for a piece at a given position.
 	  * 
 	  * @param x x position of the piece
 	  * @param y y position of the piece
@@ -259,7 +259,8 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 			override def call(luaPieceNames: LuaValue): LuaValue = {
 				val pieceNames = (for (i <- 1 to luaPieceNames.checktable.length) yield luaPieceNames.get(i).checkjstring).toList // Get piece names
 				for (pieceName <- pieceNames) globals.get("dofile").call(Board.PiecesPath + pieceName + Board.LuaFileExt)         // Run piece file for each name
-				return LuaValue.NIL
+				
+				LuaValue.NIL
 			}
 		}
 		
