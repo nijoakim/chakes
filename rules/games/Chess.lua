@@ -45,7 +45,7 @@ function addLegalMovesDelta(t, x, y, dx, dy, range)
 		end
 	end
 	
-	-- Thrash global owner variable
+	-- Trash global owner variable
 	if knewOwner then owner = nil end
 	
 	return
