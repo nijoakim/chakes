@@ -1,4 +1,4 @@
-# Chakes /Tja-ke's/ #
+# Chakes /tʃɑ-kə‘s/ #
 This, my friend, is chakes. A game unlike much of what you have seen before. (This is because you see _a lot_ of things in your life, and most of those other things are quite unlike chakes.)
 
 ## The quick introduction ##
