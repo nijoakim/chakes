@@ -15,7 +15,7 @@
 ]]
 
 -- TODO: Change to require() (need to add stuff to path in Scala)
-dofile("rules/lib/Util.lua")
+dofile("lua/lib/Util.lua")
 
 -- ================
 -- Helper functions

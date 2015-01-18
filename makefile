@@ -6,7 +6,7 @@ FLAGS=-deprecation
 LIBS=lib/luaj-jse-3.0-alpha1.jar
 MAIN=runtime.Main
 CLASSES=classes
-SOURCE=*.scala
+SOURCE=scala/*.scala
 
 # Documenters
 DOCUMENTATION=doc/

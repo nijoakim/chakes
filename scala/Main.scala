@@ -78,7 +78,7 @@ object Main extends App {
 	// =====
 	
 	// Run test file
-	JsePlatform.standardGlobals.get("dofile").call(LuaValue.valueOf("rules/Test.lua"))
+	JsePlatform.standardGlobals.get("dofile").call(LuaValue.valueOf("lua/Test.lua"))
 	
 	// Test chess
 	{

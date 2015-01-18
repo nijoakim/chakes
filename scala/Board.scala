@@ -37,9 +37,9 @@ object Board {
 		private val LuavarTypes = "pieceTypes"
 		
 		// Paths
-		private val GamesPath = "rules/games/"
-		private val PiecesPath = "rules/pieces/"
-		private val ResoursesPath = "rules/resources/"
+		private val GamesPath = "lua/games/"
+		private val PiecesPath = "lua/pieces/"
+		private val ResoursesPath = "lua/resources/"
 		
 		// Lua file type extension
 		private val LuaFileExt = ".lua"
