@@ -55,19 +55,19 @@ class Piece(val globals: LuaTable, val defName: String, var x: Int, var y: Int, 
 	/** Time until this piece is no longer frozen. */
 	var freezeTime: Double = 0
 	
-	private val id = Piece.getNextId(defName)
-	private[game] val name: String = "chakes." + defName + id
+	private       val id              = Piece.getNextId(defName)
+	private[game] val name:   String  = "chakes." + defName + id
 	private[game] var hidden: Boolean = false
 	
-	override def toString = symbol().tojstring take 1
+	override def toString = symbol(Nil).tojstring take 1
 	
 	// Lua methods
 	private[game] var constructor: (LuaValue*) => Varargs = null
-	private[game] var symbol: (LuaValue*) => Varargs = null
-	private[game] var legalMoves: () => Varargs = null
-	private[game] var onMove: (LuaValue*) => Varargs = null
-	private[game] var onCreate: (LuaValue*) => Varargs = null
-	private[game] var onDestroy: (LuaValue*) => Varargs = null
+	private[game] var symbol:      (LuaValue*) => Varargs = null
+	private[game] var legalMoves:  ()          => Varargs = null
+	private[game] var onMove:      (LuaValue*) => Varargs = null
+	private[game] var onCreate:    (LuaValue*) => Varargs = null
+	private[game] var onDestroy:   (LuaValue*) => Varargs = null
 	
 	// Loads the Lua methods
 	private[game] def loadMethods() = {

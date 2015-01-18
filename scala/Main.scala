@@ -71,7 +71,7 @@ object Main extends App {
 	
 	println(luaMret().arg(2))
 	
-	//*/
+	*/
 	
 	// =====
 	// Tests
@@ -135,7 +135,7 @@ object Main extends App {
 	board.movePiece(B, 4, E, 1)
 	
 	board.printBoard
-	//*/
+	*/
 	
 	/*
 	//board.movePiece(A, 1, A, 3)
@@ -147,7 +147,8 @@ object Main extends App {
 	board.movePiece(A, 8, A, 3)
 	board.printBoard
 	board.movePiece(C, 1, B, 2)
-	board.printBoard//*/
+	board.printBoard
+	*/
 	
 	//val moves = board.pieces(1, 1).legalMoves().arg1
 	
