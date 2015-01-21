@@ -11,7 +11,7 @@ LIBS=lib/luaj-jse-3.0-alpha1.jar
 
 MAIN=runtime.Main
 CLASSES=classes
-SOURCE=scala/*.scala
+SOURCE=scala/*.scala scala/gui/*.scala scala/test/*.scala
 
 # Documenters
 DOCUMENTATION=doc/
