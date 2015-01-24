@@ -100,7 +100,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	}
 	
 	// Returns the piece at a given position or throws an error if empty
-	private def getPieceOrError(x: Int, y: Int): Piece = {
+	def getPieceOrError(x: Int, y: Int): Piece = {
 		def throwExc = throw new ChakesGameException("Tried to access piece at empty position, "+ numToAlpha(x) + y +".")
 		val piece = pieces.getOrElse((x, y), throwExc)
 		if (piece.hidden) throwExc // Hidden pieces are not valid
