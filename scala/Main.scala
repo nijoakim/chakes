@@ -82,14 +82,22 @@ object Main extends App {
 	
 	// Test chess
 	{
+		println("Running tests...")
+		
 		val board = new Board("Chess", List("White", "Black"))
 		
 		// Pawn
 		board.movePiece(D, 2, D, 3) // 1-step
 		board.movePiece(E, 2, E, 4) // 2-step
+		board.movePiece(E, 4, E, 5) // 1-step
 		
 		// Knight
+		board.printBoard
+		board.printLegalMoves(B, 1)
 		board.movePiece(B, 1, C, 3)
+		board.printBoard
+		board.printLegalMoves(C, 3)
+		// board.movePiece(B, 1, C, 3)
 		
 		// Bishop
 		board.movePiece(C, 1, E, 3)
@@ -104,6 +112,8 @@ object Main extends App {
 		
 		// Rook
 		board.movePiece(D, 1, E, 1)
+		
+		board.printBoard
 	}
 	
 	// ===========
@@ -112,7 +122,7 @@ object Main extends App {
 	
 	// Board and stuff
 	val board = new Board("Chess", List("White", "Black"))
-	board.printBoard
+	// board.printBoard
 	
 	//board.movePiece(5, 2, 5, 4)
 	//board.movePiece(4, 1, 6, 3)
@@ -125,7 +135,7 @@ object Main extends App {
 	
 	//println(board.pieces(1,1).name)
 	
-	board.printBoard
+	// board.printBoard
 	//*/
 	
 	/* Capture the king
@@ -134,7 +144,7 @@ object Main extends App {
 	board.movePiece(F, 8, B, 4)
 	board.movePiece(B, 4, E, 1)
 	
-	board.printBoard
+	// board.printBoard
 	*/
 	
 	/*

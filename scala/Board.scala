@@ -127,7 +127,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		val moves = getLegalMoves(getPieceOrError(x, y))
 		for (y <- ySize to 1 by -1; x <- 1 to xSize) {
 			print(if (x == 1) y.toString + " " else " ")
-			print(if (moves(x, y)) "x" else ".")
+			print(if (moves(x, y)) "x" else pieces.getOrElse((x, y), ".")) // TODO: print "X" for capture
 			print(if (x == xSize) "\n" else "")
 		}
 		println(" "+ (for (x <- 1 to xSize) yield (" " + numToAlpha(x))).mkString + "\n")
