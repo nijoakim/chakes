@@ -1,3 +1,4 @@
 classes/
 doc/
 *.swp
+*.DS_Store
