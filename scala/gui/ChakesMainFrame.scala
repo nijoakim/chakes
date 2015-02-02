@@ -10,6 +10,25 @@ import scala.swing.GridBagPanel._
 // Chakes game
 import chakes.game._
 
+// class Controller(){
+	
+// 	// Actions on the view (from either game-model or )
+// 	// The controller subscribes to events in the game and translates them for the view to use.
+// 	// from view
+// 	def showLegalMoves( src: Piece );
+// 	// From game-model
+// 	def update( p: Piece )
+
+// 	// Actions on the game-model
+// 	def move( src: Piece, target: (Int, Int) );
+// }
+// class View(){
+// 	def updateCell( x: Int, y: Int );
+
+// 	def cellSelected()
+
+// }
+
 class ChakesMainFrame extends MainFrame {
 
 	val board = new Board("Chess", "White"::"Black"::Nil)
@@ -27,7 +46,7 @@ class ChakesMainFrame extends MainFrame {
 
 }
 
-class BoardCellView(data_in : String, labelColour: java.awt.Color) extends GridPanel(1,1) {
+class BoardCellView(data_in : String, labelColour: java.awt.Color, bgcolor: java.awt.Color ) extends GridPanel(1,1) {
 
 	var data = data_in;
 	var label = new Label(data);
@@ -36,8 +55,8 @@ class BoardCellView(data_in : String, labelColour: java.awt.Color) extends GridP
 		label.foreground = labelColour;
 	}
 
-	var savedBackgroud : java.awt.Color = null;
-	var savedBackgroud2: java.awt.Color = null;
+	background = bgcolor
+	var savedBackgroud : java.awt.Color = bgcolor;
 
 	minimumSize   = new java.awt.Dimension(75,75);
 	preferredSize = new java.awt.Dimension(75,75);
@@ -54,18 +73,14 @@ class BoardCellView(data_in : String, labelColour: java.awt.Color) extends GridP
 	}
 
 	def displayLegalMove() {
-		savedBackgroud2 = background;
 		background = java.awt.Color.GREEN;
 	}
 	def undisplayLegalMove() {
-		background = savedBackgroud2;
+		background = savedBackgroud;
 	}
 }
 
 class BoardCellViewFactory() {
-
-	val backgroundOdd  = java.awt.Color.WHITE;
-	val backgroundEven = java.awt.Color.GRAY;
 
 	/**
 	 * Coordinates numbered from lower left corner. Should depend on board type I guess.
@@ -73,16 +88,28 @@ class BoardCellViewFactory() {
 	 */
 	def newCellForCoord( x: Int, y: Int, data: String, player: Int ): BoardCellView = {
 
-		val pieceColour = if      (player == 1) java.awt.Color.RED
-		                  else if (player == 2) java.awt.Color.ORANGE
-		                  else                  null;
+		val pieceColour = if      (player == 1) BoardView.COLOR_PLAYER_1
+		                  else if (player == 2) BoardView.COLOR_PLAYER_2
+		                  else                  null; // TODO: Raise exception?
 
-		val backgroundColor = if ((x+y) % 2 == 0) backgroundEven else backgroundOdd;
-		val cellView        = new BoardCellView(data, pieceColour);
-		cellView.background = backgroundColor;
+		val backgroundColor = if ((x+y) % 2 == 0) BoardView.COLOR_BACK_EVEN
+		                      else                BoardView.COLOR_BACK_ODD;
+		val cellView        = new BoardCellView(data, pieceColour, backgroundColor);
 		cellView;
 	}
 
+}
+
+object BoardView {
+	val COLOR_BACK_ODD  = java.awt.Color.WHITE;
+	val COLOR_BACK_EVEN = java.awt.Color.GRAY;
+
+	val COLOR_SELECTED     = java.awt.Color.BLUE
+	val COLOR_LEGAL_MOVE   = java.awt.Color.GREEN
+	val COLOR_UNDER_THREAT = java.awt.Color.ORANGE
+
+	val COLOR_PLAYER_1 = java.awt.Color.RED
+	val COLOR_PLAYER_2 = java.awt.Color.CYAN
 }
 
 class BoardView( board: Board ) {
@@ -102,6 +129,45 @@ class BoardView( board: Board ) {
 	val constraints = new boardPanel.Constraints
 	val cells       = new Array[BoardCellView](size);
 	val cellFactory = new BoardCellViewFactory();
+
+	def displayLegalMove( moves: Map[(Int, Int), Boolean] ) {
+		for ( ((x, y), _) <- moves) {
+			val index = (x-1) + width*(y-1)
+			cells(index).displayLegalMove()
+		}
+	}
+
+	def clearLegalMoves() {
+		for ( x <- 0 until width; y <- 0 until height) {
+			val index = (x) + width*(y)
+			cells(index).undisplayLegalMove()
+		}
+	}
+
+	def selectSquare( sqCoord: (Int, Int), cell: BoardCellView ) {
+
+		val (x, y) = sqCoord;
+
+		if (cellSel != null) {
+			cellSel.deselect();
+			clearLegalMoves();
+		}
+
+		cellSel = cell;
+		cellSel.select();
+		cellX = x;
+		cellY = y;
+
+		// Display legal moves
+		// TODO: Trigger on square select
+		try { 
+			val piece = board.getPieceOrError(x, y);
+			legalMoves = board.getLegalMoves(piece);
+			displayLegalMove( legalMoves );
+		} catch {
+			case e: ChakesGameException => ()
+		}	
+	}
 
 	// Initialise memebers
 	for ( iWidth <- 0 until width; iHeight <- 0 until height ) {
@@ -133,8 +199,8 @@ class BoardView( board: Board ) {
 						board.movePiece( cellX, cellY, iWidth+1, iHeight+1 );
 						cells( index2 ).label.text = "";
 						cells( index2 ).label.foreground = java.awt.Color.BLACK;
-						cells(index).label.text = piece.toString();
-						cells(index).label.foreground = if      (piece.owner == 1) java.awt.Color.RED
+						cells( index  ).label.text = piece.toString();
+						cells( index  ).label.foreground = if      (piece.owner == 1) java.awt.Color.RED
 		                                                else if (piece.owner == 2) java.awt.Color.ORANGE
 		                                                else                  null;
 
@@ -142,45 +208,14 @@ class BoardView( board: Board ) {
 							cellSel.deselect();
 							cellX = -1;
 							cellY = -1;
-							for ( ((x, y), _) <- legalMoves) {
-								val index = (x-1) + width*(y-1)
-								cells(index).undisplayLegalMove()
-							}
+							clearLegalMoves();
 						}
 						legalMoves = null;
 					} catch {
 					  case e: Exception => println("Tried to move non-existing piece at (" + iWidth + "," + iHeight + ")");
 					}
 				} else {
-					// Square selection
-					if (cellSel != null) {
-						cellSel.deselect();
-						cellX = -1;
-						cellY = -1;
-						if (legalMoves != null) {
-							for ( ((x, y), _) <- legalMoves) {
-								val index = (x-1) + width*(y-1)
-								cells(index).undisplayLegalMove()
-							}
-						}
-					}
-					cellSel = cell;
-					cellSel.select();
-					cellX = iWidth+1;
-					cellY = iHeight+1;
-
-					// Display legal moves
-					// TODO: Trigger on square select
-					try { 
-						val piece = board.getPieceOrError(iWidth+1, iHeight+1);
-						legalMoves = board.getLegalMoves(piece);
-						for ( ((x, y), _) <- legalMoves) {
-							val index = (x-1) + width*(y-1)
-							cells(index).displayLegalMove()
-						}
-					} catch {
-						case e: ChakesGameException => ()
-					}		
+					selectSquare( (iWidth+1, iHeight+1), cell );
 				}
 			}
 		}
