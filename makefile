@@ -3,7 +3,12 @@ INTERPRETER=scala
 
 # Scala compiler parameters
 FLAGS=-deprecation -feature
+
 LIBS=lib/luaj-jse-3.0-alpha1.jar
+
+# Uncomment below to try the new libs
+# LIBS=lib/luaj-jse-3.0.jar
+
 MAIN=runtime.Main
 CLASSES=classes
 SOURCE=scala/*.scala
