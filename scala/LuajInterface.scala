@@ -17,6 +17,7 @@
 package luaj.interface
 
 import org.luaj.vm2._
+import scala.language.implicitConversions
 import Implicits._
 
 object Implicits {
