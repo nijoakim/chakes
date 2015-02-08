@@ -64,7 +64,6 @@ class BoardCellView(data_in : String, labelColour: java.awt.Color, bgcolor: java
 	contents += label;
 
 	def select() {
-		savedBackgroud = background;
 		background = java.awt.Color.BLUE;
 	}
 
@@ -151,6 +150,13 @@ class BoardView( board: Board ) {
 		if (cellSel != null) {
 			cellSel.deselect();
 			clearLegalMoves();
+		}
+
+		if (cellSel == cell) {
+			cellSel = null;
+			cellX = -1;
+			cellY = -1;
+			return;
 		}
 
 		cellSel = cell;
