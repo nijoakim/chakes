@@ -17,6 +17,7 @@
 package chakes.gui
 
 import scala.collection.mutable.Map
+import scala.collection.mutable.HashMap
 
 // GUI stuff
 import scala.swing._
@@ -62,9 +63,12 @@ class ChakesMainFrame extends MainFrame {
 
 }
 
-class BoardCellView(data_in : String, labelColour: java.awt.Color, bgcolor: java.awt.Color ) extends GridPanel(1,1) {
-
-	var data = data_in;
+class BoardCellView( val coordinate  : (Int, Int),
+					 var data        : String,
+					 labelColour     : java.awt.Color,
+					 bgcolor         : java.awt.Color)
+extends GridPanel(1,1)
+{
 	var label = new Label(data);
 	label.font = new Font("Sans", java.awt.Font.BOLD, 32)
 	if (labelColour != null) {
@@ -93,23 +97,37 @@ class BoardCellView(data_in : String, labelColour: java.awt.Color, bgcolor: java
 	def undisplayLegalMove() {
 		background = savedBackgroud;
 	}
+
+	def resetData() {
+		label.text = "";
+		label.foreground = BoardView.COLOR_PLAYER_0;
+	}
+
+	def setData( data: String, owner: Int ) {
+		label.text = data;
+		label.foreground = if (owner == 1) BoardView.COLOR_PLAYER_1
+                      else if (owner == 2) BoardView.COLOR_PLAYER_2
+                      else                 null;
+	}
 }
 
-class BoardCellViewFactory() {
+class BoardCellViewFactory()
+{
 
 	/**
 	 * Coordinates numbered from lower left corner. Should depend on board type I guess.
 	 * @type {[type]}
 	 */
-	def newCellForCoord( x: Int, y: Int, data: String, player: Int ): BoardCellView = {
+	def newCellForCoord( coordinate: (Int, Int), data: String, player: Int ): BoardCellView = {
 
 		val pieceColour = if      (player == 1) BoardView.COLOR_PLAYER_1
 		                  else if (player == 2) BoardView.COLOR_PLAYER_2
 		                  else                  null; // TODO: Raise exception?
 
+		val (x, y) = coordinate;
 		val backgroundColor = if ((x+y) % 2 == 0) BoardView.COLOR_BACK_EVEN
 		                      else                BoardView.COLOR_BACK_ODD;
-		val cellView        = new BoardCellView(data, pieceColour, backgroundColor);
+		val cellView        = new BoardCellView( coordinate, data, pieceColour, backgroundColor);
 		cellView;
 	}
 
@@ -123,6 +141,7 @@ object BoardView {
 	val COLOR_LEGAL_MOVE   = java.awt.Color.GREEN
 	val COLOR_UNDER_THREAT = java.awt.Color.ORANGE
 
+	val COLOR_PLAYER_0 = java.awt.Color.BLACK
 	val COLOR_PLAYER_1 = java.awt.Color.RED
 	val COLOR_PLAYER_2 = java.awt.Color.CYAN
 }
@@ -135,54 +154,38 @@ class BoardView( board: Board ) {
 	val size   = width*height;
 
 	var cellSel: BoardCellView = null;
-	var cellX  : Int = -1; // TODO: var cellCoord: (Int, Int) = null;
-	var cellY  : Int = -1;
 	var legalMoves : Map[(Int, Int), Boolean] = null;
 
 	// Display
 	val boardPanel  = new GridBagPanel();
 	val constraints = new boardPanel.Constraints
-	val cells       = new Array[BoardCellView](size);
+	val cells       = new HashMap[(Int, Int), BoardCellView]();
 	val cellFactory = new BoardCellViewFactory();
 
 	def displayLegalMove( moves: Map[(Int, Int), Boolean] ) {
-		for ( ((x, y), _) <- moves) {
-			val index = (x-1) + width*(y-1)
-			cells(index).displayLegalMove()
-		}
+		for ( (coordinate, _) <- moves) { cells(coordinate).displayLegalMove() }
 	}
 
 	def clearLegalMoves() {
-		for ( x <- 0 until width; y <- 0 until height) {
-			val index = (x) + width*(y)
-			cells(index).undisplayLegalMove()
-		}
+		for (cell <- cells.values) { cell.undisplayLegalMove() }
+		legalMoves = null;
 	}
 
-	def selectSquare( sqCoord: (Int, Int), cell: BoardCellView ) {
-
-		val (x, y) = sqCoord;
-
+	def deselectSquare() {
 		if (cellSel != null) {
 			cellSel.deselect();
 			clearLegalMoves();
 		}
+	}
 
-		if (cellSel == cell) {
-			cellSel = null;
-			cellX = -1;
-			cellY = -1;
-			return;
-		}
-
+	def selectSquare( cell: BoardCellView) {
+		// Select square
 		cellSel = cell;
 		cellSel.select();
-		cellX = x;
-		cellY = y;
 
 		// Display legal moves
-		// TODO: Trigger on square select
 		try { 
+			val (x, y) = cellSel.coordinate;
 			val piece = board.getPieceOrError(x, y);
 			legalMoves = board.getLegalMoves(piece);
 			displayLegalMove( legalMoves );
@@ -191,53 +194,60 @@ class BoardView( board: Board ) {
 		}	
 	}
 
+	def toggleSquare( cell: BoardCellView ) {
+
+		this.deselectSquare();
+
+		if (cellSel == cell) {
+			cellSel = null;
+			return;
+		}
+
+		this.selectSquare( cell );
+
+
+	}
+
+	def movePiece( to: BoardCellView, from: BoardCellView ) {
+		val (fromX, fromY) = from.coordinate;
+		val (toX    , toY) = to.coordinate;
+
+		try {
+			val piece = board.getPieceOrError(fromX, fromY);
+			board.movePiece( fromX, fromY, toX, toY );
+		
+			from.resetData();
+			to.setData( piece.toString, piece.owner );
+		} catch {
+		  case e: ChakesGameException => println( e.getMessage() );
+		}
+}
+
 	// Initialise memebers
-	for ( iWidth <- 0 until width; iHeight <- 0 until height ) {
+	for ( iWidth <- 1 to width; iHeight <- 1 to height ) {
 		val piece: Piece = try { 
-				board.getPieceOrError(iWidth+1, iHeight+1);
+				board.getPieceOrError(iWidth, iHeight);
 			} catch {
 				case e: ChakesGameException => null
 			}
 		val data  = if (piece != null) (piece.toString()) else ("");
-		val owner = if (piece != null) (piece.owner) else (-1);
-		val cell = cellFactory.newCellForCoord( iWidth, iHeight, data, owner );
-		cells(iWidth + width*iHeight) = cell;
+		val owner = if (piece != null) (piece.owner)      else (-1);
+		val currentCellCoordinate = (iWidth, iHeight);
+
+		val cell = cellFactory.newCellForCoord( currentCellCoordinate, data, owner );
+		cells(currentCellCoordinate) = cell;
 
 		cell.listenTo(cell.mouse.clicks)
 		cell.reactions += {
 			case e: MousePressed => {
-				/*
-				 * TODO: Instead of generating one function per cell. Generate a call to coordinating function.
-				 */
-				println("User clicked: (" + iWidth + ", " + iHeight + ")");
+				println("You clicked: " + cell.coordinate);
 
 				// If clicked square is a legal move, perform move and deselect instead of select.
-				val point = (iWidth+1, iHeight+1)
-				val index = iWidth + width*iHeight;
-				val index2 = cellX-1 + width*(cellY-1);
-				if (legalMoves != null && legalMoves.getOrElse(point, false)) {
-					try {
-						val piece = board.getPieceOrError(cellX, cellY);
-						board.movePiece( cellX, cellY, iWidth+1, iHeight+1 );
-						cells( index2 ).label.text = "";
-						cells( index2 ).label.foreground = java.awt.Color.BLACK;
-						cells( index  ).label.text = piece.toString();
-						cells( index  ).label.foreground = if      (piece.owner == 1) java.awt.Color.RED
-		                                                else if (piece.owner == 2) java.awt.Color.ORANGE
-		                                                else                  null;
-
-						if (cellSel != null) {
-							cellSel.deselect();
-							cellX = -1;
-							cellY = -1;
-							clearLegalMoves();
-						}
-						legalMoves = null;
-					} catch {
-					  case e: Exception => println("Tried to move non-existing piece at (" + iWidth + "," + iHeight + ")");
-					}
+				if (legalMoves != null && legalMoves.getOrElse(cell.coordinate, false)) {
+					movePiece( cell, cellSel );
+					deselectSquare();
 				} else {
-					selectSquare( (iWidth+1, iHeight+1), cell );
+					toggleSquare( cell );
 				}
 			}
 		}
