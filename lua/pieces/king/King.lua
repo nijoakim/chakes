@@ -114,3 +114,17 @@ function King: onDestroy()
 	print("The king is dead! Long live the king!")
 	return
 end
+
+function King:getResources()
+	-- Define piece image paths
+	black = "lua/pieces/king/black_king.png"
+	white = "lua/pieces/king/white_king.png"
+
+	-- Bundle all resourses
+	res = {}
+	res["blackSprite"] = black
+	res["whiteSprite"] = white
+
+	return res
+end
+

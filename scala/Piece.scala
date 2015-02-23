@@ -60,6 +60,18 @@ class Piece(val globals: LuaTable, val defName: String, var x: Int, var y: Int, 
 	private[game] var hidden: Boolean = false
 	
 	override def toString = symbol(Nil).tojstring take 1
+
+	private[chakes] def getResources(): HashMap[String, String] = {
+		val scalaMap: HashMap[String, String] = HashMap()
+
+		val luaTable = getLuaResources().checktable(1)
+		
+		// TODO: These names should be defined somewhere.
+		scalaMap("blackSprite") = luaTable.get("blackSprite").tojstring
+		scalaMap("whiteSprite") = luaTable.get("whiteSprite").tojstring
+
+		scalaMap
+	}
 	
 	// Lua methods
 	private[game] var constructor: (LuaValue*) => Varargs = null
@@ -68,6 +80,7 @@ class Piece(val globals: LuaTable, val defName: String, var x: Int, var y: Int, 
 	private[game] var onMove:      (LuaValue*) => Varargs = null
 	private[game] var onCreate:    (LuaValue*) => Varargs = null
 	private[game] var onDestroy:   (LuaValue*) => Varargs = null
+	private[game] var getLuaResources: ()      => Varargs = null
 	
 	// Loads the Lua methods
 	private[game] def loadMethods() = {
@@ -79,5 +92,8 @@ class Piece(val globals: LuaTable, val defName: String, var x: Int, var y: Int, 
 		onMove = 		LuajInterface.getMethod(globals, name, "onMove")
 		onCreate = 		LuajInterface.getMethod(globals, name, "onCreate")
 		onDestroy = 	LuajInterface.getMethod(globals, name, "onDestroy")
+		
+		val getLuaResourcesVarargs: (LuaValue*) => Varargs = LuajInterface.getMethod(globals, name, "getResources")
+		getLuaResources = () => getLuaResourcesVarargs()
 	}
 }

@@ -48,3 +48,16 @@ function Queen: onDestroy()
 	print("Ni skjuter som kratter")
 	return
 end
+
+function Queen:getResources()
+	-- Define piece image paths
+	black = "lua/pieces/queen/black_queen.png"
+	white = "lua/pieces/queen/white_queen.png"
+
+	-- Bundle all resourses
+	res = {}
+	res["blackSprite"] = black
+	res["whiteSprite"] = white
+
+	return res
+end

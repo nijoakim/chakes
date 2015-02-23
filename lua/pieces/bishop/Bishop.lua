@@ -46,3 +46,16 @@ function Bishop: onDestroy()
 	print("Halleluja!")
 	return
 end
+
+function Bishop:getResources()
+	-- Define piece image paths
+	black = "lua/pieces/bishop/black_bishop.png"
+	white = "lua/pieces/bishop/white_bishop.png"
+
+	-- Bundle all resourses
+	res = {}
+	res["blackSprite"] = black
+	res["whiteSprite"] = white
+	
+	return res
+end

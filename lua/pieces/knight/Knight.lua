@@ -51,3 +51,16 @@ function Knight: onDestroy()
 	print("Njyhyhyhyhy!")
 	return
 end
+
+function Knight:getResources()
+	-- Define piece image paths
+	black = "lua/pieces/knight/black_knight.png"
+	white = "lua/pieces/knight/white_knight.png"
+
+	-- Bundle all resourses
+	res = {}
+	res["blackSprite"] = black
+	res["whiteSprite"] = white
+
+	return res
+end

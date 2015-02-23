@@ -1,4 +1,4 @@
-/* Copyright 2014 Joakim Nilsson
+/* Copyright 2015 Joakim Nilsson, Kim Albertsson
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,62 @@ import luaj.interface.Implicits._
 
 import collection.mutable.HashMap
 import scala.util.control.Breaks._
+
+import akka.actor._
+
+/**
+ * Works as a proxy between the model and other parts of the game (gui,
+ * network). Thus handles 2-way communication.
+ */
+class BoardActor extends Actor {
+	var board: Board = null;
+
+	var registeredActors: List[ActorRef] = Nil;
+
+	def receive = {
+
+	// CONTROL
+		case ChakesGameRegisterActorView(viewActor) => {
+			registeredActors ::= viewActor;
+		}
+
+		case ChakesGameRegisterBoard(board) => {
+			this.board = board;
+		}
+
+	// === FROM MODEL
+		case msg: ChakesGameEventFromModel => {
+			registeredActors.map( x => x.forward(msg) );
+		}
+
+	// === TO MODEL
+		case ChakesGameStart() => {
+			if (board != null) {
+				board.initGameLogic();
+			}
+		}
+
+		case ChakesGameMovePiece(from, to) => {
+			board.movePiece(from._1, from._2, to._1, to._2 );
+		}
+
+		case ChakesGameLegalMovesFor(at: (Int, Int)) => {
+			try {
+				val piece = board.getPieceOrError(at._1, at._2);
+				val map: scala.collection.mutable.Map[(Int, Int), Boolean]   = board.getLegalMoves(piece);
+				registeredActors.map( x => x ! ChakesGameLegalMoves(map.keySet.toSet));
+			} catch {
+				case e: ChakesGameException => ()
+			}
+		}
+	}
+
+	/**
+	 * TODO: This needs to be thought about. The lua part needs to incorporate 
+	 * alls like `actor ! Message()` directly but scala code can be wrapped
+	 * like ChakesLegalMoves? Which is better?
+	 */
+}
 
 // ============
 // Board object
@@ -57,7 +113,7 @@ object Board {
  *  @param gameName Name of the game which is played on this board
  *  @param playerNames Names of the players who are playing on this board
  */
-class Board(val gameName: String, playerNames: Iterable[String]) {
+class Board(val gameName: String, playerNames: Iterable[String], var actor: ActorRef) {
 	import Board._
 	
 	/** Hash map of pieces on the board indexed by position. */
@@ -78,7 +134,15 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 	}
 	
 	globals.load(new LuaLibChakes)       // Add Chakes library
-	globals.get("dofile").call(gamePath) // Run game file
+
+	private[game] def initGameLogic() {
+		// Temporary hack to get things to work.
+		this.xSize = 8;
+		this.ySize = 9;
+		actor ! ChakesGameBoardCreated(this);
+
+		globals.get("dofile").call(gamePath) // Run game file
+	}
 	
 	// Returns whether a given position is on board
 	private def isOnBoard(x: Int, y: Int): Boolean = (
@@ -91,9 +155,12 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		val pieceMaybe = pieces.get(x, y)
 		pieceMaybe match {
 			case Some(piece) => {
+				val at: (Int, Int) = (piece.x, piece.y)
 				// Remove piece and call onDestroy() on it
 				piece.onDestroy()
-				pieces -= ((piece.x, piece.y): (Int, Int))
+				pieces -= at
+
+				actor ! ChakesGamePieceDestroyed(this, piece, at)
 			}
 			case None => Unit
 		}
@@ -179,6 +246,9 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		// Update piece position variables
 		piece.x = x2
 		piece.y = y2
+
+		// Notify
+		actor ! ChakesGamePieceMoved(this, piece, (x1, y1), (x2, y2));
 	}
 	
 	// ======================================
@@ -237,6 +307,8 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 				
 				LuaValue.NIL
 			}
+
+			actor ! ChakesGameBoardCreated(Board.this)
 		}
 		
 		/*
@@ -258,7 +330,7 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 		private class LuaLibFun_AddPieceDefs extends OneArgFunction {
 			override def call(luaPieceNames: LuaValue): LuaValue = {
 				val pieceNames = (for (i <- 1 to luaPieceNames.checktable.length) yield luaPieceNames.get(i).checkjstring).toList // Get piece names
-				for (pieceName <- pieceNames) globals.get("dofile").call(Board.PiecesPath + pieceName + Board.LuaFileExt)         // Run piece file for each name
+				for (pieceName <- pieceNames) globals.get("dofile").call(Board.PiecesPath + pieceName + "/" + pieceName + Board.LuaFileExt)         // Run piece file for each name
 				
 				LuaValue.NIL
 			}
@@ -285,6 +357,8 @@ class Board(val gameName: String, playerNames: Iterable[String]) {
 				piece.loadMethods                                                                   // Load piece's methods
 				piece.onCreate(x.toint, y.toint)                                                    // Call onCreate() on piece
 				
+				actor ! ChakesGamePieceCreated( Board.this, piece, (x.toint,y.toint) );
+
 				globals.get(piece.name)                                                             // Return piece instance
 			}
 		}

@@ -57,7 +57,7 @@ class BoardTest() {
 	
 	// Test chess
 	{
-		val board = new Board("Chess", List("White", "Black"))
+		val board = new Board("Chess", List("White", "Black"), null)
 		
 		// Pawn
 		board.movePiece(D, 2, D, 3) // 1-step
@@ -86,7 +86,7 @@ class BoardTest() {
 	// ===========
 	
 	// Board and stuff
-	val board = new Board("Chess", List("White", "Black"))
+	val board = new Board("Chess", List("White", "Black"), null)
 	board.printBoard
 	
 	//board.movePiece(5, 2, 5, 4)

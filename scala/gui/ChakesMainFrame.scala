@@ -23,53 +23,45 @@ import scala.collection.mutable.HashMap
 import scala.swing._
 import scala.swing.event._
 import scala.swing.GridBagPanel._
+import javax.swing.Icon
+import javax.swing.ImageIcon
+
+// Actor
+import akka.actor._
 
 // Chakes game
 import chakes.game._
 
-// class Controller(){
-	
-// 	// Actions on the view (from either game-model or )
-// 	// The controller subscribes to events in the game and translates them for the view to use.
-// 	// from view
-// 	def showLegalMoves( src: Piece );
-// 	// From game-model
-// 	def update( p: Piece )
-
-// 	// Actions on the game-model
-// 	def move( src: Piece, target: (Int, Int) );
-// }
-// class View(){
-// 	def updateCell( x: Int, y: Int );
-
-// 	def cellSelected()
-
-// }
-
 class ChakesMainFrame extends MainFrame {
 
-	val board = new Board("Chess", "White"::"Black"::Nil)
+	val system = ActorSystem("MySystem")
+	val viewActor   = system.actorOf(Props[BoardViewActor], name="boardView");
+	val boardActor  = system.actorOf(Props[BoardActor]    , name="board");
+
+	// Must be initialised before Board
+	val boardView = new BoardView(boardActor);
+	viewActor ! ChakesGameRegisterView(boardView);
+
+	// Must be initialised after BoardView
+	val board = new Board("Chess", "White"::"Black"::Nil, boardActor)
+	boardActor ! ChakesGameRegisterActorView(viewActor);
+	boardActor ! ChakesGameRegisterBoard(board);
+	
+	boardActor ! ChakesGameStart();
 	
 	title = "Chakes Demo GUI"
 
-	// val boardView = new GridPanel(8,8);
-	// board.pieces foreach {case (x, y) => (boardView.contents += new Button {text="a"})}
-	val boardView = new BoardView(board);
-
-	contents = boardView.boardPanel
-	// val cellView = new BoardCellView();
-	// cellView.background = java.awt.Color.BLACK;
-	// contents = cellView;
-
+	contents = boardView
 }
 
 class BoardCellView( val coordinate  : (Int, Int),
-					 var data        : String,
+					 var data        : Icon,
 					 labelColour     : java.awt.Color,
 					 bgcolor         : java.awt.Color)
 extends GridPanel(1,1)
 {
-	var label = new Label(data);
+	var isLegalMove: Boolean = false;
+	var label = new Label("");
 	label.font = new Font("Sans", java.awt.Font.BOLD, 32)
 	if (labelColour != null) {
 		label.foreground = labelColour;
@@ -78,9 +70,9 @@ extends GridPanel(1,1)
 	background = bgcolor
 	var savedBackgroud : java.awt.Color = bgcolor;
 
-	minimumSize   = new java.awt.Dimension(75,75);
-	preferredSize = new java.awt.Dimension(75,75);
-	maximumSize   = new java.awt.Dimension(75,75);
+	minimumSize   = new java.awt.Dimension(96,96);
+	preferredSize = new java.awt.Dimension(96,96);
+	maximumSize   = new java.awt.Dimension(96,96);
 	contents += label;
 
 	def select() {
@@ -92,22 +84,27 @@ extends GridPanel(1,1)
 	}
 
 	def displayLegalMove() {
+		// TODO: Convert to state machine
 		background = java.awt.Color.GREEN;
+		isLegalMove = true;
 	}
 	def undisplayLegalMove() {
 		background = savedBackgroud;
+		isLegalMove = false;
 	}
 
 	def resetData() {
-		label.text = "";
-		label.foreground = BoardView.COLOR_PLAYER_0;
+		label.icon = null;
+		// label.text = "";
+		// label.foreground = BoardView.COLOR_PLAYER_0;
 	}
 
 	def setData( data: String, owner: Int ) {
-		label.text = data;
-		label.foreground = if (owner == 1) BoardView.COLOR_PLAYER_1
-                      else if (owner == 2) BoardView.COLOR_PLAYER_2
-                      else                 null;
+		// label.text = data;
+		label.icon = new ImageIcon(data);
+		// label.foreground = if (owner == 1) BoardView.COLOR_PLAYER_1
+  //                     else if (owner == 2) BoardView.COLOR_PLAYER_2
+  //                     else                 null;
 	}
 }
 
@@ -118,16 +115,12 @@ class BoardCellViewFactory()
 	 * Coordinates numbered from lower left corner. Should depend on board type I guess.
 	 * @type {[type]}
 	 */
-	def newCellForCoord( coordinate: (Int, Int), data: String, player: Int ): BoardCellView = {
-
-		val pieceColour = if      (player == 1) BoardView.COLOR_PLAYER_1
-		                  else if (player == 2) BoardView.COLOR_PLAYER_2
-		                  else                  null; // TODO: Raise exception?
+	def newCellForCoord( coordinate: (Int, Int) ): BoardCellView = {
 
 		val (x, y) = coordinate;
 		val backgroundColor = if ((x+y) % 2 == 0) BoardView.COLOR_BACK_EVEN
 		                      else                BoardView.COLOR_BACK_ODD;
-		val cellView        = new BoardCellView( coordinate, data, pieceColour, backgroundColor);
+		val cellView        = new BoardCellView( coordinate, null, null, backgroundColor);
 		cellView;
 	}
 
@@ -144,14 +137,71 @@ object BoardView {
 	val COLOR_PLAYER_0 = java.awt.Color.BLACK
 	val COLOR_PLAYER_1 = java.awt.Color.RED
 	val COLOR_PLAYER_2 = java.awt.Color.CYAN
+
+	def getColorForPlayer(player: Int): java.awt.Color = {
+		player match {
+			case 0 => COLOR_PLAYER_0;
+			case 1 => COLOR_PLAYER_1;
+			case 2 => COLOR_PLAYER_2;
+		}
+	}
 }
 
-class BoardView( board: Board ) {
+class BoardViewActor extends Actor {
+	var view: BoardView = null;
+
+	def receive = {
+		case ChakesGameRegisterView(boardView) => {
+			view = boardView;
+		}
+
+		case ChakesGameBoardCreated(board: Board) => {
+			view.initialise(board.xSize, board.ySize)
+		}
+
+		case ChakesGameBoardDestroyed(board: Board) => {
+			// TODO: Dispose view
+			view = null;
+		}
+
+		case ChakesGamePieceCreated(board, piece, coord) => {
+			val cell = view.cells(coord);
+
+			// TODO: Should be soft-coded.
+			val sprites = piece.getResources();
+			val selectedSprite = if (piece.owner == 1) sprites.get("whiteSprite") else sprites.get("blackSprite");
+			selectedSprite match {
+				case Some(spritePath) => cell.setData(spritePath, piece.owner);
+				case None             => println("ChakesGamePieceCreated -> Report error.")
+			}
+			
+			
+		}
+
+		case ChakesGamePieceDestroyed(board: Board, p: Piece, at: (Int, Int)) => {
+
+		}
+
+		case ChakesGamePieceMoved(board: Board, piece: Piece, from: (Int, Int), to: (Int, Int)) => {
+			val cellFrom = view.cells(from);
+			val cellTo   = view.cells(to);
+			view.movePiece(piece, cellFrom, cellTo);
+		}
+
+		case ChakesGameLegalMoves(coordinates: Set[(Int,Int)]) => {
+			view.displayLegalMove( coordinates );
+		}
+
+		// TODO: Default case...
+	}
+}
+
+class BoardView(val boardActor: ActorRef) extends FlowPanel {
 
 	// Data
-	val width  = board.xSize;
-	val height = board.ySize;
-	val size   = width*height;
+	// val width  = 0;
+	// val height = 0;
+	// val size   = width*height;
 
 	var cellSel: BoardCellView = null;
 	var legalMoves : Map[(Int, Int), Boolean] = null;
@@ -162,8 +212,10 @@ class BoardView( board: Board ) {
 	val cells       = new HashMap[(Int, Int), BoardCellView]();
 	val cellFactory = new BoardCellViewFactory();
 
-	def displayLegalMove( moves: Map[(Int, Int), Boolean] ) {
-		for ( (coordinate, _) <- moves) { cells(coordinate).displayLegalMove() }
+	contents += boardPanel;
+
+	def displayLegalMove( moves: Set[(Int, Int)] ) {
+		for (coordinate <- moves) { cells(coordinate).displayLegalMove() }
 	}
 
 	def clearLegalMoves() {
@@ -183,15 +235,7 @@ class BoardView( board: Board ) {
 		cellSel = cell;
 		cellSel.select();
 
-		// Display legal moves
-		try { 
-			val (x, y) = cellSel.coordinate;
-			val piece = board.getPieceOrError(x, y);
-			legalMoves = board.getLegalMoves(piece);
-			displayLegalMove( legalMoves );
-		} catch {
-			case e: ChakesGameException => ()
-		}	
+		boardActor ! ChakesGameLegalMovesFor(cellSel.coordinate);
 	}
 
 	def toggleSquare( cell: BoardCellView ) {
@@ -204,62 +248,64 @@ class BoardView( board: Board ) {
 		}
 
 		this.selectSquare( cell );
-
-
 	}
 
-	def movePiece( to: BoardCellView, from: BoardCellView ) {
+	def movePiece( piece: Piece, from: BoardCellView, to: BoardCellView ) {
 		val (fromX, fromY) = from.coordinate;
 		val (toX    , toY) = to.coordinate;
 
-		try {
-			val piece = board.getPieceOrError(fromX, fromY);
-			board.movePiece( fromX, fromY, toX, toY );
-		
-			from.resetData();
-			to.setData( piece.toString, piece.owner );
-		} catch {
-		  case e: ChakesGameException => println( e.getMessage() );
+		from.resetData();
+
+		// TODO: Should be soft-coded.
+		// TODO: Owners should be soft-coded somewhere.
+		val sprites = piece.getResources();
+		val selectedSprite = if (piece.owner == 1) sprites.get("whiteSprite") else sprites.get("blackSprite");
+		selectedSprite match {
+			case Some(spritePath) => to.setData(spritePath, piece.owner);
+			case None             => println("ChakesGamePieceCreated -> Report error.")
 		}
-}
-
-	// Initialise memebers
-	for ( iWidth <- 1 to width; iHeight <- 1 to height ) {
-		val piece: Piece = try { 
-				board.getPieceOrError(iWidth, iHeight);
-			} catch {
-				case e: ChakesGameException => null
-			}
-		val data  = if (piece != null) (piece.toString()) else ("");
-		val owner = if (piece != null) (piece.owner)      else (-1);
-		val currentCellCoordinate = (iWidth, iHeight);
-
-		val cell = cellFactory.newCellForCoord( currentCellCoordinate, data, owner );
-		cells(currentCellCoordinate) = cell;
-
-		cell.listenTo(cell.mouse.clicks)
-		cell.reactions += {
-			case e: MousePressed => {
-				println("You clicked: " + cell.coordinate);
-
-				// If clicked square is a legal move, perform move and deselect instead of select.
-				if (legalMoves != null && legalMoves.getOrElse(cell.coordinate, false)) {
-					movePiece( cell, cellSel );
-					deselectSquare();
-				} else {
-					toggleSquare( cell );
-				}
-			}
-		}
-
-		// Layout
-		constraints.gridx = iWidth;
-		constraints.gridy = height-iHeight;
-		constraints.weightx = 1.0;
-		constraints.weighty = 1.0;
-		constraints.fill  = Fill.Both;
-		boardPanel.layout( cell ) = constraints;
 	}
 
+	def initialise(width: Int, height: Int) {
+		// Initialise memebers
+		for ( iWidth <- 1 to width; iHeight <- 1 to height ) {
+			// val piece: Piece = try { 
+			// 		board.getPieceOrError(iWidth, iHeight);
+			// 	} catch {
+			// 		case e: ChakesGameException => null
+			// 	}
+			// val data  = if (piece != null) (piece.toString()) else ("");
+			// val owner = if (piece != null) (piece.owner)      else (-1);
+			val currentCellCoordinate = (iWidth, iHeight);
+
+			val cell = cellFactory.newCellForCoord( currentCellCoordinate );
+			cells(currentCellCoordinate) = cell;
+
+			cell.listenTo(cell.mouse.clicks)
+			cell.reactions += {
+				case e: MousePressed => {
+					println("You clicked: " + cell.coordinate);
+
+					// If clicked square is a legal move, perform move and deselect instead of select.
+					if (cell.isLegalMove) {
+						// movePiece( cell, cellSel );
+						boardActor ! ChakesGameMovePiece(cellSel.coordinate, cell.coordinate);
+						deselectSquare();
+					} else {
+						toggleSquare( cell );
+					}
+				}
+			}
+
+			// Layout
+			constraints.gridx = iWidth;
+			constraints.gridy = height-iHeight;
+			constraints.weightx = 1.0;
+			constraints.weighty = 1.0;
+			constraints.fill  = Fill.Both;
+			boardPanel.layout( cell ) = constraints;
+			
+		}
+	}
 
 }
