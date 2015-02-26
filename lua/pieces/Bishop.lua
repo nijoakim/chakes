@@ -14,50 +14,35 @@
      along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-Queen = {}
+Bishop = {}
 
-function Queen:new()
-	return table.copy(Queen)
+function Bishop:new()
+	return table.copy(Bishop)
 end
 
-function Queen:symbol(x, y) return 'Q' end
+function Bishop:symbol(x, y) return 'b' end
 
-function Queen:legalMoves(x, y)
+function Bishop:legalMoves(x, y)
 	local moves = {}
 	
-	for i = -1, 1 do
-		for j = -1, 1 do
-			if i ~= 0 or j ~= 0 then
-				addLegalMovesDelta(moves, x, y, i, j)
-			end
+	for i = -1, 1, 2 do
+		for j = -1, 1, 2 do
+			addLegalMovesDelta(moves, x, y, i, j)
 		end
 	end
 	
 	return moves
 end
 
-function Queen:onMove(x1, y1, x2, y2)
+function Bishop:onMove(x1, y1, x2, y2)
 	return
 end
 
-function Queen:onCreate(x, y)
+function Bishop:onCreate(x, y)
 	return
 end
 
-function Queen: onDestroy()
-	print("Ni skjuter som kratter")
+function Bishop: onDestroy()
+	print("Halleluja!")
 	return
-end
-
-function Queen:getResources()
-	-- Define piece image paths
-	black = "lua/pieces/queen/black_queen.png"
-	white = "lua/pieces/queen/white_queen.png"
-
-	-- Bundle all resourses
-	res = {}
-	res["blackSprite"] = black
-	res["whiteSprite"] = white
-
-	return res
 end

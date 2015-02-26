@@ -55,23 +55,11 @@ class Piece(val globals: LuaTable, val defName: String, var x: Int, var y: Int, 
 	/** Time until this piece is no longer frozen. */
 	var freezeTime: Double = 0
 	
-	private       val id              = Piece.getNextId(defName)
-	private[game] val name:   String  = "chakes." + defName + id
-	private[game] var hidden: Boolean = false
+	private         val id              = Piece.getNextId(defName)
+	private[chakes] val name:   String  = "chakes." + defName + id
+	private[game]   var hidden: Boolean = false
 	
 	override def toString = symbol(Nil).tojstring take 1
-
-	private[chakes] def getResources(): HashMap[String, String] = {
-		val scalaMap: HashMap[String, String] = HashMap()
-
-		val luaTable = getLuaResources().checktable(1)
-		
-		// TODO: These names should be defined somewhere.
-		scalaMap("blackSprite") = luaTable.get("blackSprite").tojstring
-		scalaMap("whiteSprite") = luaTable.get("whiteSprite").tojstring
-
-		scalaMap
-	}
 	
 	// Lua methods
 	private[game] var constructor: (LuaValue*) => Varargs = null
@@ -92,8 +80,5 @@ class Piece(val globals: LuaTable, val defName: String, var x: Int, var y: Int, 
 		onMove = 		LuajInterface.getMethod(globals, name, "onMove")
 		onCreate = 		LuajInterface.getMethod(globals, name, "onCreate")
 		onDestroy = 	LuajInterface.getMethod(globals, name, "onDestroy")
-		
-		val getLuaResourcesVarargs: (LuaValue*) => Varargs = LuajInterface.getMethod(globals, name, "getResources")
-		getLuaResources = () => getLuaResourcesVarargs()
 	}
 }

@@ -330,7 +330,7 @@ class Board(val gameName: String, playerNames: Iterable[String], var actor: Acto
 		private class LuaLibFun_AddPieceDefs extends OneArgFunction {
 			override def call(luaPieceNames: LuaValue): LuaValue = {
 				val pieceNames = (for (i <- 1 to luaPieceNames.checktable.length) yield luaPieceNames.get(i).checkjstring).toList // Get piece names
-				for (pieceName <- pieceNames) globals.get("dofile").call(Board.PiecesPath + pieceName + "/" + pieceName + Board.LuaFileExt)         // Run piece file for each name
+				for (pieceName <- pieceNames) globals.get("dofile").call(Board.PiecesPath + pieceName + Board.LuaFileExt)         // Run piece file for each name
 				
 				LuaValue.NIL
 			}

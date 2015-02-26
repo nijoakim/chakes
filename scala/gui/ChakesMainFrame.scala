@@ -26,6 +26,8 @@ import scala.swing.GridBagPanel._
 import javax.swing.Icon
 import javax.swing.ImageIcon
 
+import java.io.File
+
 // Actor
 import akka.actor._
 
@@ -55,20 +57,14 @@ class ChakesMainFrame extends MainFrame {
 }
 
 class BoardCellView( val coordinate  : (Int, Int),
-					 var data        : Icon,
-					 labelColour     : java.awt.Color,
 					 bgcolor         : java.awt.Color)
 extends GridPanel(1,1)
 {
 	var isLegalMove: Boolean = false;
-	var label = new Label("");
-	label.font = new Font("Sans", java.awt.Font.BOLD, 32)
-	if (labelColour != null) {
-		label.foreground = labelColour;
-	}
+	var label = new Label();
 
-	background = bgcolor
-	var savedBackgroud : java.awt.Color = bgcolor;
+	background = bgcolor;
+	var savedBackground = bgcolor;
 
 	minimumSize   = new java.awt.Dimension(96,96);
 	preferredSize = new java.awt.Dimension(96,96);
@@ -76,35 +72,31 @@ extends GridPanel(1,1)
 	contents += label;
 
 	def select() {
+		savedBackground = background;
 		background = java.awt.Color.BLUE;
 	}
 
 	def deselect() {
-		background = savedBackgroud;
+		background = savedBackground;
 	}
 
 	def displayLegalMove() {
 		// TODO: Convert to state machine
+		savedBackground = background;
 		background = java.awt.Color.GREEN;
 		isLegalMove = true;
 	}
 	def undisplayLegalMove() {
-		background = savedBackgroud;
+		background = savedBackground;
 		isLegalMove = false;
 	}
 
 	def resetData() {
 		label.icon = null;
-		// label.text = "";
-		// label.foreground = BoardView.COLOR_PLAYER_0;
 	}
 
-	def setData( data: String, owner: Int ) {
-		// label.text = data;
-		label.icon = new ImageIcon(data);
-		// label.foreground = if (owner == 1) BoardView.COLOR_PLAYER_1
-  //                     else if (owner == 2) BoardView.COLOR_PLAYER_2
-  //                     else                 null;
+	def setData( data: Icon ) {
+		label.icon = data
 	}
 }
 
@@ -120,7 +112,7 @@ class BoardCellViewFactory()
 		val (x, y) = coordinate;
 		val backgroundColor = if ((x+y) % 2 == 0) BoardView.COLOR_BACK_EVEN
 		                      else                BoardView.COLOR_BACK_ODD;
-		val cellView        = new BoardCellView( coordinate, null, null, backgroundColor);
+		val cellView        = new BoardCellView( coordinate, backgroundColor);
 		cellView;
 	}
 
@@ -168,13 +160,8 @@ class BoardViewActor extends Actor {
 			val cell = view.cells(coord);
 
 			// TODO: Should be soft-coded.
-			val sprites = piece.getResources();
-			val selectedSprite = if (piece.owner == 1) sprites.get("whiteSprite") else sprites.get("blackSprite");
-			selectedSprite match {
-				case Some(spritePath) => cell.setData(spritePath, piece.owner);
-				case None             => println("ChakesGamePieceCreated -> Report error.")
-			}
-			
+			val sprite = view.getIcon(piece);
+			cell.setData(sprite);
 			
 		}
 
@@ -198,11 +185,6 @@ class BoardViewActor extends Actor {
 
 class BoardView(val boardActor: ActorRef) extends FlowPanel {
 
-	// Data
-	// val width  = 0;
-	// val height = 0;
-	// val size   = width*height;
-
 	var cellSel: BoardCellView = null;
 	var legalMoves : Map[(Int, Int), Boolean] = null;
 
@@ -212,7 +194,37 @@ class BoardView(val boardActor: ActorRef) extends FlowPanel {
 	val cells       = new HashMap[(Int, Int), BoardCellView]();
 	val cellFactory = new BoardCellViewFactory();
 
+	val icons = new HashMap[String, Icon]();
+
 	contents += boardPanel;
+
+	private def loadIcon( resourceIdentifier: String ): Icon = {
+
+		val basePathForResources = "./resources/";
+		val pathExtension        = ".png";
+		val path = basePathForResources + resourceIdentifier + pathExtension
+
+		val icon = new ImageIcon(path);
+		return icon;
+	}
+
+	def getIcon(piece: Piece): Icon = {
+
+		val ownerString      = if (piece.owner == 1) "white" else "black";
+		val resourceFolder   = piece.defName.toLowerCase();
+		val resourceFilename = ownerString + "_" + piece.defName.toLowerCase();
+		val resourceIdentifier: String = resourceFolder + "/" + resourceFilename;
+
+		if ( ! icons.contains(resourceIdentifier) ) {
+			icons += resourceIdentifier -> loadIcon(resourceIdentifier);
+		}
+
+		val icon = icons.get(resourceIdentifier);
+		icon match {
+			case Some(value: Icon) => return value;
+			case _                 => throw new ChakesGameException("Could not find resource: " + resourceIdentifier);
+		}
+	}
 
 	def displayLegalMove( moves: Set[(Int, Int)] ) {
 		for (coordinate <- moves) { cells(coordinate).displayLegalMove() }
@@ -258,12 +270,8 @@ class BoardView(val boardActor: ActorRef) extends FlowPanel {
 
 		// TODO: Should be soft-coded.
 		// TODO: Owners should be soft-coded somewhere.
-		val sprites = piece.getResources();
-		val selectedSprite = if (piece.owner == 1) sprites.get("whiteSprite") else sprites.get("blackSprite");
-		selectedSprite match {
-			case Some(spritePath) => to.setData(spritePath, piece.owner);
-			case None             => println("ChakesGamePieceCreated -> Report error.")
-		}
+		val sprite = getIcon(piece);
+		to.setData(sprite);
 	}
 
 	def initialise(width: Int, height: Int) {

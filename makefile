@@ -13,6 +13,10 @@ MAIN=runtime.Main
 CLASSES=classes
 SOURCE=scala/*.scala scala/gui/*.scala scala/test/*.scala
 
+RESOURCES=resources
+
+CLASSPATH=$(RESOURCES):$(LIBS)
+
 # Documenters
 DOCUMENTATION=doc/
 DOCUMENTER_SCALA=scaladoc
@@ -20,10 +24,10 @@ DOCUMENTER_LUA=luadoc
 
 build:
 	@mkdir -p $(CLASSES)
-	$(COMPILER) $(FLAGS) -d $(CLASSES) -cp $(LIBS) $(SOURCE)
+	$(COMPILER) $(FLAGS) -d $(CLASSES) -cp $(CLASSPATH) $(SOURCE)
 
 run: build
-	$(INTERPRETER) -cp $(CLASSES):$(LIBS) $(MAIN)
+	$(INTERPRETER) -cp $(CLASSPATH):$(CLASSES) $(MAIN)
 
 clean:
 	rm -rf $(CLASSES)

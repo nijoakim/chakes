@@ -49,16 +49,3 @@ function Rook: onDestroy()
 	print("AAAAAAAH!")
 	return
 end
-
-function Rook:getResources()
-	-- Define piece image paths
-	black = "lua/pieces/rook/black_rook.png"
-	white = "lua/pieces/rook/white_rook.png"
-
-	-- Bundle all resourses
-	res = {}
-	res["blackSprite"] = black
-	res["whiteSprite"] = white
-
-	return res
-end

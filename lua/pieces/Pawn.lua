@@ -71,16 +71,3 @@ function Pawn: onDestroy()
 	print("Bouuuu")
 	return
 end
-
-function Pawn:getResources()
-	-- Define piece image paths
-	black = "lua/pieces/pawn/black_pawn.png"
-	white = "lua/pieces/pawn/white_pawn.png"
-
-	-- Bundle all resourses
-	res = {}
-	res["blackSprite"] = black
-	res["whiteSprite"] = white
-
-	return res
-end
