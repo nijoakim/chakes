@@ -94,6 +94,10 @@ function King:legalMoves(x, y)
 	return moves
 end
 
+-- TODO: Implement
+function King:isLegalMove(x1, y1, x2, y2)
+end
+
 function King:onMove(x1, y1, x2, y2)
 	local diff = x2 - x1
 	if diff ==  2 then chakes.relocatePiece(H, 1, F, 1); chakes.getPiece(F, 1):onMove(H, 1, F, 1) end -- Short castling

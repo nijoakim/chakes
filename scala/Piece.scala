@@ -62,23 +62,31 @@ class Piece(val globals: LuaTable, val defName: String, var x: Int, var y: Int, 
 	override def toString = symbol(Nil).tojstring take 1
 	
 	// Lua methods
-	private[game] var constructor: (LuaValue*) => Varargs = null
-	private[game] var symbol:      (LuaValue*) => Varargs = null
-	private[game] var legalMoves:  ()          => Varargs = null
-	private[game] var onMove:      (LuaValue*) => Varargs = null
-	private[game] var onCreate:    (LuaValue*) => Varargs = null
-	private[game] var onDestroy:   (LuaValue*) => Varargs = null
-	private[game] var getLuaResources: ()      => Varargs = null
+	private[game] var constructor:     (LuaValue*) => Varargs = null
+	private[game] var symbol:          (LuaValue*) => Varargs = null
+	private[game] var legalMoves:      ()          => Varargs = null // Will be deprecated and later removed
+	private[game] var isLegalMove:     (LuaValue*) => Varargs = null
+	private[game] var onMove:          (LuaValue*) => Varargs = null
+	private[game] var onCreate:        (LuaValue*) => Varargs = null
+	private[game] var onDestroy:       (LuaValue*) => Varargs = null
+	private[game] var getLuaResources: ()          => Varargs = null
 	
 	// Loads the Lua methods
 	private[game] def loadMethods() = {
+		// TODO: Can the Lua API be improved so that Pieces are not accesses by their coordinates?
+		// Always call with position arguments
 		val legalMovesVarargs: (LuaValue*) => Varargs = LuajInterface.getMethod(globals, name, "legalMoves")
-		legalMoves = () => legalMovesVarargs(x, y) // Always call with position arguments
+		legalMoves = () => legalMovesVarargs(x, y)
 		
-		constructor = 	LuajInterface.getMethod(globals, name, "new")
-		symbol = 		LuajInterface.getMethod(globals, name, "symbol")
-		onMove = 		LuajInterface.getMethod(globals, name, "onMove")
-		onCreate = 		LuajInterface.getMethod(globals, name, "onCreate")
-		onDestroy = 	LuajInterface.getMethod(globals, name, "onDestroy")
+		// TODO: Uncomment and fix
+		// val isLegalMoveVarargs: (LuaValue*) => Varargs = LuajInterface.getMethod(globals, name, "isLegalMove")
+		// isLegalMove = (Int, Int) => isLegalMovesVarargs(x, y)
+		
+		constructor = LuajInterface.getMethod(globals, name, "new")
+		symbol      = LuajInterface.getMethod(globals, name, "symbol")
+		onMove      = LuajInterface.getMethod(globals, name, "onMove")
+		onCreate    = LuajInterface.getMethod(globals, name, "onCreate")
+		onDestroy   = LuajInterface.getMethod(globals, name, "onDestroy")
+		isLegalMove = LuajInterface.getMethod(globals, name, "isLegalMove")
 	}
 }

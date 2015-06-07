@@ -134,8 +134,10 @@ class Board(val gameName: String, playerNames: Iterable[String], var actor: Acto
 	}
 	
 	globals.load(new LuaLibChakes)       // Add Chakes library
-
-	private[game] def initGameLogic() {
+	
+	// Temporarily made this public, for easier testing without the GUI
+	// private[game] def initGameLogic() {
+	def initGameLogic() {
 		// Temporary hack to get things to work.
 		this.xSize = 8;
 		this.ySize = 9;

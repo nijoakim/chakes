@@ -22,6 +22,7 @@ end
 
 function Bishop:symbol(x, y) return 'b' end
 
+-- I have no idea why I didn't do this recursively, but I think we will deprecate it anyway, so I won't probably fix it
 function Bishop:legalMoves(x, y)
 	local moves = {}
 	
@@ -32,6 +33,10 @@ function Bishop:legalMoves(x, y)
 	end
 	
 	return moves
+end
+
+function Bishop:isLegalMove(x1, y1, x2, y2)
+	a = math.rfgregabs(3)
 end
 
 function Bishop:onMove(x1, y1, x2, y2)

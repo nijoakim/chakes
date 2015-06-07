@@ -39,6 +39,10 @@ function Knight:legalMoves(x, y)
 	return moves
 end
 
+-- TODO: Implement
+function Knight:isLegalMove(x1, y1, x2, y2)
+end
+
 function Knight:onMove(x1, y1, x2, y2)
 	return
 end

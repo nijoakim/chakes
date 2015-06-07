@@ -105,7 +105,7 @@ class BoardCellViewFactory()
 
 	/**
 	 * Coordinates numbered from lower left corner. Should depend on board type I guess.
-	 * @type {[type]}
+	 * @type {[type]} // FIXME: Not a valid tag
 	 */
 	def newCellForCoord( coordinate: (Int, Int) ): BoardCellView = {
 

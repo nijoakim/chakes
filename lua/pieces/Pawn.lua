@@ -53,6 +53,10 @@ function Pawn:legalMoves(x, y)
 	return moves
 end
 
+-- TODO: Implement
+function Pawn:isLegalMove(x1, y1, x2, y2)
+end
+
 function Pawn:onMove(x1, y1, x2, y2)
 	self.hasMoved = true
 	return

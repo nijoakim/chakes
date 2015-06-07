@@ -36,6 +36,10 @@ function Queen:legalMoves(x, y)
 	return moves
 end
 
+-- TODO: Implement
+function Queen:isLegalMove(x1, y1, x2, y2)
+end
+
 function Queen:onMove(x1, y1, x2, y2)
 	return
 end
