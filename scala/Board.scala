@@ -133,8 +133,9 @@ class Board(val gameName: String, playerNames: Iterable[String], var actor: Acto
 		globals.set(char, i)
 	}
 	
-	globals.load(new LuaLibChakes)       // Add Chakes library
+	globals.load(new LuaLibChakes) // Add Chakes library
 	
+	// TODO: Change this back when command line testing isn't needed anymore
 	// Temporarily made this public, for easier testing without the GUI
 	// private[game] def initGameLogic() {
 	def initGameLogic() {
@@ -221,6 +222,29 @@ class Board(val gameName: String, playerNames: Iterable[String], var actor: Acto
 		movesHashmap
 	}
 	
+	// TODO: Replace getLegalMoves() with this one
+	def getLegalMoves2(piece: Piece, slice: (Int, Int, Int, Int) = null): HashMap[(Int, Int), Boolean] = {
+		// TODO: Use Scala instead of commented out idiot code... (no internet, aaah)
+		var xMin = 0
+		var yMin = 0
+		var xMax = xSize
+		var yMax = ySize
+		// if (slice != null) {
+		// 	xMin = slice(1)
+		// 	yMin = 0
+		// 	xMax = xSize
+		// 	yMax = ySize
+		// }
+		
+		val movesHashmap = new HashMap[(Int, Int), Boolean]() { override def default(key: (Int, Int)) = false }
+		for (x <- xMin to yMax; y <- yMin to yMax) {
+			// movesHashmap += (x, y) -> piece.isLegalMove(x, y).checkint // Lua has no bools? (no internet again)
+			if (piece.isLegalMove(x, y)) movesHashmap += (x, y) -> true
+			// movesHashmap += (x, y) -> piece.isLegalMove(x, y).checkint // Lua has no bools? (no internet again)
+		}
+		null
+	}
+	
 	/** Moves a piece from one position to another, destroying any piece already occupying the final position and in that case also calling that piece's `onDestroy()` method.
 	  * 
 	  * @param x1 initial x position of the piece to be moved.
@@ -235,7 +259,7 @@ class Board(val gameName: String, playerNames: Iterable[String], var actor: Acto
 	private def movePiece(x1: Int, y1: Int, x2: Int, y2: Int, callOnMove: Boolean): Unit = {
 		val piece: Piece = getPieceOrError(x1, y1)
 	
-		// Throw exeption if illegal move
+		// Throw exception if illegal move
 		if (!getLegalMoves(piece)(x2, y2)) {
 			throw new ChakesGameException("Illegal move. "+ piece.defName +" cannot move from "+ numToAlpha(x1) + y1 +" to "+ numToAlpha(x2) + y2 +".")
 		}

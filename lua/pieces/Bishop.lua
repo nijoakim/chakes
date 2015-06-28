@@ -36,7 +36,30 @@ function Bishop:legalMoves(x, y)
 end
 
 function Bishop:isLegalMove(x1, y1, x2, y2)
-	a = math.rfgregabs(3)
+	-- Veryify diagonal non-zero-length movement
+	if math.abs(x2 - x1) ~= math.abs(y2 - y1)
+	or x2 - x1 == 0
+	then
+		return false
+	end
+	
+	-- Direction towards final position
+	dx = math.signum(x2 - x1)
+	dy = math.signum(y2 - y1)
+	
+	if chakes.getPiece(x2, y2) == nil                    -- If square is empty
+	or chakes.getOwner(x2, y2) ~= getOwner(x1, y1)       -- or occupied by enemy
+	then
+		if math.abs(x2 - x1) <= 1 then return true end   -- Do not check moves of shorter length than 1
+		
+		if  self.isLegalMove(self, x1, y1, x2-dx, y2-dy) -- If shorter move is legal
+		and chakes.getPiece(x2-dx, y2-dy) == nil         -- and the square of that move is empty
+		then
+			return true
+		end
+	end
+	
+	return false
 end
 
 function Bishop:onMove(x1, y1, x2, y2)

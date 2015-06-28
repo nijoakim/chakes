@@ -68,7 +68,6 @@ object Main2 extends App {
 	
 	// Test chess
 	{
-	
 		val system = ActorSystem("MySystem")
 		val boardActor = system.actorOf(Props[BoardActor], name = "board");
 		val board = new Board("Chess", List("White", "Black"), boardActor)
@@ -84,6 +83,7 @@ object Main2 extends App {
 		board.movePiece(B, 1, C, 3)
 
 		// Bishop
+		println( board.pieces(C, 1).isLegalMove(E, 3) )
 		board.movePiece(C, 1, E, 3)
 
 		// Queen

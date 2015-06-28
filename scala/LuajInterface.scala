@@ -23,11 +23,13 @@ import scala.language.implicitConversions
 
 object Implicits {
 	// Java to Lua
-	implicit def intToLuaValue(x: Int): LuaValue = LuaValue.valueOf(x)
-	implicit def stringToLuaValue(x: String): LuaValue = LuaValue.valueOf(x)
+	implicit def intToLuaValue    (x: Int):     LuaValue = LuaValue.valueOf(x)
+	implicit def stringToLuaValue (x: String):  LuaValue = LuaValue.valueOf(x)
 	implicit def booleanToLuaValue(x: Boolean): LuaValue = LuaValue.valueOf(x)
-	implicit def charToLuaValue(x: Char): LuaValue = LuaValue.valueOf(x)
-	implicit def doubleToLuaValue(x: Double): LuaValue = LuaValue.valueOf(x)
+	implicit def charToLuaValue   (x: Char):    LuaValue = LuaValue.valueOf(x)
+	implicit def doubleToLuaValue (x: Double):  LuaValue = LuaValue.valueOf(x)
+	
+	// Lua to Java implicits are hard to implement because Lua is dynamically typed
 }
 
 object LuajInterface {	

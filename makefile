@@ -9,7 +9,7 @@ LIBS=lib/luaj-jse-3.0-alpha1.jar
 # Uncomment below to try the new libs
 # LIBS=lib/luaj-jse-3.0.jar
 
-MAIN=runtime.Main
+MAIN=runtime.Main2
 CLASSES=classes
 SOURCE=scala/*.scala scala/gui/*.scala scala/test/*.scala
 
@@ -42,6 +42,6 @@ doc-scala:
 
 doc-lua:
 	@mkdir -p $(DOCUMENTATION)/lua/
-	cp Board.scala $(DOCUMENTATION)chakes.lua
+	cp scala/Board.scala $(DOCUMENTATION)chakes.lua
 	cd $(DOCUMENTATION); luadoc -d lua/ chakes.lua
 	rm -f $(DOCUMENTATION)lib.lua
