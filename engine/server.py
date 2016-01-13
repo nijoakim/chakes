@@ -15,7 +15,7 @@
 
 import socket
 
-TCP_IP      = '127.0.0.1'
+TCP_IP      = ''
 TCP_PORT    = 3000
 BUFFER_SIZE = 20 # Normally 1024
 
