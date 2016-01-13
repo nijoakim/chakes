@@ -1,0 +1,22 @@
+{
+  "name": "chakes-web-server",
+  "version": "0.0.1",
+  "description": "The web server for chakes.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nijoakim/chakes.git"
+  },
+  "keywords": [
+    "chakes"
+  ],
+  "author": "ashlaban, nijoakim",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/nijoakim/chakes/issues"
+  },
+  "homepage": "https://github.com/nijoakim/chakes#readme"
+}
