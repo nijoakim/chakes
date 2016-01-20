@@ -18,5 +18,10 @@
   "bugs": {
     "url": "https://github.com/nijoakim/chakes/issues"
   },
-  "homepage": "https://github.com/nijoakim/chakes#readme"
+  "homepage": "https://github.com/nijoakim/chakes#readme",
+  "devDependencies": {},
+  "dependencies": {
+    "express": "^4.13.3",
+    "socket.io": "^1.4.4"
+  }
 }
