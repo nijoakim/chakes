@@ -1,5 +1,7 @@
 *.swp
 *.DS_Store
 
+__pycache__/
+
 # Node defs
 node_modules/
