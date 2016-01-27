@@ -25,13 +25,17 @@ import engine
 board = engine.TicTacToe()
 
 def handleJson(obj):
-	if 'special' in obj:
-		board.special(
-			obj['special']['num'],
+	if 'applyAction' in obj:
+		board.action(
+			obj['applyAction']['name'],
 			(
-				obj['special']['coord'][0],
-				obj['special']['coord'][1],
-			)
+				obj['applyAction']['src'][0],
+				obj['applyAction']['src'][1],
+			),
+			(
+				obj['applyAction']['dest'][0],
+				obj['applyAction']['dest'][1],
+			),
 		)
 
 #==============
@@ -57,17 +61,12 @@ try:
 		# Close connection
 		if not data: break
 
-		print(data)
-		print(data[-1])
-
 		json_str += data.decode('utf-8')
 
 		# If received end of transmission block
 		if data[-1] == 0x17:
 			try:
-				print(json_str)
 				json_obj = json.loads(json_str[0 : -1])
-				print(json_obj)
 				handleJson(json_obj)
 			except Exception as e:
 				print(e)

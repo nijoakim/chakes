@@ -17,32 +17,40 @@ class _board:
 	def __init__(self):
 		self.pieces = {}
 
-	def _getPiece(self, coord):
-		return self.pieces[coord] if coord in self.pieces else None
+	def __str__(self):
+		str_ = ''
+		for piece in self.pieces:
+			str_ += str(piece) +'\n'
 
-	def _createPiece(self, piece, coord):
-		self.pieces[coord] = piece
+		return str_
 
-	# TODO: num should be a string
-	def special(self, num, coord):
-		raise NotImplementedError("Implement please!")
+	def _getPiece(self, dest):
+		return self.pieces[dest] if dest in self.pieces else None
+
+	def _createPiece(self, piece, dest):
+		self.pieces[dest] = piece
+
+	def action(self, src, dest):
+		raise NotImplementedError('Implement please!')
 
 class _Piece:
-	def canMove(self, coord):
-		raise NotImplementedError("Implement please!")
+	def canMove(self, dest):
+		raise NotImplementedError('Implement please!')
 
 	def __str__(self):
-		raise NotImplementedError("Implement please!")
+		raise NotImplementedError('Implement please!')
 
 class TicTacToe(_board):
-	def special(self, num, coord):
-		if not self._getPiece(coord):
-			self._createPiece(Tic(), coord)
-			print(self.pieces)
+	def action(self, name, src, dest):
+		if name == 'move':
+			self._move(src, dest)
 
+	def _move(self, src, dest):
+		if not self._getPiece(dest):
+			self._createPiece(Tic(), dest)
 
 class Tic(_Piece):
-	def canMove(coord):
+	def canMove(dest):
 		return False
 
 	def __str__(self):
