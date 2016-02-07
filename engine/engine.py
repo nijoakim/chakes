@@ -13,9 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import json
+
 class _board:
 	def __init__(self):
 		self.pieces = {}
+		self.jsons_to_send = []
+		game_id = 0x1234 # TODO: Do this betterly
 
 	def __str__(self):
 		str_ = ''
@@ -24,11 +28,19 @@ class _board:
 
 		return str_
 
+	def _send_json(self, json_obj):
+		self.jsons_to_send.append(json.dumps(json_obj))
+
 	def _getPiece(self, dest):
 		return self.pieces[dest] if dest in self.pieces else None
 
 	def _createPiece(self, piece, dest):
 		self.pieces[dest] = piece
+		self._send_json({
+			'msgName': 'updateAt',
+			'dst':     dest,
+			'piece':   3,
+		})
 
 	def action(self, src, dest):
 		raise NotImplementedError('Implement please!')
