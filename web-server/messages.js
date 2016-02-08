@@ -25,7 +25,7 @@ module.exports = (function () {
 		engine   : {to: { webserver: {
 			newGame: {
 				new: function (id, rule) {
-					return {id: id, rule: rule};
+					return {msgName:'newGame', id: id, rule: rule};
 				},
 				verify: function (msg) {
 
@@ -47,9 +47,10 @@ module.exports = (function () {
 			},
 			updateAt: {
 				new: function (id, dst, piece) {
-					return {id: id, dst: {dst.x, dst.y}, piece: piece};
+					return {msgName:'updateAt', id: id, dst: {dst.x, dst.y}, piece: piece};
 				},
 				verify: function (msg) {
+					if (msg.msgName != "updateAt") { return false; }
 					if ( ! msg.hasOwnProperty('id') && msg.hasOwnProperty('dst') ) {
 						// Validate properties
 						return false;
@@ -98,4 +99,5 @@ module.exports = (function () {
 		}}}
 	}
 
+	return API;
 })();

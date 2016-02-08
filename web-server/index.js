@@ -14,18 +14,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * Start with
+ * 	node index.js --engine-port 3000 --engine-addr 127.0.0.1
+ */
+
 var net     = require('net');
 var express = require('express');
 var app     = express();
 var http    = require('http').Server(app);
 var io      = require('socket.io')(http);
 
-// Express stuff
-app.use(express.static('../web-client'));
+var argv    = require('minimist')(process.argv.slice(2));
 
-// app.get('/', function (req, res) {
-//   res.send('Hello World!');
-// });
+var Engine  = require('./engine.js');
+
+// Express stuff
+// 
+app.get('/game/:id', function (req, res, next) {
+	console.log(req.params);
+ 	next();
+});
+
+// Serve static content last!
+app.use('/game/:id', express.static('../web-client'));
 
 http.listen(3000, function () {
   console.log('Example app listening on port 3000!');
@@ -49,6 +61,11 @@ io.on('connection', function(socket){
 
 	socket.emit('player', player);
 	console.log('a user connected', player);
+	
+	console.log('=== creating game ===');
+	var id   = test1;
+	var rule = 'TicTacToe';
+	engine.sendMessage('newGame', id, rule);
 
 	socket.on('move', function(msg){
 		console.log('Player ' + player + ' made a move', msg);
@@ -61,35 +78,11 @@ io.on('connection', function(socket){
 	});
 });
 
-// var ADDR = '192.168.1.12';
-// // var ADDR = '127.0.0.1';
-// var PORT = 3002;
+// Engine
+var engine_addr = argv['engine-addr'];
+var engine_port = argv['engine-port'];
+console.log('Connecting to Engine');
+console.log('\tAddr - ' + engine_addr);
+console.log('\tPort - ' + engine_port);
 
-// var client = new net.Socket();
-// client.connect(PORT, ADDR, function() {
-// 	console.log('Connected');
-// 	// client.write('Hello, server! Love, Client.');
-// 	sendObject(client, {test: "this is a long string!", a: 2, b: 3, c: 4});
-// 	// sendObject(client, 123);
-// });
-
-// client.on('data', function(data) {
-// 	console.log('Received: ' + data);
-// 	client.destroy(); // kill client after server's response
-// });
-
-// client.on('close', function() {
-// 	console.log('Connection closed');
-// });
-
-
-// function sendObject(socket, obj) {
-// 	var json,
-// 		ETB;
-
-// 	ETB = '\x17';
-
-// 	json = JSON.stringify(obj);
-
-// 	socket.write(json + ETB);
-// }
+var engine = new Engine(engine_addr, engine_port);
