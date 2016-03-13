@@ -22,9 +22,13 @@ import engine
 # Game stuff
 #============
 
-board = engine.TicTacToe()
+# board = engine.TicTacToe()
+board = None
+method = getattr(engine, 'TicTacToe')
+board = method()
 
-def handleJson(obj):
+def handle_json(obj):
+	global board, conn
 	if obj['msgName'] == 'applyAction':
 		board.action(
 			obj['name'],
@@ -37,7 +41,13 @@ def handleJson(obj):
 				obj['dest'][1],
 			),
 		)
-
+	elif obj['msgName'] == 'newGame':
+		print('GameName:\t%s' % obj['rule'])
+		rule_constructor = getattr(engine, obj['rule'])
+		board = rule_constructor()
+		obj['id'] = board.game_id
+		conn.sendall(json.dumps(obj).encode('utf-8'))
+	
 #==============
 # Server stuff
 #==============
@@ -56,6 +66,7 @@ conn, addr = s.accept()
 try:
 	print('Connection address:', addr)
 	json_str = ''
+	json_str_buf = ''
 
 	while True:
 		data = conn.recv(BUFFER_SIZE) # Get data
@@ -64,20 +75,29 @@ try:
 		json_str += data.decode('utf-8')
 
 		# If received end of transmission block
+		# TODO: Split doesn't cut off after trailing \x17
+		json_strs_to_process = json_str.split('\x17')
+		print(json_strs_to_process)
+		json_strs_to_process[0] = json_str_buf + json_strs_to_process[0]
 		if data[-1] == 0x17:
+			json_str_buf = json_strs_to_process.pop()
+		json_str = ''
+
+		print(json_strs_to_process)
+
+		for json_str_to_process in json_strs_to_process:
 			try:
 				# Receive jsons
-				print(json_str)
-				json_obj = json.loads(json_str[0 : -1])
-				json_str = ''
-				handleJson(json_obj)
+				print(json_str_to_process)
+				json_obj = json.loads(json_str_to_process)
+				handle_json(json_obj)
 
 				# Send jsons
 				for json_to_send in board.jsons_to_send:
 					json_to_send += '\x17'
-					conn.send(json_to_send.encode('utf-8'))
+					conn.sendall(json_to_send.encode('utf-8'))
 					board.jsons_to_send = []
-					# TODO: Maybe send all in \x17 separated string?
+
 			except Exception as e:
 				print('Caught exception:')
 				print(e)

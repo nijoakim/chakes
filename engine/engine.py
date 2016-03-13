@@ -19,11 +19,11 @@ class _board:
 	def __init__(self):
 		self.pieces = {}
 		self.jsons_to_send = []
-		game_id = 0x1234 # TODO: Do this betterly
+		self.game_id = 0x1234 # TODO: Do this betterly
 
 	def __str__(self):
 		str_ = ''
-		for piece in self.pieces:
+		for piece in self.pieces.values():
 			str_ += str(piece) +'\n'
 
 		return str_
@@ -39,7 +39,7 @@ class _board:
 		self._send_json({
 			'msgName': 'updateAt',
 			'dst':     dest,
-			'piece':   3,
+			'piece':   3, # TODO: Only send essential info
 		})
 
 	def action(self, src, dest):
