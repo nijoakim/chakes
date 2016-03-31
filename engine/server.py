@@ -27,6 +27,7 @@ board = None
 method = getattr(engine, 'TicTacToe')
 board = method()
 
+# TODO: Move this to engine
 def handle_json(obj):
 	global board, conn
 	if obj['msgName'] == 'applyAction':
@@ -46,8 +47,8 @@ def handle_json(obj):
 		rule_constructor = getattr(engine, obj['rule'])
 		board = rule_constructor()
 		obj['id'] = board.game_id
-		conn.sendall(json.dumps(obj).encode('utf-8'))
-	
+		conn.sendall((json.dumps(obj)+"\x17").encode('utf-8'))
+
 #==============
 # Server stuff
 #==============
@@ -88,13 +89,14 @@ try:
 		for json_str_to_process in json_strs_to_process:
 			try:
 				# Receive jsons
-				print(json_str_to_process)
+				print('\033[31;1mRecieved: '+ json_str_to_process +'\033[0m')
 				json_obj = json.loads(json_str_to_process)
 				handle_json(json_obj)
 
 				# Send jsons
 				for json_to_send in board.jsons_to_send:
 					json_to_send += '\x17'
+					print('\033[32;1mSending: '+ json_to_send +'\033[0m')
 					conn.sendall(json_to_send.encode('utf-8'))
 					board.jsons_to_send = []
 

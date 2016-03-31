@@ -15,6 +15,8 @@
 
 import json
 
+# TODO: ID handler that keep tracks of all games. Games class?
+
 class _board:
 	def __init__(self):
 		self.pieces = {}
