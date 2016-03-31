@@ -57,7 +57,7 @@ var currentGlobalGame = {
 	private_id: '',
 	players   : [],
 }
-var nsp = io.of('/game/test1/');
+var nsp = io.of('/game');
 nsp.on('connection', function(socket){
 
 	currentGlobalGame.players.push(socket);
@@ -73,7 +73,13 @@ nsp.on('connection', function(socket){
 
 	socket.on('webclient-newGame', function(msg){
 		console.log('Player ' + player + ' requested new game', msg);
-		engine.sendNewGameMessage(msg.rule);
+		// TODO: Generate new public-id room. and send back to client.
+		currentGlobalGame.public_id = '1234';
+		socket.join(currentGlobalGame.public_id);
+		socket.emit('game-id', currentGlobalGame.public_id);
+		engine.sendNewGameMessage(msg.rule, public_id);
+		// TODO: create mechanism for creating and looking up server-rooms.
+		// 
 		// TODO: Players of this room is now waiting for a new game of type x from engine
 	});
 	socket.on('webclient-move', function(msg){
@@ -88,20 +94,24 @@ nsp.on('connection', function(socket){
 
 	socket.on('engine-newGame', function (msg) {
 		console.log('=== new game from engine ===', msg.id, msg);
+		// Look up the public_id before commiting private.
 		currentGlobalGame.private_id = msg.id;
 	});
 
 	socket.on('disconnect', function(){
-		players[player] = false;
+		currentGlobalGame.players[player] = false;
 		console.log('user disconnected', player);
 	});
 });
 
 // Engine
+var engine = null;
 var engine_addr = argv['engine-addr'];
 var engine_port = argv['engine-port'];
-console.log('Connecting to Engine');
-console.log('\tAddr - ' + engine_addr);
-console.log('\tPort - ' + engine_port);
+if (engine_port != null && engine_addr != null) {
+	console.log('Connecting to Engine');
+	console.log('\tAddr - ' + engine_addr);
+	console.log('\tPort - ' + engine_port);
 
-var engine = new Engine(engine_addr, engine_port);
+	engine = new Engine(engine_addr, engine_port);
+}

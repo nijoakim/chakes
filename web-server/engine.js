@@ -11,7 +11,7 @@ module.exports = (function () {
 		this.socket      = new net.Socket();
 
 		this.socket.connect(port, addr, function() {
-			console.log('Connected to engine at (%s:%i)', addr, port);
+			console.log('Connected to engine at (' + addr + ':' + port + ')');
 			self.isConnected = true;
 			// self.sendJSON({msgName:'newGame', id:'test1', rule:'TicTacToe'});
 			// self.sendJSON({msgName:'applyAction',  name:'move', src:[0, 0], dest: [1, 1], id:'test1'});
@@ -20,21 +20,21 @@ module.exports = (function () {
 		/*
 		 	Provide callback for when data is recevied from the engine.
 		 */
-		this.socket.on('data', function(data) {
+		this.socket.on('data', function(raw_data) {
 			var jsons;
 
-			var str  = '' + data;
-			var data = str.split('\x17').slice(0,-1);
+			var raw_data_as_string = '' + raw_data;
+			var data = raw_data_as_string.split('\x17').slice(0,-1);
 
 			jsons = data.map(JSON.parse);
 			
 			console.log('Received from engine: ');
+			// console.log('=== Raw data ===');
+			// console.log(raw_data_as_string);
+			// console.log('=== Parsed data ===');
 			console.log(jsons);
 
-			// idioticCounter++;
-			// self.sendJSON({msgName:'applyAction',  name:'move', src:[0, 0], dest: [idioticCounter, 1], id:'test1'});
-
-			// self.socket.destroy(); // kill client after server's response
+			
 		});
 
 		this.socket.on('close', function() {
@@ -42,7 +42,7 @@ module.exports = (function () {
 		});
 	}
 
-	Engine.prototype.sendNewGameMessage = function () {
+	Engine.prototype.sendNewGameMessage = function (rule) {
 		var message = chakesMessages.from.webserver.to.engine.newGame(rule);
 		this.sendJSON(message);
 	}
