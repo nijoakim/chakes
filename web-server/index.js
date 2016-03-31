@@ -38,38 +38,57 @@ app.get('/game/:id', function (req, res, next) {
 
 // Serve static content last!
 app.use('/game/:id', express.static('../web-client'));
+app.use('/', express.static('../web-client'));
 
 http.listen(3000, function () {
   console.log('Example app listening on port 3000!');
 });
 
 // Socket.io stuff
-var players = {1: false, 2: false};
-io.on('connection', function(socket){
+// TODO: A games object keeps track of id, players...
+// {
+// 	public-id : 'test1'    // used for communication between players and webserver
+// 	private-id: 'hash-val' // used for communication w/ engine
+// 	players   : [...]      // sockets for the other players of this game
+// }
+var games   = {};
+var currentGlobalGame = {
+	public_id : '',
+	private_id: '',
+	players   : [],
+}
+var nsp = io.of('/game/test1/');
+nsp.on('connection', function(socket){
 
-	var player;
-
-	if (!players[1]) {
-		player = 1;
-		players[player] = true;
-	} else if (!players[2]) {
-		player = 2;
-		players[player] = true;
-	} else {
-		player = -1;
-	}
+	currentGlobalGame.players.push(socket);
+	var player = currentGlobalGame.players.length;
 
 	socket.emit('player', player);
 	console.log('a user connected', player);
 	
-	console.log('=== creating game ===');
-	var id   = test1;
-	var rule = 'TicTacToe';
-	engine.sendMessage('newGame', id, rule);
+	// console.log('=== creating game ===');
+	// var id   = 'test1';
+	// var rule = 'TicTacToe';
+	// engine.sendMessage('newGame', id, rule);
 
-	socket.on('move', function(msg){
+	socket.on('webclient-newGame', function(msg){
+		console.log('Player ' + player + ' requested new game', msg);
+		engine.sendNewGameMessage(msg.rule);
+		// TODO: Players of this room is now waiting for a new game of type x from engine
+	});
+	socket.on('webclient-move', function(msg){
 		console.log('Player ' + player + ' made a move', msg);
-		io.emit('move', msg);
+		engine.sendMoveMessage('test1', msg.player, msg.src, msg.dst);
+	});
+
+	socket.on('engine-move', function (msg) {
+		console.log('=== move message from engine ===')
+		nsp.emit('webserver-move', msg);
+	});
+
+	socket.on('engine-newGame', function (msg) {
+		console.log('=== new game from engine ===', msg.id, msg);
+		currentGlobalGame.private_id = msg.id;
 	});
 
 	socket.on('disconnect', function(){

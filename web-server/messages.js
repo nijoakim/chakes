@@ -21,14 +21,13 @@ module.exports = (function () {
     	return typeof(s) === 'string' || s instanceof String;
 	}
 
-	this.from = {
+	var API = {from: {
 		engine   : {to: { webserver: {
 			newGame: {
 				new: function (id, rule) {
 					return {msgName:'newGame', id: id, rule: rule};
 				},
 				verify: function (msg) {
-
 					if ( ! msg.hasOwnProperty('id') && 
 						   msg.hasOwnProperty('rule') ) {
 						// Validate properties
@@ -47,7 +46,7 @@ module.exports = (function () {
 			},
 			updateAt: {
 				new: function (id, dst, piece) {
-					return {msgName:'updateAt', id: id, dst: {dst.x, dst.y}, piece: piece};
+					return {msgName:'updateAt', id: id, dst: {x:dst.x, y:dst.y}, piece: piece};
 				},
 				verify: function (msg) {
 					if (msg.msgName != "updateAt") { return false; }
@@ -74,30 +73,30 @@ module.exports = (function () {
 					return true;
 				},
 			},
-		}}}
+		}}},
 		webserver: {to: {
 			engine   : {
 				newGame     : function (rule) {
-					return {rule: rule};
+					return {msgName:'newGame', rule: rule};
 				},
 				addPlayer   : function (id, player) {
-					return {id: id, player: player};
+					return {msgName:'addPlayer', id: id, player: player};
 				},
 				startGame   : function (id) {
-					return {id: id};
+					return {msgName:'startGame', id: id};
 				},
-				applyAction : function (id, name, src, dst) {
-					return {id: id, name: name, src: src, dst: dst};
+				applyAction : function (id, name, player, src, dst) {
+					return {msgName:'applyAction', id: id, name: name, player: player, src: src, dst: dst};
 				},
 			},
 			webclient: {
 
 			},
-		}}
+		}},
 		webclient: {to: { webserver: {
 
 		}}}
-	}
+	}}
 
 	return API;
 })();
