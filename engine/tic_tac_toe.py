@@ -13,14 +13,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#=========
-# Imports
-#=========
+from engine import *
 
-# Submodules
-from game  import *
-from board import *
-from piece import *
+class TicTacToe(Board):
+	def action(self, name, src, dest):
+		if name == 'move':
+			self._move(src, dest)
 
-# Rules
-from tic_tac_toe import *
+	def _move(self, src, dest):
+		if not self._getPiece(dest):
+			self._createPiece(Tic(), dest)
+
+class Tic(Piece):
+	def canMove(dest):
+		return False
+
+	def __str__(self):
+		return 'X'

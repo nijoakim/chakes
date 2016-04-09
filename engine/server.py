@@ -13,6 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#=========
+# Imports
+#=========
+
 import socket
 import json
 
@@ -22,32 +26,8 @@ import engine
 # Game stuff
 #============
 
-# board = engine.TicTacToe()
-board = None
-method = getattr(engine, 'TicTacToe')
-board = method()
-
-# TODO: Move this to engine
-def handle_json(obj):
-	global board, conn
-	if obj['msgName'] == 'applyAction':
-		board.action(
-			obj['name'],
-			(
-				obj['src'][0],
-				obj['src'][1],
-			),
-			(
-				obj['dest'][0],
-				obj['dest'][1],
-			),
-		)
-	elif obj['msgName'] == 'newGame':
-		print('GameName:\t%s' % obj['rule'])
-		rule_constructor = getattr(engine, obj['rule'])
-		board = rule_constructor()
-		obj['id'] = board.game_id
-		conn.sendall((json.dumps(obj)+"\x17").encode('utf-8'))
+board = engine.TicTacToe()
+game = engine.Game()
 
 #==============
 # Server stuff
@@ -91,7 +71,7 @@ try:
 				# Receive jsons
 				print('\033[31;1mRecieved: '+ json_str_to_process +'\033[0m')
 				json_obj = json.loads(json_str_to_process)
-				handle_json(json_obj)
+				board.handle_json(json_obj)
 
 				# Send jsons
 				for json_to_send in board.jsons_to_send:

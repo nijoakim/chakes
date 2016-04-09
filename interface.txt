@@ -1,0 +1,10 @@
+-> newGame{rule: "TicTacToeTest"}
+<- newGame{rule: "...", id: #}
+
+-> addPlayer{id: #, player: {name: "..."}}
+
+-> startGame{id: #}
+
+-> applyAction{id: #, name: "...", src: {x: #, y: #}, dst: {x: #, y: #}}
+
+<- updateAt{id: #, name: "...", dst: {x: #, y: #}, piece: "..."}

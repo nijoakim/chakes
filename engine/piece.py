@@ -13,14 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#=========
-# Imports
-#=========
+class Piece:
+	def canMove(self, dest):
+		raise NotImplementedError('Implement please!')
 
-# Submodules
-from game  import *
-from board import *
-from piece import *
-
-# Rules
-from tic_tac_toe import *
+	def __str__(self):
+		raise NotImplementedError('Implement please!')

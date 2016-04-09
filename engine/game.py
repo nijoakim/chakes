@@ -13,14 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#=========
-# Imports
-#=========
+class Game:
+	def __init__(self):
+		self.boards = {}
 
-# Submodules
-from game  import *
-from board import *
-from piece import *
+	def handle_json(self, obj):
+		if obj['msgName'] == 'newGame':
+			print('GameName:\t%s' % obj['rule'])
 
-# Rules
-from tic_tac_toe import *
+			# Create new board and add it to dictionary
+			board_constructor = getattr(engine, obj['rule'])
+			self.boards[0x1234] = (board_constructor()) # TODO: ID generator
+		else:
+			# Pass object to be handled by correct board
+			self.boards[obj['id']].handle_json(obj)
