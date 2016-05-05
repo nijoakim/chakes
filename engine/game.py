@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import engine
+
 class Game:
 	def __init__(self):
 		self.boards = {}
@@ -23,7 +25,7 @@ class Game:
 
 			# Create new board and add it to dictionary
 			board_constructor = getattr(engine, obj['rule'])
-			self.boards[0x1234] = (board_constructor()) # TODO: ID generator
+			self.boards[0x1234] = board_constructor() # TODO: ID generator
 		else:
 			# Pass object to be handled by correct board
 			self.boards[obj['id']].handle_json(obj)

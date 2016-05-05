@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 # Copyright 2016 Joakim Nilsson
 #
 # This program is free software: you can redistribute it and/or modify
@@ -71,14 +73,14 @@ try:
 				# Receive jsons
 				print('\033[31;1mRecieved: '+ json_str_to_process +'\033[0m')
 				json_obj = json.loads(json_str_to_process)
-				board.handle_json(json_obj)
+				game.handle_json(json_obj)
 
 				# Send jsons
-				for json_to_send in board.jsons_to_send:
+				for json_to_send in game.jsons_to_send:
 					json_to_send += '\x17'
 					print('\033[32;1mSending: '+ json_to_send +'\033[0m')
 					conn.sendall(json_to_send.encode('utf-8'))
-					board.jsons_to_send = []
+					game.jsons_to_send = []
 
 			except Exception as e:
 				print('Caught exception:')
