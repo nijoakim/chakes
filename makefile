@@ -3,10 +3,14 @@ SOURCE=$(wildcard */*.py)
 .PHONY: all
 all: run-game-engine
 
+.PHONY: run-server
+run-server:
+	uv run uvicorn chakes.server.app:app --reload
+
 .PHONY: type-check
 type-check:
-	mypy $(SOURCE)
+	uv run ruff $(SOURCE)
 
-.PHONY: run-game-engine
+.PHONY: run-engine
 run-game-engine: type-check
-	python3 game_engine/game_engine.py
+	uv run python -m chakes.engine.game_engine
