@@ -5,6 +5,6 @@
 Make sure you have `uv` installed (`python -m pip install uv`). Then
 
 ```bash
-uv sync
-make run-server
+uv sync --all-packages
+make run-backend
 ```
