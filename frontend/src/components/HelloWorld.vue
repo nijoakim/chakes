@@ -5,6 +5,8 @@ import heroImg from '../assets/hero.png'
 import vueLogo from '../assets/vue.svg'
 
 const count = ref(0)
+const message = ref('')
+fetch('/api/hello').then(r => r.json()).then(data => { message.value = data.message })
 </script>
 
 <template>
@@ -15,7 +17,7 @@ const count = ref(0)
       <img :src="viteLogo" class="vite" alt="Vite logo" />
     </div>
     <div>
-      <h1>Get started</h1>
+      <h1>{{ message }}</h1>
       <p>Edit <code>src/App.vue</code> and save to test <code>HMR</code></p>
     </div>
     <button class="counter" @click="count++">Count is {{ count }}</button>

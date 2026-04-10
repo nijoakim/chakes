@@ -1,11 +1,18 @@
 SOURCE=$(wildcard */*.py)
 
+include .env
+export
+
 .PHONY: all
 all: run-game-engine
 
 .PHONY: run-backend
-run-server:
-	uv run uvicorn chakes.backend.app:app --reload
+run-backend:
+	uv run uvicorn chakes.backend.app:app --reload --port $(BACKEND_PORT)
+
+.PHONY: run-frontend
+run-frontend:
+	cd frontend && npm run dev
 
 .PHONY: type-check
 type-check:

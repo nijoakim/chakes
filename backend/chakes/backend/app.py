@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI
 
-from chakes.engine.game_engine import hello
+from chakes.backend.api import router
 
 app = FastAPI()
+app.include_router(router)
