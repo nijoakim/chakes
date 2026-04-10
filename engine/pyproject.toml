@@ -5,6 +5,9 @@ requires-python = ">=3.11"
 dependencies = [
 ]
 
+[dependency-groups]
+dev = ["ruff", "ty"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
