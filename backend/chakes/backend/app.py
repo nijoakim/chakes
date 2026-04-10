@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 
 from chakes.backend.api import router

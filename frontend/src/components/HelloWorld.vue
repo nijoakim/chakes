@@ -25,13 +25,19 @@ const board = [
   <section id="center">
     <h1>{{ message }}</h1>
     <div class="board">
-      <div v-for="(row, r) in board" :key="r" class="row">
+      <div 
+        v-for="(row, r) in board"
+        :key="r"
+        class="row"
+      >
         <div
           v-for="(piece, c) in row"
           :key="c"
           class="square"
           :class="(r + c) % 2 === 0 ? 'light' : 'dark'"
-        >{{ pieces[piece] ?? '' }}</div>
+        >
+          {{ pieces[piece] ?? '' }}
+        </div>
       </div>
     </div>
   </section>
