@@ -117,6 +117,48 @@ class Piece:
 class GameState:
     pieces: list[Piece] = []
 
+    @staticmethod
+    def default():
+        state = GameState(8, 8)
+
+        state.add_piece("Pawn", Player.WHITE, 0, 1)
+        state.add_piece("Pawn", Player.WHITE, 1, 1)
+        state.add_piece("Pawn", Player.WHITE, 2, 1)
+        state.add_piece("Pawn", Player.WHITE, 3, 1)
+        state.add_piece("Pawn", Player.WHITE, 4, 1)
+        state.add_piece("Pawn", Player.WHITE, 5, 1)
+        state.add_piece("Pawn", Player.WHITE, 6, 1)
+        state.add_piece("Pawn", Player.WHITE, 7, 1)
+
+        state.add_piece("Pawn", Player.BLACK, 0, 6)
+        state.add_piece("Pawn", Player.BLACK, 1, 6)
+        state.add_piece("Pawn", Player.BLACK, 2, 6)
+        state.add_piece("Pawn", Player.BLACK, 3, 6)
+        state.add_piece("Pawn", Player.BLACK, 4, 6)
+        state.add_piece("Pawn", Player.BLACK, 5, 6)
+        state.add_piece("Pawn", Player.BLACK, 6, 6)
+        state.add_piece("Pawn", Player.BLACK, 7, 6)
+
+        state.add_piece("Rook", Player.WHITE, 0, 0)
+        state.add_piece("Knight", Player.WHITE, 1, 0)
+        state.add_piece("Bishop", Player.WHITE, 2, 0)
+        state.add_piece("Queen", Player.WHITE, 3, 0)
+        state.add_piece("King", Player.WHITE, 4, 0)
+        state.add_piece("Bishop", Player.WHITE, 5, 0)
+        state.add_piece("Knight", Player.WHITE, 6, 0)
+        state.add_piece("Rook", Player.WHITE, 7, 0)
+
+        state.add_piece("Rook", Player.BLACK, 0, 7)
+        state.add_piece("Knight", Player.BLACK, 1, 7)
+        state.add_piece("Bishop", Player.BLACK, 2, 7)
+        state.add_piece("Queen", Player.BLACK, 3, 7)
+        state.add_piece("King", Player.BLACK, 4, 7)
+        state.add_piece("Bishop", Player.BLACK, 5, 7)
+        state.add_piece("Knight", Player.BLACK, 6, 7)
+        state.add_piece("Rook", Player.BLACK, 7, 7)
+
+        return state
+
     def __init__(self, size_x: int = 8, size_y: int = 8) -> None:
         self.size_x: int = size_x
         self.size_y: int = size_y
@@ -163,43 +205,7 @@ class GameState:
         return ret[:-1]
 
 
-game_state = GameState(8, 8)
-
-game_state.add_piece("Pawn", Player.WHITE, 0, 1)
-game_state.add_piece("Pawn", Player.WHITE, 1, 1)
-game_state.add_piece("Pawn", Player.WHITE, 2, 1)
-game_state.add_piece("Pawn", Player.WHITE, 3, 1)
-game_state.add_piece("Pawn", Player.WHITE, 4, 1)
-game_state.add_piece("Pawn", Player.WHITE, 5, 1)
-game_state.add_piece("Pawn", Player.WHITE, 6, 1)
-game_state.add_piece("Pawn", Player.WHITE, 7, 1)
-
-game_state.add_piece("Pawn", Player.BLACK, 0, 6)
-game_state.add_piece("Pawn", Player.BLACK, 1, 6)
-game_state.add_piece("Pawn", Player.BLACK, 2, 6)
-game_state.add_piece("Pawn", Player.BLACK, 3, 6)
-game_state.add_piece("Pawn", Player.BLACK, 4, 6)
-game_state.add_piece("Pawn", Player.BLACK, 5, 6)
-game_state.add_piece("Pawn", Player.BLACK, 6, 6)
-game_state.add_piece("Pawn", Player.BLACK, 7, 6)
-
-game_state.add_piece("Rook", Player.WHITE, 0, 0)
-game_state.add_piece("Knight", Player.WHITE, 1, 0)
-game_state.add_piece("Bishop", Player.WHITE, 2, 0)
-game_state.add_piece("Queen", Player.WHITE, 3, 0)
-game_state.add_piece("King", Player.WHITE, 4, 0)
-game_state.add_piece("Bishop", Player.WHITE, 5, 0)
-game_state.add_piece("Knight", Player.WHITE, 6, 0)
-game_state.add_piece("Rook", Player.WHITE, 7, 0)
-
-game_state.add_piece("Rook", Player.BLACK, 0, 7)
-game_state.add_piece("Knight", Player.BLACK, 1, 7)
-game_state.add_piece("Bishop", Player.BLACK, 2, 7)
-game_state.add_piece("Queen", Player.BLACK, 3, 7)
-game_state.add_piece("King", Player.BLACK, 4, 7)
-game_state.add_piece("Bishop", Player.BLACK, 5, 7)
-game_state.add_piece("Knight", Player.BLACK, 6, 7)
-game_state.add_piece("Rook", Player.BLACK, 7, 7)
+game_state = GameState.default()
 
 game_state.move_piece(0, 0, 2, 4)
 if game_state.board[1][0] is not None:
