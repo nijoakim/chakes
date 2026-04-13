@@ -1,11 +1,18 @@
 from fastapi import APIRouter
 
-from chakes.backend.services import ChakesService
+from chakes.backend.services import ChakesService, GameRoomService
 
 router = APIRouter(prefix="/api")
-service = ChakesService()
+
+games = GameRoomService()
+chakes = ChakesService()
 
 
-@router.get("/hello")
-def hello():
-    return {"message": service.hello()}
+@router.get("/games")
+def games_list():
+    return {"games": games.list()}
+
+
+@router.post("/games")
+def games_create():
+    return {"game": games.create()}
