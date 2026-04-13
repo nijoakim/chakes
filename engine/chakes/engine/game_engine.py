@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 from enum import Enum
+import re
 from typing import Optional, Tuple
 
 print("Hello Chakes!")
@@ -47,14 +48,35 @@ class Piece:
         self.owner = owner
         self.pos_x = pos_x
         self.pos_y = pos_y
+        self.game_state = game_state
 
     def __str__(self) -> str:
-        return self.name[0] if self.name[0] != "Knight" else "N"
+        return self.name[0] if self.name != "Knight" else "N"
+
+    def _valid_moves_in_direction(self, start_x: int, start_y: int, diff_x: int, diff_y: int) -> list[Tuple[int, int]]:
+        new_x: int = start_x + diff_x
+        new_y: int = start_y + diff_y
+        if not self.game_state.is_pos_within_board(new_x, new_y):
+            return []
+        else:
+            return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y)
 
     def valid_moves(self) -> list[Tuple[int, int]]:
         # TODO: Parse piece_movesets
-        pass
-        return [(1, 1)]
+        move_list: list[Tuple[int, int]] = []
+        for pattern in piece_movesets[self.name].split(","):
+            pattern = pattern[::-1]
+            match: Optional[re.Match] = None
+
+            # Hippogonal move
+            if match := re.match(r"[0-9]+/[0-9]+", pattern):
+                diff_x, diff_y = tuple([int(x) for x in pattern[:match.end()].split("/")][:2])
+                move_list += self._valid_moves_in_direction( self.pos_x,  self.pos_y, diff_x, diff_y)
+                move_list += self._valid_moves_in_direction( self.pos_x, -self.pos_y, diff_x, diff_y)
+                move_list += self._valid_moves_in_direction(-self.pos_x,  self.pos_y, diff_x, diff_y)
+                move_list += self._valid_moves_in_direction(-self.pos_x, -self.pos_y, diff_x, diff_y)
+
+        return move_list
 
 
 class GameState:
@@ -79,6 +101,13 @@ class GameState:
 
         self.board[pos_x2][pos_y2] = self.board[pos_x1][pos_y1]
         self.board[pos_x1][pos_y1] = None
+
+    def is_pos_within_board(self, x: int, y: int):
+        return \
+            x > 0 and \
+            y > 0 and \
+            x < self.size_x and \
+            y < self.size_y
 
     def __str__(self):
         ret: str = ""
@@ -129,6 +158,9 @@ game_state.add_piece("Bishop", Player.BLACK, 5, 7)
 game_state.add_piece("Knight", Player.BLACK, 6, 7)
 game_state.add_piece("Rook", Player.BLACK, 7, 7)
 
-game_state.move_piece(4, 1, 4, 3)
+game_state.move_piece(0, 0, 2, 4)
+if game_state.board[1][0] is not None:
+    print(game_state.board[1][0].valid_moves())
+# game_state.move_piece(4, 1, 4, 3)
 
 print(game_state)
