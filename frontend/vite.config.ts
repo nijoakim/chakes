@@ -6,7 +6,10 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     proxy: {
-      '/api': `http://localhost:${process.env.BACKEND_PORT ?? 8000}`,
+      '/api': {
+        target: `http://localhost:${process.env.BACKEND_PORT ?? 8000}`,
+        ws: true,
+      },
     },
   },
 })

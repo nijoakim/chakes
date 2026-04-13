@@ -1,30 +1,39 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { gameService, type Board, type Color } from '../services/gameService'
-
-const message = ref('')
-fetch('/api/hello').then(r => r.json()).then(data => { message.value = data.message })
 
 const pieces: Record<string, string> = {
   K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
   k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
 }
 
-const board = ref<Board>([
-  ['r','n','b','q','k','b','n','r'],
-  ['p','p','p','p','p','p','p','p'],
-  Array(8).fill(''),
-  Array(8).fill(''),
-  Array(8).fill(''),
-  Array(8).fill(''),
-  ['P','P','P','P','P','P','P','P'],
-  ['R','N','B','Q','K','B','N','R'],
-])
-
+const board = ref<Board>([])
 const selected = ref<[number, number] | null>(null)
-const gameId = ref<string | null>(null)
 const playerColor = ref<Color>('white')
+const preferredColor = ref<Color>('white')
+const roomId = ref<string | null>(null)
+const joinRoomId = ref('')
 let disconnect: (() => void) | null = null
+
+function connectToRoom(id: string) {
+  disconnect?.()
+  roomId.value = id
+  playerColor.value = preferredColor.value
+  disconnect = gameService.connect(id, {
+    onBoard: (b) => { board.value = b },
+  })
+}
+
+async function createRoom() {
+  const id = await gameService.createRoom()
+  connectToRoom(id)
+}
+
+function joinRoom() {
+  if (joinRoomId.value.trim()) connectToRoom(joinRoomId.value.trim())
+}
+
+onUnmounted(() => disconnect?.())
 
 const displayBoard = computed<Board>(() => {
   if (playerColor.value === 'black') {
@@ -43,16 +52,6 @@ function isSelected(displayR: number, displayC: number): boolean {
   return selected.value[0] === br && selected.value[1] === bc
 }
 
-onMounted(async () => {
-  gameId.value = await gameService.createGame()
-  disconnect = gameService.connect(gameId.value, {
-    onBoard: (b) => { board.value = b },
-    onColor: (c) => { playerColor.value = c },
-  })
-})
-
-onUnmounted(() => disconnect?.())
-
 function handleClick(displayR: number, displayC: number) {
   const [r, c] = displayToBoard(displayR, displayC)
   const ownPiece = (p: string) =>
@@ -64,7 +63,7 @@ function handleClick(displayR: number, displayC: number) {
     const [fr, fc] = selected.value
     selected.value = null
     if (fr !== r || fc !== c) {
-      gameService.sendMove(gameId.value!, fr, fc, r, c)
+      gameService.sendMove(roomId.value!, fr, fc, r, c)
     }
   }
 }
@@ -72,7 +71,19 @@ function handleClick(displayR: number, displayC: number) {
 
 <template>
   <section id="center">
-    <h1>{{ message }}</h1>
+    <div v-if="!roomId" class="lobby">
+      <div class="color-picker">
+        <button :class="{ active: preferredColor === 'white' }" @click="preferredColor = 'white'">♔ White</button>
+        <button :class="{ active: preferredColor === 'black' }" @click="preferredColor = 'black'">♚ Black</button>
+      </div>
+      <button @click="createRoom">Create game</button>
+      <div class="join">
+        <input v-model="joinRoomId" placeholder="Room ID" @keyup.enter="joinRoom" />
+        <button @click="joinRoom">Join game</button>
+      </div>
+    </div>
+    <template v-else>
+    <div class="room-name">Room: {{ roomId }}</div>
     <div class="board">
       <div
         v-for="(row, r) in displayBoard"
@@ -91,6 +102,7 @@ function handleClick(displayR: number, displayC: number) {
       </div>
     </div>
     <div class="color-label">{{ playerColor === 'white' ? '♔ White' : '♚ Black' }}</div>
+    </template>
   </section>
 </template>
 
@@ -121,6 +133,30 @@ function handleClick(displayR: number, displayC: number) {
 .color-label {
   margin-top: 6px;
   font-size: 18px;
+  text-align: center;
+}
+.lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.color-picker {
+  display: flex;
+  gap: 8px;
+}
+.color-picker button.active {
+  outline: 2px solid #333;
+  font-weight: bold;
+}
+.join {
+  display: flex;
+  gap: 8px;
+}
+.room-name {
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #666;
   text-align: center;
 }
 </style>
