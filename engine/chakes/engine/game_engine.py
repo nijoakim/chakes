@@ -32,12 +32,12 @@ class Player(Enum):
 
 # Parlett's movement notation
 piece_movesets = {
-    "Pawn": "o1>,io2>,c1X>",
-    "Rook": "n+",
+    "Pawn":   "o1>,io2>,c1X>",
+    "Rook":   "+n",
     "Knight": "~1/2",
-    "Bishop": "nX",
-    "Queen": "n*",
-    "King": "n+",
+    "Bishop": "Xn",
+    "Queen":  "*n",
+    "King":   "+n",
 }
 
 
@@ -50,12 +50,13 @@ class Piece:
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.game_state = game_state
+        self.has_moved = False
 
     def __str__(self) -> str:
         return self.name[0] if self.name != "Knight" else "N"
 
-    def _valid_moves_in_direction(self, start_x: int, start_y: int, diff_x: int, diff_y: int, num: int = -1) -> list[Tuple[int, int]]:
-        if num == 0:
+    def _valid_moves_in_direction(self, start_x: int, start_y: int, diff_x: int, diff_y: int, num_steps: int) -> list[Tuple[int, int]]:
+        if num_steps == 0:
             return []
 
         new_x: int = start_x + diff_x
@@ -63,21 +64,52 @@ class Piece:
         if not self.game_state.is_pos_within_board(new_x, new_y):
             return []
         else:
-            return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num=num-1)
+            return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1)
 
     def valid_moves(self) -> list[Tuple[int, int]]:
         # TODO: Parse piece_movesets
         move_list: list[Tuple[int, int]] = []
         for pattern in piece_movesets[self.name].split(","):
-            pattern = pattern[::-1]
             match: Optional[re.Match] = None
+            num_steps: int
+            can_capture: bool = True
 
-            # Hippogonal move
+            # Parse condtions
+            if pattern[0] == "i": # Can only move if first move
+                if self.has_moved:
+                    continue
+                pattern = pattern[1:]
+            if pattern[0] == "o": # Can only move if not capturing
+                pattern = pattern[1:]
+            if pattern[0] == "c": # Can only move if capturing
+                pattern = pattern[1:]
+
+            # Parse move type
+            if pattern[0] in ["+", "X"]:
+                move_type: str = pattern[0]
+                pattern = pattern[1:]
+
+                # Parse number of steps
+                if pattern[0] == "n": # O
+                    num_steps = -1
+                    pattern = pattern[1:]
+                elif match := re.match(r"[0-9]", pattern):
+                    num_steps = int(pattern[:match.end()])
+                    pattern = pattern[match.end():]
+
+                if move_type == "+": # Orthogonal
+                    for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
+                        move_list += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+            elif pattern[0] == "~":
+                pattern = pattern[1:]
+
+            # Parse hippogonal move
             if match := re.match(r"[0-9]+/[0-9]+", pattern):
-                a, b = tuple([int(x[::-1]) for x in pattern[:match.end()].split("/")][:2])
+                a, b = tuple([int(x) for x in pattern[:match.end()].split("/")][:2])
                 for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
                     for x, y in [(c, d), (d, c)]:
-                        move_list += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num=1)
+                        move_list += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, 1)
+                pattern = pattern[match.end():]
 
         return move_list
 
@@ -102,8 +134,16 @@ class GameState:
     def move_piece(self, pos_x1: int, pos_y1: int, pos_x2: int, pos_y2: int) -> None:
         # TODO: Verify that move is legal
 
-        self.board[pos_x2][pos_y2] = self.board[pos_x1][pos_y1]
-        self.board[pos_x1][pos_y1] = None
+        piece: Optional[Piece] = self.board[pos_x1][pos_y1]
+
+        if piece is not None:
+            self.board[pos_x2][pos_y2] = piece
+            self.board[pos_x1][pos_y1] = None
+
+            piece.pos_x = pos_x2
+            piece.pos_y = pos_y2
+
+            piece.has_moved = True
 
     def is_pos_within_board(self, x: int, y: int):
         return \
@@ -164,6 +204,8 @@ game_state.add_piece("Rook", Player.BLACK, 7, 7)
 game_state.move_piece(0, 0, 2, 4)
 if game_state.board[1][0] is not None:
     print(game_state.board[1][0].valid_moves())
+if game_state.board[2][4] is not None:
+    print(game_state.board[2][4].valid_moves())
 # game_state.move_piece(4, 1, 4, 3)
 
 print(game_state)
