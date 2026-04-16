@@ -54,13 +54,16 @@ class Piece:
     def __str__(self) -> str:
         return self.name[0] if self.name != "Knight" else "N"
 
-    def _valid_moves_in_direction(self, start_x: int, start_y: int, diff_x: int, diff_y: int) -> list[Tuple[int, int]]:
+    def _valid_moves_in_direction(self, start_x: int, start_y: int, diff_x: int, diff_y: int, num: int = -1) -> list[Tuple[int, int]]:
+        if num == 0:
+            return []
+
         new_x: int = start_x + diff_x
         new_y: int = start_y + diff_y
         if not self.game_state.is_pos_within_board(new_x, new_y):
             return []
         else:
-            return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y)
+            return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num=num-1)
 
     def valid_moves(self) -> list[Tuple[int, int]]:
         # TODO: Parse piece_movesets
@@ -71,11 +74,10 @@ class Piece:
 
             # Hippogonal move
             if match := re.match(r"[0-9]+/[0-9]+", pattern):
-                diff_x, diff_y = tuple([int(x) for x in pattern[:match.end()].split("/")][:2])
-                move_list += self._valid_moves_in_direction( self.pos_x,  self.pos_y, diff_x, diff_y)
-                move_list += self._valid_moves_in_direction( self.pos_x, -self.pos_y, diff_x, diff_y)
-                move_list += self._valid_moves_in_direction(-self.pos_x,  self.pos_y, diff_x, diff_y)
-                move_list += self._valid_moves_in_direction(-self.pos_x, -self.pos_y, diff_x, diff_y)
+                a, b = tuple([int(x[::-1]) for x in pattern[:match.end()].split("/")][:2])
+                for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
+                    for x, y in [(c, d), (d, c)]:
+                        move_list += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num=1)
 
         return move_list
 
@@ -105,8 +107,8 @@ class GameState:
 
     def is_pos_within_board(self, x: int, y: int):
         return \
-            x > 0 and \
-            y > 0 and \
+            x >= 0 and \
+            y >= 0 and \
             x < self.size_x and \
             y < self.size_y
 
