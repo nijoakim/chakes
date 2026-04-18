@@ -23,7 +23,8 @@ import re
 from time import monotonic
 from typing import Optional, Tuple
 
-print("Hello Chakes!")
+
+print('Hello Chakes!')
 
 
 class Player(Enum):
@@ -34,12 +35,12 @@ class Player(Enum):
 # Parlett's movement notation
 # Format: name: (value, movement)
 piece_defs = {
-    "Pawn":   (1, "o1>,io2>,c1X>"),
-    "Rook":   (5, "+n"),
-    "Knight": (3, "~1/2"),
-    "Bishop": (3, "Xn"),
-    "Queen":  (9, "*n"),
-    "King":   (3, "+n"),
+    'Pawn':   (1, 'o1>,io2>,c1X>'),
+    'Rook':   (5, '+n'),
+    'Knight': (3, '~1/2'),
+    'Bishop': (3, 'Xn'),
+    'Queen':  (9, '*n'),
+    'King':   (3, '+n'),
 }
 
 
@@ -54,14 +55,14 @@ class Piece:
         self.game_state: GameState = game_state
 
         self.has_moved:      bool  = False
-        self.last_move_time: float = -float("inf")
+        self.last_move_time: float = -float('inf')
 
         # Piece definition
         self.value:   int = piece_defs[name][0]
         self.moveset: str = piece_defs[name][1]
 
     def __str__(self) -> str:
-        return self.name[0] if self.name != "Knight" else "N"
+        return self.name[0] if self.name != 'Knight' else 'N'
 
     def _valid_moves_in_direction(self, start_x: int, start_y: int, diff_x: int, diff_y: int, num_steps: int) -> list[Tuple[int, int]]:
         if num_steps == 0:
@@ -93,43 +94,43 @@ class Piece:
     def valid_moves(self) -> list[Tuple[int, int]]:
         # TODO: Parse piece_movesets
         move_list: list[Tuple[int, int]] = []
-        for pattern in self.moveset.split(","):
+        for pattern in self.moveset.split(','):
             match: Optional[re.Match] = None
             num_steps: int
             can_capture: bool = True
 
             # Parse condtions
-            if pattern[0] == "i": # Can only move if first move
+            if pattern[0] == 'i': # Can only move if first move
                 if self.has_moved:
                     continue
                 pattern = pattern[1:]
-            if pattern[0] == "o": # Can only move if not capturing
+            if pattern[0] == 'o': # Can only move if not capturing
                 pattern = pattern[1:]
-            if pattern[0] == "c": # Can only move if capturing
+            if pattern[0] == 'c': # Can only move if capturing
                 pattern = pattern[1:]
 
             # Parse move type
-            if pattern[0] in ["+", "X"]:
+            if pattern[0] in ['+', 'X']:
                 move_type: str = pattern[0]
                 pattern = pattern[1:]
 
                 # Parse number of steps
-                if pattern[0] == "n": # O
+                if pattern[0] == 'n': # O
                     num_steps = -1
                     pattern = pattern[1:]
-                elif match := re.match(r"[0-9]", pattern):
+                elif match := re.match(r'[0-9]', pattern):
                     num_steps = int(pattern[:match.end()])
                     pattern = pattern[match.end():]
 
-                if move_type == "+": # Orthogonal
+                if move_type == '+': # Orthogonal
                     for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
                         move_list += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
-            elif pattern[0] == "~":
+            elif pattern[0] == '~':
                 pattern = pattern[1:]
 
             # Parse hippogonal move
-            if match := re.match(r"[0-9]+/[0-9]+", pattern):
-                a, b = tuple([int(x) for x in pattern[:match.end()].split("/")][:2])
+            if match := re.match(r'[0-9]+/[0-9]+', pattern):
+                a, b = tuple([int(x) for x in pattern[:match.end()].split('/')][:2])
                 for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
                     for x, y in [(c, d), (d, c)]:
                         move_list += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, 1)
@@ -145,41 +146,41 @@ class GameState:
     def default():
         state = GameState(8, 8)
 
-        state.add_piece("Pawn", Player.WHITE, 0, 1)
-        state.add_piece("Pawn", Player.WHITE, 1, 1)
-        state.add_piece("Pawn", Player.WHITE, 2, 1)
-        state.add_piece("Pawn", Player.WHITE, 3, 1)
-        state.add_piece("Pawn", Player.WHITE, 4, 1)
-        state.add_piece("Pawn", Player.WHITE, 5, 1)
-        state.add_piece("Pawn", Player.WHITE, 6, 1)
-        state.add_piece("Pawn", Player.WHITE, 7, 1)
+        state.add_piece('Pawn', Player.WHITE, 0, 1)
+        state.add_piece('Pawn', Player.WHITE, 1, 1)
+        state.add_piece('Pawn', Player.WHITE, 2, 1)
+        state.add_piece('Pawn', Player.WHITE, 3, 1)
+        state.add_piece('Pawn', Player.WHITE, 4, 1)
+        state.add_piece('Pawn', Player.WHITE, 5, 1)
+        state.add_piece('Pawn', Player.WHITE, 6, 1)
+        state.add_piece('Pawn', Player.WHITE, 7, 1)
 
-        state.add_piece("Pawn", Player.BLACK, 0, 6)
-        state.add_piece("Pawn", Player.BLACK, 1, 6)
-        state.add_piece("Pawn", Player.BLACK, 2, 6)
-        state.add_piece("Pawn", Player.BLACK, 3, 6)
-        state.add_piece("Pawn", Player.BLACK, 4, 6)
-        state.add_piece("Pawn", Player.BLACK, 5, 6)
-        state.add_piece("Pawn", Player.BLACK, 6, 6)
-        state.add_piece("Pawn", Player.BLACK, 7, 6)
+        state.add_piece('Pawn', Player.BLACK, 0, 6)
+        state.add_piece('Pawn', Player.BLACK, 1, 6)
+        state.add_piece('Pawn', Player.BLACK, 2, 6)
+        state.add_piece('Pawn', Player.BLACK, 3, 6)
+        state.add_piece('Pawn', Player.BLACK, 4, 6)
+        state.add_piece('Pawn', Player.BLACK, 5, 6)
+        state.add_piece('Pawn', Player.BLACK, 6, 6)
+        state.add_piece('Pawn', Player.BLACK, 7, 6)
 
-        state.add_piece("Rook", Player.WHITE, 0, 0)
-        state.add_piece("Knight", Player.WHITE, 1, 0)
-        state.add_piece("Bishop", Player.WHITE, 2, 0)
-        state.add_piece("Queen", Player.WHITE, 3, 0)
-        state.add_piece("King", Player.WHITE, 4, 0)
-        state.add_piece("Bishop", Player.WHITE, 5, 0)
-        state.add_piece("Knight", Player.WHITE, 6, 0)
-        state.add_piece("Rook", Player.WHITE, 7, 0)
+        state.add_piece('Rook', Player.WHITE, 0, 0)
+        state.add_piece('Knight', Player.WHITE, 1, 0)
+        state.add_piece('Bishop', Player.WHITE, 2, 0)
+        state.add_piece('Queen', Player.WHITE, 3, 0)
+        state.add_piece('King', Player.WHITE, 4, 0)
+        state.add_piece('Bishop', Player.WHITE, 5, 0)
+        state.add_piece('Knight', Player.WHITE, 6, 0)
+        state.add_piece('Rook', Player.WHITE, 7, 0)
 
-        state.add_piece("Rook", Player.BLACK, 0, 7)
-        state.add_piece("Knight", Player.BLACK, 1, 7)
-        state.add_piece("Bishop", Player.BLACK, 2, 7)
-        state.add_piece("Queen", Player.BLACK, 3, 7)
-        state.add_piece("King", Player.BLACK, 4, 7)
-        state.add_piece("Bishop", Player.BLACK, 5, 7)
-        state.add_piece("Knight", Player.BLACK, 6, 7)
-        state.add_piece("Rook", Player.BLACK, 7, 7)
+        state.add_piece('Rook', Player.BLACK, 0, 7)
+        state.add_piece('Knight', Player.BLACK, 1, 7)
+        state.add_piece('Bishop', Player.BLACK, 2, 7)
+        state.add_piece('Queen', Player.BLACK, 3, 7)
+        state.add_piece('King', Player.BLACK, 4, 7)
+        state.add_piece('Bishop', Player.BLACK, 5, 7)
+        state.add_piece('Knight', Player.BLACK, 6, 7)
+        state.add_piece('Rook', Player.BLACK, 7, 7)
 
         return state
 
@@ -213,13 +214,13 @@ class GameState:
             y < self.size_y
 
     def __str__(self):
-        ret: str = ""
+        ret: str = ''
         for y in reversed(range(self.size_y)):
             for x in range(self.size_x):
                 piece = self.board[x][y]
-                ret += "∘" if piece is None else str(piece)
-                ret += " " if x < self.size_x else ""
-            ret += "\n"
+                ret += '∘' if piece is None else str(piece)
+                ret += ' ' if x < self.size_x else ''
+            ret += '\n'
         return ret[:-1]
 
 
