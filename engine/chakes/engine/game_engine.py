@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from enum import Enum
 import re
+from time import monotonic
 from typing import Optional, Tuple
 
 print("Hello Chakes!")
@@ -31,13 +32,14 @@ class Player(Enum):
 
 
 # Parlett's movement notation
-piece_movesets = {
-    "Pawn":   "o1>,io2>,c1X>",
-    "Rook":   "+n",
-    "Knight": "~1/2",
-    "Bishop": "Xn",
-    "Queen":  "*n",
-    "King":   "+n",
+# Format: name: (value, movement)
+piece_defs = {
+    "Pawn":   (1, "o1>,io2>,c1X>"),
+    "Rook":   (5, "+n"),
+    "Knight": (3, "~1/2"),
+    "Bishop": (3, "Xn"),
+    "Queen":  (9, "*n"),
+    "King":   (3, "+n"),
 }
 
 
@@ -45,12 +47,18 @@ class Piece:
     def __init__(
         self, name: str, owner: Player, pos_x: int, pos_y: int, game_state: GameState
     ) -> None:
-        self.name = name
-        self.owner = owner
-        self.pos_x = pos_x
-        self.pos_y = pos_y
-        self.game_state = game_state
-        self.has_moved = False
+        self.name:       str       = name
+        self.owner:      Player    = owner
+        self.pos_x:      int       = pos_x
+        self.pos_y:      int       = pos_y
+        self.game_state: GameState = game_state
+
+        self.has_moved:      bool  = False
+        self.last_move_time: float = -float("inf")
+
+        # Piece definition
+        self.value:   int = piece_defs[name][0]
+        self.moveset: str = piece_defs[name][1]
 
     def __str__(self) -> str:
         return self.name[0] if self.name != "Knight" else "N"
@@ -66,10 +74,26 @@ class Piece:
         else:
             return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1)
 
+    def move(self, new_pos_x: int, new_pos_y: int) -> None:
+        # TODO: Verify that move is legal
+
+        self.game_state.board[new_pos_x][new_pos_y]   = self
+        self.game_state.board[self.pos_x][self.pos_y] = None
+
+        self.pos_x = new_pos_x
+        self.pos_y = new_pos_y
+
+        self.has_moved      = True
+        self.last_move_time = monotonic()
+
+    def get_cooldown(self) -> float:
+        cooldown: float = self.last_move_time - monotonic() + self.value
+        return max(cooldown, 0.0)
+
     def valid_moves(self) -> list[Tuple[int, int]]:
         # TODO: Parse piece_movesets
         move_list: list[Tuple[int, int]] = []
-        for pattern in piece_movesets[self.name].split(","):
+        for pattern in self.moveset.split(","):
             match: Optional[re.Match] = None
             num_steps: int
             can_capture: bool = True
@@ -179,13 +203,7 @@ class GameState:
         piece: Optional[Piece] = self.board[pos_x1][pos_y1]
 
         if piece is not None:
-            self.board[pos_x2][pos_y2] = piece
-            self.board[pos_x1][pos_y1] = None
-
-            piece.pos_x = pos_x2
-            piece.pos_y = pos_y2
-
-            piece.has_moved = True
+            piece.move(pos_x2, pos_y2)
 
     def is_pos_within_board(self, x: int, y: int):
         return \
@@ -208,10 +226,8 @@ class GameState:
 game_state = GameState.default()
 
 game_state.move_piece(0, 0, 2, 4)
-if game_state.board[1][0] is not None:
-    print(game_state.board[1][0].valid_moves())
-if game_state.board[2][4] is not None:
-    print(game_state.board[2][4].valid_moves())
-# game_state.move_piece(4, 1, 4, 3)
+print(game_state.board[1][0].valid_moves())
+print(game_state.board[2][4].valid_moves())
+print(game_state.board[2][4].get_cooldown())
 
 print(game_state)
