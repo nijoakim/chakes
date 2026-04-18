@@ -31,6 +31,10 @@ def pos_to_str(x: int, y: int) -> str:
     return chr(ord('A')+x) + str(y+1)
 
 
+def pos_list_to_str(lst: list[Tuple[int, int]]) -> list[str]:
+    return list(map(lambda pos: pos_to_str(pos[0], pos[1]), lst))
+
+
 def str_to_pos(pos: str) -> Tuple[int, int]:
     x: int = ord(pos[0]) - ord('A')
     y: int = int(pos[1:]) - 1
@@ -50,7 +54,7 @@ class Player(Enum):
 
 # Format: name: (value, movement)
 piece_defs = {
-    'Pawn':   (1, 'o1>,io2>,c1X>'),
+    'Pawn':   (1, 'o>1,io>2,cX>1'),
     'Rook':   (5, '+n'),
     'Knight': (3, '~1/2'),
     'Bishop': (3, 'Xn'),
@@ -89,14 +93,37 @@ class Piece:
 
         return color + abbreviation + '\033[0m'
 
-    def _valid_moves_in_direction(self, start_x: int, start_y: int, diff_x: int, diff_y: int, num_steps: int) -> list[Tuple[int, int]]:
+    def _valid_moves_in_direction(
+        self,
+        start_x:   int,
+        start_y:   int,
+        diff_x:    int,
+        diff_y:    int,
+        num_steps: int,
+        hops:      bool = False,
+        captures:  bool = True,
+    ) -> list[Tuple[int, int]]:
         if num_steps == 0:
             return []
 
         new_x: int = start_x + diff_x
         new_y: int = start_y + diff_y
+
         if not self.game_state.is_pos_within_board(new_x, new_y):
             return []
+
+        new_piece = self.game_state.board[new_x][new_y]
+        if new_piece is not None:
+            ret: list[Tuple[int, int]] = []
+
+            if captures:
+                if new_piece.owner != self.owner:
+                    ret += [(new_x, new_y)]
+
+            if hops or not captures:
+                ret += self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1)
+
+            return ret
         else:
             return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1)
 
@@ -120,13 +147,30 @@ class Piece:
         cooldown: float = self.last_move_time - monotonic() + self.value
         return max(cooldown, 0.0)
 
+    def _forwards(self) -> int:
+        match self.owner:
+            case Player.WHITE:
+                return 1
+            case Player.BLACK:
+                return -1
+
+    def _is_capture_move(self, pos_x: int, pos_y: int) -> bool:
+        piece: Optional[Piece] = self.game_state.board[pos_x][pos_y]
+        if piece is None:
+            return False
+        else:
+            return piece.owner != self.owner
+
     def valid_moves(self) -> list[Tuple[int, int]]:
         # TODO: Parse piece_movesets
+
         move_list: list[Tuple[int, int]] = []
         for pattern in self.moveset.split(','):
+            move_list_temp: list[Tuple[int, int]] = []
             match: Optional[re.Match] = None
             num_steps: int
-            can_capture: bool = True
+            must_capture: bool = False
+            must_not_capture: bool = False
 
             # Parse condtions
             if pattern[0] == 'i': # Can only move if first move
@@ -134,26 +178,36 @@ class Piece:
                     continue
                 pattern = pattern[1:]
             if pattern[0] == 'o': # Can only move if not capturing
+                must_not_capture = True
                 pattern = pattern[1:]
             if pattern[0] == 'c': # Can only move if capturing
+                must_capture = True
                 pattern = pattern[1:]
 
             # Parse move type
-            if pattern[0] in ['+', 'X']:
-                move_type: str = pattern[0]
-                pattern = pattern[1:]
+            if match := re.match(r'\+|X>|>', pattern):
+                move_type: str = pattern[:match.end()]
+                pattern = pattern[match.end():]
 
                 # Parse number of steps
-                if pattern[0] == 'n': # O
+                if pattern[0] == 'n':
                     num_steps = -1
                     pattern = pattern[1:]
                 elif match := re.match(r'[0-9]', pattern):
                     num_steps = int(pattern[:match.end()])
                     pattern = pattern[match.end():]
 
+                if move_type == '>':
+                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps)
+
+                if move_type == 'X>':
+                    y: int = self._forwards()
+                    for x in -1, 1:
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+
                 if move_type == '+': # Orthogonal
                     for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
-                        move_list += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
             elif pattern[0] == '~':
                 pattern = pattern[1:]
 
@@ -162,10 +216,21 @@ class Piece:
                 a, b = tuple([int(x) for x in pattern[:match.end()].split('/')][:2])
                 for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
                     for x, y in [(c, d), (d, c)]:
-                        move_list += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, 1)
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, 1)
                 pattern = pattern[match.end():]
 
-        return move_list
+            # Filter captures if 'c' was specified
+            if must_capture:
+                move_list_temp = list(filter(lambda pos: self._is_capture_move(pos[0], pos[1]), move_list_temp))
+
+            # Filter non-captures if 'i' was specified
+            if must_not_capture:
+                move_list_temp = list(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), move_list_temp))
+
+            move_list += move_list_temp
+
+        # Return unieque moves in move_list
+        return list(set(move_list))
 
 
 class GameState:
@@ -235,7 +300,7 @@ class GameState:
         piece: Optional[Piece] = self.board[pos_x1][pos_y1]
 
         if piece is None:
-            raise ValueError(f'There is no piece at {pos_to_str(pos_x1, pos_x2)}.')
+            raise ValueError(f'There is no piece at {pos_to_str(pos_x1, pos_y1)}.')
         else:
             piece.move(pos_x2, pos_y2)
 
@@ -268,10 +333,25 @@ class GameState:
 
 game_state = GameState.default()
 
-# game_state.move_piece_str('A1', 'C5')
-game_state.move_piece_str('B1', 'C3')
-# sleep(3)
-# game_state.move_piece_str('C3', 'D5')
-# print(game_state.piece_at('D5').valid_moves())
+# game_state.move_piece_str('B1', 'C3')
+# print(pos_list_to_str(game_state.piece_at('A1').valid_moves()))
+
+# print(pos_list_to_str(game_state.piece_at('A2').valid_moves()))
+
+# # Test Rook
+# game_state.move_piece_str('A2', 'A4')
+# game_state.move_piece_str('A1', 'A3')
+# sleep(5)
+# game_state.move_piece_str('A3', 'B3')
+# print(pos_list_to_str(game_state.piece_at('B3').valid_moves()))
+
+# # Test pawn
+# game_state.move_piece_str('B2', 'B4')
+# sleep(1)
+# game_state.move_piece_str('B4', 'B5')
+# sleep(1)
+# game_state.move_piece_str('B5', 'B6')
+# print(pos_list_to_str(game_state.piece_at('B6').valid_moves()))
+
 
 print(game_state)
