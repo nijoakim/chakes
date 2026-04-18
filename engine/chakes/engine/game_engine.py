@@ -77,8 +77,17 @@ class Piece:
         self.moveset: str = piece_defs[name][1]
 
     def __str__(self) -> str:
-        ret: str = self.name[0] if self.name != 'Knight' else 'N'
-        return ret.lower() if self.get_cooldown() > 0 else ret
+        abbreviation: str = self.name[0] if self.name != 'Knight' else 'N'
+        if self.get_cooldown() > 0:
+            abbreviation = abbreviation.lower()
+
+        color: str
+        if self.owner == Player.WHITE:
+            color = '\033[1;37m'
+        elif self.owner == Player.BLACK:
+            color = '\033[1;34m'
+
+        return color + abbreviation + '\033[0m'
 
     def _valid_moves_in_direction(self, start_x: int, start_y: int, diff_x: int, diff_y: int, num_steps: int) -> list[Tuple[int, int]]:
         if num_steps == 0:
