@@ -254,12 +254,16 @@ class GameState:
     def __str__(self) -> str:
         ret: str = ''
         for y in reversed(range(self.size_y)):
+            ret += f'\033[33m{pos_to_str(0, y)[1:]} \033[0m'
             for x in range(self.size_x):
                 piece = self.board[x][y]
                 ret += '∘' if piece is None else str(piece)
                 ret += ' ' if x < self.size_x else ''
             ret += '\n'
-        return ret[:-1]
+        ret = ret[:-1]
+        ret += '\n  '
+        ret += ' '.join([f'\033[33m{pos_to_str(x, 0)[0]}' for x in range(self.size_x)])
+        return ret
 
 
 game_state = GameState.default()
