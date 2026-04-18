@@ -18,21 +18,36 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import auto, Enum
 import re
-from time import monotonic
+from time import monotonic, sleep
 from typing import Optional, Tuple
 
 
 print('Hello Chakes!')
 
 
+def pos_to_str(x: int, y: int) -> str:
+    return chr(ord('A')+x) + str(y+1)
+
+
+def str_to_pos(pos: str) -> Tuple[int, int]:
+    x: int = ord(pos[0]) - ord('A')
+    y: int = int(pos[1:]) - 1
+    return x, y
+
+
 class Player(Enum):
-    WHITE = 0
-    BLACK = 1
+    WHITE = auto()
+    BLACK = auto()
+
+    def other(self) -> Player:
+        if self == Player.WHITE:
+            return Player.BLACK
+        elif self == Player.BLACK:
+            return Player.WHITE
 
 
-# Parlett's movement notation
 # Format: name: (value, movement)
 piece_defs = {
     'Pawn':   (1, 'o1>,io2>,c1X>'),
@@ -62,7 +77,8 @@ class Piece:
         self.moveset: str = piece_defs[name][1]
 
     def __str__(self) -> str:
-        return self.name[0] if self.name != 'Knight' else 'N'
+        ret: str = self.name[0] if self.name != 'Knight' else 'N'
+        return ret.lower() if self.get_cooldown() > 0 else ret
 
     def _valid_moves_in_direction(self, start_x: int, start_y: int, diff_x: int, diff_y: int, num_steps: int) -> list[Tuple[int, int]]:
         if num_steps == 0:
@@ -76,7 +92,11 @@ class Piece:
             return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1)
 
     def move(self, new_pos_x: int, new_pos_y: int) -> None:
-        # TODO: Verify that move is legal
+        if (new_pos_x, new_pos_y) not in self.valid_moves():
+            raise ValueError(f'{self.name} can not move from {pos_to_str(self.pos_x, self.pos_y)} to {pos_to_str(new_pos_x, new_pos_y)}.')
+
+        if (cooldown := self.get_cooldown()) != 0.0:
+            raise ValueError(f'Cooldown for {self.name} at {pos_to_str(self.pos_x, self.pos_y)} is {cooldown}')
 
         self.game_state.board[new_pos_x][new_pos_y]   = self
         self.game_state.board[self.pos_x][self.pos_y] = None
@@ -193,18 +213,27 @@ class GameState:
             [None for _ in range(size_x)] for _ in range(size_y)
         ]
 
+    def piece_at(self, pos: str) -> Optional[Piece]:
+        x, y = str_to_pos(pos)
+        return self.board[x][y]
+
     def add_piece(self, name: str, owner: Player, pos_x: int, pos_y: int) -> None:
         new_piece: Piece = Piece(name, owner, pos_x, pos_y, self)
         self.pieces.append(new_piece)
         self.board[pos_x][pos_y] = new_piece
 
     def move_piece(self, pos_x1: int, pos_y1: int, pos_x2: int, pos_y2: int) -> None:
-        # TODO: Verify that move is legal
-
         piece: Optional[Piece] = self.board[pos_x1][pos_y1]
 
-        if piece is not None:
+        if piece is None:
+            raise ValueError(f'There is no piece at {pos_to_str(pos_x1, pos_x2)}.')
+        else:
             piece.move(pos_x2, pos_y2)
+
+    def move_piece_str(self, pos1: str, pos2: str) -> None:
+        x1, y1 = str_to_pos(pos1)
+        x2, y2 = str_to_pos(pos2)
+        self.move_piece(x1, y1, x2, y2)
 
     def is_pos_within_board(self, x: int, y: int):
         return \
@@ -213,7 +242,7 @@ class GameState:
             x < self.size_x and \
             y < self.size_y
 
-    def __str__(self):
+    def __str__(self) -> str:
         ret: str = ''
         for y in reversed(range(self.size_y)):
             for x in range(self.size_x):
@@ -226,9 +255,10 @@ class GameState:
 
 game_state = GameState.default()
 
-game_state.move_piece(0, 0, 2, 4)
-print(game_state.board[1][0].valid_moves())
-print(game_state.board[2][4].valid_moves())
-print(game_state.board[2][4].get_cooldown())
+# game_state.move_piece_str('A1', 'C5')
+game_state.move_piece_str('B1', 'C3')
+# sleep(3)
+# game_state.move_piece_str('C3', 'D5')
+# print(game_state.piece_at('D5').valid_moves())
 
 print(game_state)
