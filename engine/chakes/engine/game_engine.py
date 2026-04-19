@@ -148,6 +148,8 @@ class Piece:
         if (cooldown := self.get_cooldown()) != 0.0:
             raise ValueError(f'Cooldown for {self.name} at {pos_to_str(self.pos_x, self.pos_y)} is {cooldown}')
 
+        self._move_special(new_pos_x, new_pos_y)
+
         self.game_state.board[new_pos_x][new_pos_y]   = self
         self.game_state.board[self.pos_x][self.pos_y] = None
 
@@ -156,6 +158,23 @@ class Piece:
 
         self.has_moved      = True
         self.last_move_time = monotonic()
+
+    def _move_special(self, new_pos_x: int, new_pos_y: int) -> None:
+        if self.name == 'Pawn':
+            # Mark en passentable
+            if abs(self.pos_y - new_pos_y) == 2:
+                self._enpassantable = True # type: ignore
+            else:
+                self._enpassantable = False # type: ignore
+
+            # Perform en passent
+            if self.pos_x != new_pos_x:
+                other: Optional[Piece] = self.game_state.board[new_pos_x][self.pos_y]
+                if  other is not None \
+                and getattr(other, '_enpassantable', False) \
+                and other.owner != self.owner \
+                and other.get_cooldown() > 0:
+                    self.game_state.board[new_pos_x][self.pos_y] = None
 
     def get_cooldown(self) -> float:
         cooldown: float = self.last_move_time - monotonic() + self.value
@@ -252,8 +271,27 @@ class Piece:
             # Append temporary move list to main move list
             move_list += move_list_temp
 
-        # Return unieque moves in move_list
+        # Add special moves
+        move_list += self._valid_moves_special()
+
+        # Return unique moves in move_list
         return list(set(move_list))
+
+    def _valid_moves_special(self) -> list[Tuple[int, int]]:
+        move_list: list[Tuple[int, int]] = []
+
+        if self.name == 'Pawn':
+            # En passant
+            for x, y in (self.pos_x-1, self.pos_y), (self.pos_x+1, self.pos_y):
+                if self.game_state.is_pos_within_board(x, y):
+                    other: Optional[Piece] = game_state.board[x][y]
+                    if  other is not None \
+                    and getattr(other, '_enpassantable', False) \
+                    and other.owner != self.owner \
+                    and other.get_cooldown() > 0:
+                        move_list.append((x, y+self._forwards()))
+
+        return move_list
 
 
 class GameState:
@@ -393,5 +431,15 @@ game_state = GameState.default()
 # game_state.move_piece_str('E2', 'E4')
 # game_state.move_piece_str('E1', 'E2')
 # print(pos_list_to_str(game_state.piece_at('E2').valid_moves()))
+
+# Test en passant
+game_state.move_piece_str('B2', 'B4')
+sleep(1)
+game_state.move_piece_str('B4', 'B5')
+sleep(1)
+game_state.move_piece_str('C7', 'C5')
+game_state.move_piece_str('B5', 'C6')
+
+# print(game_state.piece_at('C5')._enpassantable)
 
 print(game_state)
