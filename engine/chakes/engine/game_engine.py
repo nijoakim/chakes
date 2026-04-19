@@ -160,21 +160,38 @@ class Piece:
         self.last_move_time = monotonic()
 
     def _move_special(self, new_pos_x: int, new_pos_y: int) -> None:
-        if self.name == 'Pawn':
-            # Mark en passentable
-            if abs(self.pos_y - new_pos_y) == 2:
-                self._enpassantable = True # type: ignore
-            else:
-                self._enpassantable = False # type: ignore
+        other: Optional[Piece]
 
-            # Perform en passent
-            if self.pos_x != new_pos_x:
-                other: Optional[Piece] = self.game_state.board[new_pos_x][self.pos_y]
-                if  other is not None \
-                and getattr(other, '_enpassantable', False) \
-                and other.owner != self.owner \
-                and other.get_cooldown() > 0:
+        match self.name:
+            case 'Pawn':
+                # Mark en passentable
+                if abs(self.pos_y - new_pos_y) == 2:
+                    self._enpassantable = True # type: ignore
+                else:
+                    self._enpassantable = False # type: ignore
+
+                # Perform en passent
+                if self.pos_x != new_pos_x \
+                and self.game_state.board[new_pos_x][new_pos_y] is None:
                     self.game_state.board[new_pos_x][self.pos_y] = None
+
+                # TODO: Promote
+
+            case 'King':
+                # Castling
+                # TODO: King should be captured if castling square is captured before cooldown
+                if abs(new_pos_x - self.pos_x) == 2:
+                    diff_x: int = (new_pos_x - self.pos_x) // abs(new_pos_x - self.pos_x)
+                    cur_x:  int = self.pos_x + diff_x
+                    while game_state.is_pos_within_board(cur_x, self.pos_y):
+                        other = game_state.board[cur_x][self.pos_y]
+                        if other is not None:
+                            if other.name == "Rook":
+                                game_state.board[cur_x][self.pos_y] = None
+                                game_state.board[self.pos_x+diff_x][self.pos_y] = other
+                                other.pos_x = self.pos_x+diff_x
+                                return
+                        cur_x += diff_x
 
     def get_cooldown(self) -> float:
         cooldown: float = self.last_move_time - monotonic() + self.value
@@ -188,7 +205,7 @@ class Piece:
             move_list_temp: list[Tuple[int, int]] = []
             match: Optional[re.Match] = None
 
-            num_steps:        int
+            num_steps: int
 
             must_capture:     bool = False
             must_not_capture: bool = False
@@ -279,17 +296,38 @@ class Piece:
 
     def _valid_moves_special(self) -> list[Tuple[int, int]]:
         move_list: list[Tuple[int, int]] = []
+        other: Optional[Piece]
 
-        if self.name == 'Pawn':
-            # En passant
-            for x, y in (self.pos_x-1, self.pos_y), (self.pos_x+1, self.pos_y):
-                if self.game_state.is_pos_within_board(x, y):
-                    other: Optional[Piece] = game_state.board[x][y]
-                    if  other is not None \
-                    and getattr(other, '_enpassantable', False) \
-                    and other.owner != self.owner \
-                    and other.get_cooldown() > 0:
-                        move_list.append((x, y+self._forwards()))
+        match self.name:
+            case 'Pawn':
+                # En passant
+                for x, y in (self.pos_x-1, self.pos_y), (self.pos_x+1, self.pos_y):
+                    if self.game_state.is_pos_within_board(x, y):
+                        other = game_state.board[x][y]
+                        if other is not None:
+                            if getattr(other, '_enpassantable', False) \
+                            and other.owner != self.owner \
+                            and other.get_cooldown() > 0:
+                                move_list.append((x, y+self._forwards()))
+
+                # TODO: Promote
+
+            case 'King':
+                # Castling
+                for diff_x in (-1, 1):
+                    cur_x: int = self.pos_x + diff_x
+                    while game_state.is_pos_within_board(cur_x, self.pos_y):
+                        other = game_state.board[cur_x][self.pos_y]
+                        if other is not None:
+                            if other.name == 'Rook' \
+                            and other.owner == self.owner \
+                            and not self.has_moved \
+                            and not other.has_moved \
+                            and game_state.is_pos_within_board(self.pos_x-2*diff_x, self.pos_y) \
+                            and game_state.board[self.pos_x-2*diff_x][self.pos_y] is None:
+                                move_list.append((self.pos_x-2*diff_x, self.pos_y))
+                            break
+                        cur_x += diff_x
 
         return move_list
 
@@ -432,14 +470,25 @@ game_state = GameState.default()
 # game_state.move_piece_str('E1', 'E2')
 # print(pos_list_to_str(game_state.piece_at('E2').valid_moves()))
 
-# Test en passant
-game_state.move_piece_str('B2', 'B4')
-sleep(1)
-game_state.move_piece_str('B4', 'B5')
-sleep(1)
-game_state.move_piece_str('C7', 'C5')
-game_state.move_piece_str('B5', 'C6')
+# # Test en passant
+# game_state.move_piece_str('B2', 'B4')
+# sleep(1)
+# game_state.move_piece_str('B4', 'B5')
+# sleep(1)
+# game_state.move_piece_str('C7', 'C5')
+# game_state.move_piece_str('B5', 'C6')
 
-# print(game_state.piece_at('C5')._enpassantable)
+# Test castling
+game_state.move_piece_str('B1', 'A3')
+game_state.move_piece_str('B2', 'B3')
+game_state.move_piece_str('C1', 'B2')
+game_state.move_piece_str('E2', 'E3')
+game_state.move_piece_str('D1', 'F3')
+game_state.move_piece_str('F1', 'E2')
+game_state.move_piece_str('G1', 'H3')
+print(pos_list_to_str(game_state.piece_at('E1').valid_moves()))
+# game_state.move_piece_str('E1', 'C1')
+game_state.move_piece_str('E1', 'G1')
+
 
 print(game_state)
