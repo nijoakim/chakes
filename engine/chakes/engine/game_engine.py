@@ -54,12 +54,12 @@ class Player(Enum):
 
 # Format: name: (value, movement)
 piece_defs = {
-    'Pawn':   (1, 'o>1,io>2,cX>1'),
-    'Rook':   (5, '+n'),
+    'Pawn':   (1, 'o1>,io2>,c1X>'),
+    'Rook':   (5, 'n+'),
     'Knight': (3, '~1/2'),
-    'Bishop': (3, 'Xn'),
-    'Queen':  (9, '*n'),
-    'King':   (3, '+n'),
+    'Bishop': (3, 'nX'),
+    'Queen':  (9, 'n*'),
+    'King':   (3, '1*'),
 }
 
 
@@ -92,6 +92,20 @@ class Piece:
             color = '\033[1;34m'
 
         return color + abbreviation + '\033[0m'
+
+    def _forwards(self) -> int:
+        match self.owner:
+            case Player.WHITE:
+                return 1
+            case Player.BLACK:
+                return -1
+
+    def _is_capture_move(self, pos_x: int, pos_y: int) -> bool:
+        piece: Optional[Piece] = self.game_state.board[pos_x][pos_y]
+        if piece is None:
+            return False
+        else:
+            return piece.owner != self.owner
 
     def _valid_moves_in_direction(
         self,
@@ -147,20 +161,6 @@ class Piece:
         cooldown: float = self.last_move_time - monotonic() + self.value
         return max(cooldown, 0.0)
 
-    def _forwards(self) -> int:
-        match self.owner:
-            case Player.WHITE:
-                return 1
-            case Player.BLACK:
-                return -1
-
-    def _is_capture_move(self, pos_x: int, pos_y: int) -> bool:
-        piece: Optional[Piece] = self.game_state.board[pos_x][pos_y]
-        if piece is None:
-            return False
-        else:
-            return piece.owner != self.owner
-
     def valid_moves(self) -> list[Tuple[int, int]]:
         # TODO: Parse piece_movesets
 
@@ -168,9 +168,12 @@ class Piece:
         for pattern in self.moveset.split(','):
             move_list_temp: list[Tuple[int, int]] = []
             match: Optional[re.Match] = None
-            num_steps: int
-            must_capture: bool = False
+
+            num_steps:        int
+
+            must_capture:     bool = False
             must_not_capture: bool = False
+            hops:             bool = False
 
             # Parse condtions
             if pattern[0] == 'i': # Can only move if first move
@@ -185,39 +188,58 @@ class Piece:
                 pattern = pattern[1:]
 
             # Parse move type
-            if match := re.match(r'\+|X>|>', pattern):
+            if pattern[0] == '~':
+                hops = True
+                pattern = pattern[1:]
+
+            # Parse number of steps
+            if pattern[0] == 'n':
+                num_steps = -1
+                pattern = pattern[1:]
+            elif match := re.match(r'[0-9]+', pattern):
+                num_steps = int(pattern[:match.end()])
+                pattern = pattern[match.end():]
+
+            # Parse direction
+            if match := re.match(r'X>|>|\+|X|\*|/', pattern):
                 move_type: str = pattern[:match.end()]
                 pattern = pattern[match.end():]
 
-                # Parse number of steps
-                if pattern[0] == 'n':
-                    num_steps = -1
-                    pattern = pattern[1:]
-                elif match := re.match(r'[0-9]', pattern):
-                    num_steps = int(pattern[:match.end()])
-                    pattern = pattern[match.end():]
-
+                # Orthogonally forwards
                 if move_type == '>':
                     move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps)
 
+                # Diagonally forwards
                 if move_type == 'X>':
                     y: int = self._forwards()
                     for x in -1, 1:
                         move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
 
-                if move_type == '+': # Orthogonal
+                # Orthogonally
+                if move_type == '+':
                     for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
                         move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
-            elif pattern[0] == '~':
-                pattern = pattern[1:]
 
-            # Parse hippogonal move
-            if match := re.match(r'[0-9]+/[0-9]+', pattern):
-                a, b = tuple([int(x) for x in pattern[:match.end()].split('/')][:2])
-                for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
-                    for x, y in [(c, d), (d, c)]:
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, 1)
-                pattern = pattern[match.end():]
+                # Diagonally
+                if move_type == 'X':
+                    for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+
+                # Any direction
+                if move_type == '*':
+                    for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+
+                # Parse hippogonal move
+                if move_type == '/':
+                    if match := re.match(r'[0-9]+', pattern):
+                        a: int = num_steps
+                        b: int = int(pattern[:match.end()])
+                        pattern = pattern[:match.end()]
+                        for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
+                            for x, y in [(c, d), (d, c)]:
+                                move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, 1)
+                        pattern = pattern[match.end():]
 
             # Filter captures if 'c' was specified
             if must_capture:
@@ -227,6 +249,7 @@ class Piece:
             if must_not_capture:
                 move_list_temp = list(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), move_list_temp))
 
+            # Append temporary move list to main move list
             move_list += move_list_temp
 
         # Return unieque moves in move_list
@@ -353,5 +376,22 @@ game_state = GameState.default()
 # game_state.move_piece_str('B5', 'B6')
 # print(pos_list_to_str(game_state.piece_at('B6').valid_moves()))
 
+# # Test knight
+# print(pos_list_to_str(game_state.piece_at('B1').valid_moves()))
+
+# # Test bishop
+# game_state.move_piece_str('D2', 'D3')
+# game_state.move_piece_str('C1', 'E3')
+# print(pos_list_to_str(game_state.piece_at('E3').valid_moves()))
+
+# # Test queen
+# game_state.move_piece_str('E2', 'E3')
+# game_state.move_piece_str('D1', 'F3')
+# print(pos_list_to_str(game_state.piece_at('F3').valid_moves()))
+
+# # Test king
+# game_state.move_piece_str('E2', 'E4')
+# game_state.move_piece_str('E1', 'E2')
+# print(pos_list_to_str(game_state.piece_at('E2').valid_moves()))
 
 print(game_state)
