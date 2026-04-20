@@ -126,7 +126,7 @@ class Piece:
         if not self.game_state.is_pos_within_board(new_x, new_y):
             return []
 
-        new_piece = self.game_state.board[new_x][new_y]
+        new_piece: Optional[Piece] = self.game_state.board[new_x][new_y]
         if new_piece is not None:
             ret: list[Tuple[int, int]] = []
 
@@ -139,7 +139,10 @@ class Piece:
 
             return ret
         else:
-            return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1)
+            if num_steps > 1:
+                return self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1)
+            else:
+                return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1)
 
     def move(self, new_pos_x: int, new_pos_y: int) -> None:
         if (new_pos_x, new_pos_y) not in self.valid_moves():
@@ -176,9 +179,13 @@ class Piece:
                     self.game_state.board[new_pos_x][self.pos_y] = None
 
                 # Promote
-                if new_pos_x == 0 or new_pos_x == game_state.size_y-1:
+                if new_pos_y == 0 or new_pos_y == game_state.size_y-1:
                     self.name = 'Queen'
+
                     # TODO: Allow promotion to other pieces
+
+                    self.value   = piece_defs[self.name][0]
+                    self.moveset = piece_defs[self.name][1]
 
             case 'King':
                 # Castling
@@ -201,8 +208,6 @@ class Piece:
         return max(cooldown, 0.0)
 
     def valid_moves(self) -> list[Tuple[int, int]]:
-        # TODO: Parse piece_movesets
-
         move_list: list[Tuple[int, int]] = []
         for pattern in self.moveset.split(','):
             move_list_temp: list[Tuple[int, int]] = []
@@ -240,7 +245,7 @@ class Piece:
                 pattern = pattern[match.end():]
 
             # Parse direction
-            if match := re.match(r'X>|>|\+|X|\*|/', pattern):
+            if match := re.match(r'X>|X<|<>|>=|<=|>|<|=|\+|X|\*|/', pattern):
                 move_type: str = pattern[:match.end()]
                 pattern = pattern[match.end():]
 
@@ -248,9 +253,41 @@ class Piece:
                 if move_type == '>':
                     move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps)
 
+                # Orthogonally backwards
+                if move_type == '<':
+                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps)
+
+                # Orthogonally forwards and backwards
+                if move_type == '<>':
+                    for direction in (-1, 1):
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps)
+
+                # Orthogonally sideways
+                if move_type == '=':
+                    for direction in (-1, 1):
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps)
+
+                # Orthogonally forwards and sideways
+                if move_type == '>=':
+                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps)
+                    for direction in (-1, 1):
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps)
+
+                # Orthogonally backwards and sideways
+                if move_type == '<=':
+                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1)
+                    for direction in (-1, 1):
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps)
+
                 # Diagonally forwards
                 if move_type == 'X>':
-                    y: int = self._forwards()
+                    y = self._forwards()
+                    for x in -1, 1:
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+
+                # Diagonally backwards
+                if move_type == 'X<':
+                    y = -self._forwards()
                     for x in -1, 1:
                         move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
 
