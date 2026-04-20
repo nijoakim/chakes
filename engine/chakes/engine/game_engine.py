@@ -213,7 +213,8 @@ class Piece:
             move_list_temp: list[Tuple[int, int]] = []
             match: Optional[re.Match] = None
 
-            num_steps: int
+            num_steps_start: int
+            num_steps_end:   int
 
             must_capture:     bool = False
             must_not_capture: bool = False
@@ -238,10 +239,16 @@ class Piece:
 
             # Parse number of steps
             if pattern[0] == 'n':
-                num_steps = -1
+                num_steps_start = num_steps_end = -1
                 pattern = pattern[1:]
+            elif match := re.match(r'[0-9]+\-[0-9]+', pattern):
+                num_steps_start, num_steps_end = \
+                    tuple([int(num) for num in pattern[:match.end()].split('-')[:2]][:2])
+                if num_steps_start >= num_steps_end:
+                    raise AssertionError(f'For number of steps range in {self.name}, {num_steps_start} is larger than or equal to {num_steps_end}.')
+                pattern = pattern[match.end():]
             elif match := re.match(r'[0-9]+', pattern):
-                num_steps = int(pattern[:match.end()])
+                num_steps_start = num_steps_end = int(pattern[:match.end()])
                 pattern = pattern[match.end():]
 
             # Parse direction
@@ -249,73 +256,75 @@ class Piece:
                 move_type: str = pattern[:match.end()]
                 pattern = pattern[match.end():]
 
-                # Orthogonally forwards
-                if move_type == '>':
-                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps)
+                # For each number of steps
+                for num_steps in range(num_steps_start, num_steps_end+1):
+                    # Orthogonally forwards
+                    if move_type == '>':
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps)
 
-                # Orthogonally backwards
-                if move_type == '<':
-                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps)
+                    # Orthogonally backwards
+                    if move_type == '<':
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps)
 
-                # Orthogonally forwards and backwards
-                if move_type == '<>':
-                    for direction in (-1, 1):
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps)
+                    # Orthogonally forwards and backwards
+                    if move_type == '<>':
+                        for direction in (-1, 1):
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps)
 
-                # Orthogonally sideways
-                if move_type == '=':
-                    for direction in (-1, 1):
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps)
+                    # Orthogonally sideways
+                    if move_type == '=':
+                        for direction in (-1, 1):
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps)
 
-                # Orthogonally forwards and sideways
-                if move_type == '>=':
-                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps)
-                    for direction in (-1, 1):
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps)
+                    # Orthogonally forwards and sideways
+                    if move_type == '>=':
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps)
+                        for direction in (-1, 1):
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps)
 
-                # Orthogonally backwards and sideways
-                if move_type == '<=':
-                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1)
-                    for direction in (-1, 1):
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps)
+                    # Orthogonally backwards and sideways
+                    if move_type == '<=':
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1)
+                        for direction in (-1, 1):
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps)
 
-                # Diagonally forwards
-                if move_type == 'X>':
-                    y = self._forwards()
-                    for x in -1, 1:
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+                    # Diagonally forwards
+                    if move_type == 'X>':
+                        y = self._forwards()
+                        for x in -1, 1:
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
 
-                # Diagonally backwards
-                if move_type == 'X<':
-                    y = -self._forwards()
-                    for x in -1, 1:
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+                    # Diagonally backwards
+                    if move_type == 'X<':
+                        y = -self._forwards()
+                        for x in -1, 1:
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
 
-                # Orthogonally
-                if move_type == '+':
-                    for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+                    # Orthogonally
+                    if move_type == '+':
+                        for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
 
-                # Diagonally
-                if move_type == 'X':
-                    for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+                    # Diagonally
+                    if move_type == 'X':
+                        for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
 
-                # Any direction
-                if move_type == '*':
-                    for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
+                    # Any direction
+                    if move_type == '*':
+                        for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
 
-                # Hippogonally
-                if move_type == '/':
-                    if match := re.match(r'[0-9]+', pattern):
-                        a: int = num_steps
-                        b: int = int(pattern[:match.end()])
-                        pattern = pattern[:match.end()]
-                        for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
-                            for x, y in [(c, d), (d, c)]:
-                                move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, 1)
-                        pattern = pattern[match.end():]
+                    # Hippogonally
+                    if move_type == '/':
+                        if match := re.match(r'[0-9]+', pattern):
+                            a: int = num_steps
+                            b: int = int(pattern[:match.end()])
+                            pattern = pattern[:match.end()]
+                            for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
+                                for x, y in [(c, d), (d, c)]:
+                                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, 1)
+                            pattern = pattern[match.end():]
 
             # Filter captures if 'c' was specified
             if must_capture:
@@ -528,17 +537,16 @@ game_state = GameState.default()
 # # game_state.move_piece_str('E1', 'C1')
 # game_state.move_piece_str('E1', 'G1')
 
-# Test promotion
-game_state.move_piece_str('A2', 'A4')
-sleep(1)
-game_state.move_piece_str('A4', 'A5')
-sleep(1)
-game_state.move_piece_str('A5', 'A6')
-sleep(1)
-game_state.move_piece_str('A6', 'B7')
-sleep(1)
-game_state.move_piece_str('B7', 'A8')
-print(pos_list_to_str(game_state.piece_at('A8').valid_moves()))
-
+# # Test promotion
+# game_state.move_piece_str('A2', 'A4')
+# sleep(1)
+# game_state.move_piece_str('A4', 'A5')
+# sleep(1)
+# game_state.move_piece_str('A5', 'A6')
+# sleep(1)
+# game_state.move_piece_str('A6', 'B7')
+# sleep(1)
+# game_state.move_piece_str('B7', 'A8')
+# print(pos_list_to_str(game_state.piece_at('A8').valid_moves()))
 
 print(game_state)
