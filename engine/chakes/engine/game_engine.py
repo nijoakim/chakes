@@ -175,7 +175,10 @@ class Piece:
                 and self.game_state.board[new_pos_x][new_pos_y] is None:
                     self.game_state.board[new_pos_x][self.pos_y] = None
 
-                # TODO: Promote
+                # Promote
+                if new_pos_x == 0 or new_pos_x == game_state.size_y-1:
+                    self.name = 'Queen'
+                    # TODO: Allow promotion to other pieces
 
             case 'King':
                 # Castling
@@ -266,7 +269,7 @@ class Piece:
                     for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
                         move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps)
 
-                # Parse hippogonal move
+                # Hippogonally
                 if move_type == '/':
                     if match := re.match(r'[0-9]+', pattern):
                         a: int = num_steps
@@ -309,8 +312,6 @@ class Piece:
                             and other.owner != self.owner \
                             and other.get_cooldown() > 0:
                                 move_list.append((x, y+self._forwards()))
-
-                # TODO: Promote
 
             case 'King':
                 # Castling
@@ -478,17 +479,29 @@ game_state = GameState.default()
 # game_state.move_piece_str('C7', 'C5')
 # game_state.move_piece_str('B5', 'C6')
 
-# Test castling
-game_state.move_piece_str('B1', 'A3')
-game_state.move_piece_str('B2', 'B3')
-game_state.move_piece_str('C1', 'B2')
-game_state.move_piece_str('E2', 'E3')
-game_state.move_piece_str('D1', 'F3')
-game_state.move_piece_str('F1', 'E2')
-game_state.move_piece_str('G1', 'H3')
-print(pos_list_to_str(game_state.piece_at('E1').valid_moves()))
-# game_state.move_piece_str('E1', 'C1')
-game_state.move_piece_str('E1', 'G1')
+# # Test castling
+# game_state.move_piece_str('B1', 'A3')
+# game_state.move_piece_str('B2', 'B3')
+# game_state.move_piece_str('C1', 'B2')
+# game_state.move_piece_str('E2', 'E3')
+# game_state.move_piece_str('D1', 'F3')
+# game_state.move_piece_str('F1', 'E2')
+# game_state.move_piece_str('G1', 'H3')
+# print(pos_list_to_str(game_state.piece_at('E1').valid_moves()))
+# # game_state.move_piece_str('E1', 'C1')
+# game_state.move_piece_str('E1', 'G1')
+
+# Test promotion
+game_state.move_piece_str('A2', 'A4')
+sleep(1)
+game_state.move_piece_str('A4', 'A5')
+sleep(1)
+game_state.move_piece_str('A5', 'A6')
+sleep(1)
+game_state.move_piece_str('A6', 'B7')
+sleep(1)
+game_state.move_piece_str('B7', 'A8')
+print(pos_list_to_str(game_state.piece_at('A8').valid_moves()))
 
 
 print(game_state)
