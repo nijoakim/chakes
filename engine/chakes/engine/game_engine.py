@@ -383,6 +383,7 @@ class GameState:
     pieces: list[Piece] = []
 
     def __init__(self, size_x: int = 8, size_y: int = 8) -> None:
+        sly: int = 3
         self.size_x: int = size_x
         self.size_y: int = size_y
 
@@ -392,44 +393,21 @@ class GameState:
         ]
 
     @staticmethod
-    def default():
+    def default() -> GameState:
         state = GameState(8, 8)
 
-        state.add_piece('Pawn', Player.WHITE, 0, 1)
-        state.add_piece('Pawn', Player.WHITE, 1, 1)
-        state.add_piece('Pawn', Player.WHITE, 2, 1)
-        state.add_piece('Pawn', Player.WHITE, 3, 1)
-        state.add_piece('Pawn', Player.WHITE, 4, 1)
-        state.add_piece('Pawn', Player.WHITE, 5, 1)
-        state.add_piece('Pawn', Player.WHITE, 6, 1)
-        state.add_piece('Pawn', Player.WHITE, 7, 1)
+        state.add_piece_row('Pawn', Player.WHITE, '2')
 
-        state.add_piece('Pawn', Player.BLACK, 0, 6)
-        state.add_piece('Pawn', Player.BLACK, 1, 6)
-        state.add_piece('Pawn', Player.BLACK, 2, 6)
-        state.add_piece('Pawn', Player.BLACK, 3, 6)
-        state.add_piece('Pawn', Player.BLACK, 4, 6)
-        state.add_piece('Pawn', Player.BLACK, 5, 6)
-        state.add_piece('Pawn', Player.BLACK, 6, 6)
-        state.add_piece('Pawn', Player.BLACK, 7, 6)
+        state.add_piece_str('Rook',   Player.WHITE, 'A1')
+        state.add_piece_str('Knight', Player.WHITE, 'B1')
+        state.add_piece_str('Bishop', Player.WHITE, 'C1')
+        state.add_piece_str('Queen',  Player.WHITE, 'D1')
+        state.add_piece_str('King',   Player.WHITE, 'E1')
+        state.add_piece_str('Bishop', Player.WHITE, 'F1')
+        state.add_piece_str('Knight', Player.WHITE, 'G1')
+        state.add_piece_str('Rook',   Player.WHITE, 'H1')
 
-        state.add_piece('Rook', Player.WHITE, 0, 0)
-        state.add_piece('Knight', Player.WHITE, 1, 0)
-        state.add_piece('Bishop', Player.WHITE, 2, 0)
-        state.add_piece('Queen', Player.WHITE, 3, 0)
-        state.add_piece('King', Player.WHITE, 4, 0)
-        state.add_piece('Bishop', Player.WHITE, 5, 0)
-        state.add_piece('Knight', Player.WHITE, 6, 0)
-        state.add_piece('Rook', Player.WHITE, 7, 0)
-
-        state.add_piece('Rook', Player.BLACK, 0, 7)
-        state.add_piece('Knight', Player.BLACK, 1, 7)
-        state.add_piece('Bishop', Player.BLACK, 2, 7)
-        state.add_piece('Queen', Player.BLACK, 3, 7)
-        state.add_piece('King', Player.BLACK, 4, 7)
-        state.add_piece('Bishop', Player.BLACK, 5, 7)
-        state.add_piece('Knight', Player.BLACK, 6, 7)
-        state.add_piece('Rook', Player.BLACK, 7, 7)
+        state.symmetry()
 
         return state
 
@@ -441,6 +419,23 @@ class GameState:
         new_piece: Piece = Piece(name, owner, pos_x, pos_y, self)
         self.pieces.append(new_piece)
         self.board[pos_x][pos_y] = new_piece
+
+    def add_piece_str(self, name: str, owner: Player, pos: str) -> None:
+        x, y = str_to_pos(pos)
+        self.add_piece(name, owner, x, y)
+
+    def add_piece_row(self, name: str, owner: Player, row: int|str) -> None:
+        y: int = row if isinstance(row, int) else int(row)-1
+
+        for x in range(self.size_x):
+            self.add_piece(name, owner, x, y)
+
+    def symmetry(self) -> None:
+        for y in range(self.size_y // 2):
+            for x in range(self.size_x):
+                piece: Optional[Piece] = self.board[x][y]
+                if piece is not None:
+                    self.add_piece(piece.name, piece.owner.other(), x, self.size_y-1-y)
 
     def move_piece(self, pos_x1: int, pos_y1: int, pos_x2: int, pos_y2: int) -> None:
         piece: Optional[Piece] = self.board[pos_x1][pos_y1]
@@ -478,5 +473,4 @@ class GameState:
         return ret
 
 state = GameState.default()
-print(pos_list_to_str(state.piece_at('A1').valid_moves()))
 print(state)
