@@ -179,7 +179,7 @@ class Piece:
                     self.game_state.board[new_pos_x][self.pos_y] = None
 
                 # Promote
-                if new_pos_y == 0 or new_pos_y == game_state.size_y-1:
+                if new_pos_y == 0 or new_pos_y == self.game_state.size_y-1:
                     self.name = 'Queen'
 
                     # TODO: Allow promotion to other pieces
@@ -193,12 +193,12 @@ class Piece:
                 if abs(new_pos_x - self.pos_x) == 2:
                     diff_x: int = (new_pos_x - self.pos_x) // abs(new_pos_x - self.pos_x)
                     cur_x:  int = self.pos_x + diff_x
-                    while game_state.is_pos_within_board(cur_x, self.pos_y):
-                        other = game_state.board[cur_x][self.pos_y]
+                    while self.game_state.is_pos_within_board(cur_x, self.pos_y):
+                        other = self.game_state.board[cur_x][self.pos_y]
                         if other is not None:
                             if other.name == "Rook":
-                                game_state.board[cur_x][self.pos_y] = None
-                                game_state.board[self.pos_x+diff_x][self.pos_y] = other
+                                self.game_state.board[cur_x][self.pos_y] = None
+                                self.game_state.board[self.pos_x+diff_x][self.pos_y] = other
                                 other.pos_x = self.pos_x+diff_x
                                 return
                         cur_x += diff_x
@@ -352,7 +352,7 @@ class Piece:
                 # En passant
                 for x, y in (self.pos_x-1, self.pos_y), (self.pos_x+1, self.pos_y):
                     if self.game_state.is_pos_within_board(x, y):
-                        other = game_state.board[x][y]
+                        other = self.game_state.board[x][y]
                         if other is not None:
                             if getattr(other, '_enpassantable', False) \
                             and other.owner != self.owner \
@@ -363,15 +363,15 @@ class Piece:
                 # Castling
                 for diff_x in (-1, 1):
                     cur_x: int = self.pos_x + diff_x
-                    while game_state.is_pos_within_board(cur_x, self.pos_y):
-                        other = game_state.board[cur_x][self.pos_y]
+                    while self.game_state.is_pos_within_board(cur_x, self.pos_y):
+                        other = self.game_state.board[cur_x][self.pos_y]
                         if other is not None:
                             if other.name == 'Rook' \
                             and other.owner == self.owner \
                             and not self.has_moved \
                             and not other.has_moved \
-                            and game_state.is_pos_within_board(self.pos_x-2*diff_x, self.pos_y) \
-                            and game_state.board[self.pos_x-2*diff_x][self.pos_y] is None:
+                            and self.game_state.is_pos_within_board(self.pos_x-2*diff_x, self.pos_y) \
+                            and self.game_state.board[self.pos_x-2*diff_x][self.pos_y] is None:
                                 move_list.append((self.pos_x-2*diff_x, self.pos_y))
                             break
                         cur_x += diff_x
@@ -474,79 +474,5 @@ class GameState:
         ret = ret[:-1]
         ret += '\n  '
         ret += ' '.join([f'\033[33m{pos_to_str(x, 0)[0]}' for x in range(self.size_x)])
+        ret += '\033[0m'
         return ret
-
-
-game_state = GameState.default()
-
-# game_state.move_piece_str('B1', 'C3')
-# print(pos_list_to_str(game_state.piece_at('A1').valid_moves()))
-
-# print(pos_list_to_str(game_state.piece_at('A2').valid_moves()))
-
-# # Test Rook
-# game_state.move_piece_str('A2', 'A4')
-# game_state.move_piece_str('A1', 'A3')
-# sleep(5)
-# game_state.move_piece_str('A3', 'B3')
-# print(pos_list_to_str(game_state.piece_at('B3').valid_moves()))
-
-# # Test pawn
-# game_state.move_piece_str('B2', 'B4')
-# sleep(1)
-# game_state.move_piece_str('B4', 'B5')
-# sleep(1)
-# game_state.move_piece_str('B5', 'B6')
-# print(pos_list_to_str(game_state.piece_at('B6').valid_moves()))
-
-# # Test knight
-# print(pos_list_to_str(game_state.piece_at('B1').valid_moves()))
-
-# # Test bishop
-# game_state.move_piece_str('D2', 'D3')
-# game_state.move_piece_str('C1', 'E3')
-# print(pos_list_to_str(game_state.piece_at('E3').valid_moves()))
-
-# # Test queen
-# game_state.move_piece_str('E2', 'E3')
-# game_state.move_piece_str('D1', 'F3')
-# print(pos_list_to_str(game_state.piece_at('F3').valid_moves()))
-
-# # Test king
-# game_state.move_piece_str('E2', 'E4')
-# game_state.move_piece_str('E1', 'E2')
-# print(pos_list_to_str(game_state.piece_at('E2').valid_moves()))
-
-# # Test en passant
-# game_state.move_piece_str('B2', 'B4')
-# sleep(1)
-# game_state.move_piece_str('B4', 'B5')
-# sleep(1)
-# game_state.move_piece_str('C7', 'C5')
-# game_state.move_piece_str('B5', 'C6')
-
-# # Test castling
-# game_state.move_piece_str('B1', 'A3')
-# game_state.move_piece_str('B2', 'B3')
-# game_state.move_piece_str('C1', 'B2')
-# game_state.move_piece_str('E2', 'E3')
-# game_state.move_piece_str('D1', 'F3')
-# game_state.move_piece_str('F1', 'E2')
-# game_state.move_piece_str('G1', 'H3')
-# print(pos_list_to_str(game_state.piece_at('E1').valid_moves()))
-# # game_state.move_piece_str('E1', 'C1')
-# game_state.move_piece_str('E1', 'G1')
-
-# # Test promotion
-# game_state.move_piece_str('A2', 'A4')
-# sleep(1)
-# game_state.move_piece_str('A4', 'A5')
-# sleep(1)
-# game_state.move_piece_str('A5', 'A6')
-# sleep(1)
-# game_state.move_piece_str('A6', 'B7')
-# sleep(1)
-# game_state.move_piece_str('B7', 'A8')
-# print(pos_list_to_str(game_state.piece_at('A8').valid_moves()))
-
-print(game_state)
