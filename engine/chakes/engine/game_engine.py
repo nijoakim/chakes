@@ -18,8 +18,9 @@
 
 from __future__ import annotations
 
-from enum import auto, Enum
 import re
+import random
+from enum import auto, Enum
 from time import monotonic, sleep
 from typing import Optional, Tuple
 
@@ -426,6 +427,40 @@ class GameState:
 
         return state
 
+    @staticmethod
+    def chess960() -> GameState:
+        state = GameState(8, 8)
+
+        state.add_piece_row('Pawn', Player.WHITE, '2')
+
+        pieces: list[str] = \
+            2*['Rook'] + \
+            2*["Knight"] + \
+            2*["Bishop"] + \
+            ["Queen"] + \
+            ["King"]
+
+        # Randomize until order is valid
+        while True:
+            order: list[str] = ['Rook', 'King', 'Rook']
+            random.shuffle(pieces)
+            for piece in pieces:
+                if piece == order[0]:
+                    del order[0]
+                if len(order) == 0:
+                    break
+
+            if len(order) == 0:
+                break
+
+        # Add first row
+        for i, piece in enumerate(pieces):
+            state.add_piece(piece, Player.WHITE, i, 0)
+
+        state.symmetry()
+
+        return state
+
     def piece_at(self, pos: str) -> Optional[Piece]:
         x, y = str_to_pos(pos)
         return self.board[x][y]
@@ -487,5 +522,5 @@ class GameState:
         ret += '\033[0m'
         return ret
 
-# state = GameState.default()
-# print(state)
+state = GameState.chess960()
+print(state)
