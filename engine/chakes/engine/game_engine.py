@@ -64,7 +64,8 @@ piece_defs = {
     'King':   (3, '1*'),
 
     # Fairy
-    'Nightrider': (3, 'n(1/2)'),
+    'Nightrider': (4, 'n(1/2)'),
+    'Anti-King':  (3, 'o1*,f1*'),
 }
 
 
@@ -230,12 +231,20 @@ class Piece:
                 if self.has_moved:
                     continue
                 pattern = pattern[1:]
-            if pattern[0] == 'o': # Can only move if not capturing
+            if pattern[0] == 'o': # Move can not capture
                 must_not_capture = True
                 pattern = pattern[1:]
-            if pattern[0] == 'c': # Can only move if capturing
+            if pattern[0] == 'c': # Move must capture enemy piece
                 must_capture = True
                 pattern = pattern[1:]
+            if pattern[0] == 'f': # Move must capture friendly piece
+                self.owner = self.owner.other()
+                moveset: str = self.moveset
+                self.moveset = pattern[1:]
+                move_list += self.valid_moves()
+                self.moveset = moveset
+                self.owner = self.owner.other()
+                continue
 
             # Parse move type
             if pattern[0] == '~':
@@ -522,5 +531,5 @@ class GameState:
         ret += '\033[0m'
         return ret
 
-state = GameState.chess960()
-print(state)
+# state = GameState.chess960()
+# print(state)
