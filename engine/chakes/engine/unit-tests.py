@@ -120,6 +120,14 @@ class TestPieces(ut.TestCase):
             'Queen',
         )
 
+    def test_nightrider(self):
+        game_state = GameState.default()
+        game_state.add_piece_str('Nightrider', Player.WHITE, 'B1')
+        self.assertEqual(
+            set(pos_list_to_str(game_state.piece_at('B1').valid_moves())),
+            {'A3', 'C3', 'D5', 'E7'}
+        )
+
 
 if __name__ == '__main__':
     ut.main()

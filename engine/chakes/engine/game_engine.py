@@ -54,12 +54,16 @@ class Player(Enum):
 
 # Format: name: (value, movement)
 piece_defs = {
+    # Orthodox
     'Pawn':   (1, 'o1>,io2>,c1X>'),
     'Rook':   (5, 'n+'),
-    'Knight': (3, '~1/2'),
+    'Knight': (3, '1/2'),
     'Bishop': (3, 'nX'),
     'Queen':  (9, 'n*'),
     'King':   (3, '1*'),
+
+    # Fairy
+    'Nightrider': (3, 'n(1/2)'),
 }
 
 
@@ -218,7 +222,7 @@ class Piece:
 
             must_capture:     bool = False
             must_not_capture: bool = False
-            leaps:             bool = False
+            leaps:            bool = False
 
             # Parse condtions
             if pattern[0] == 'i': # Can only move if first move
@@ -238,21 +242,28 @@ class Piece:
                 pattern = pattern[1:]
 
             # Parse number of steps
-            if pattern[0] == 'n':
-                num_steps_start = num_steps_end = -1
-                pattern = pattern[1:]
-            elif match := re.match(r'[0-9]+\-[0-9]+', pattern):
-                num_steps_start, num_steps_end = \
-                    tuple([int(num) for num in pattern[:match.end()].split('-')[:2]][:2])
-                if num_steps_start >= num_steps_end:
-                    raise AssertionError(f'For number of steps range in {self.name}, {num_steps_start} is larger than or equal to {num_steps_end}.')
-                pattern = pattern[match.end():]
-            elif match := re.match(r'[0-9]+', pattern):
-                num_steps_start = num_steps_end = int(pattern[:match.end()])
-                pattern = pattern[match.end():]
+            if not re.match(r'\(?[0-9]+/', pattern):
+                if pattern[0] == 'n':
+                    num_steps_start = num_steps_end = -1
+                    pattern = pattern[1:]
+                elif match := re.match(r'[0-9]+\-[0-9]+', pattern):
+                    num_steps_start, num_steps_end = \
+                        tuple([int(num) for num in pattern[:match.end()].split('-')[:2]][:2])
+                    if num_steps_start >= num_steps_end:
+                        raise AssertionError(f'For number of steps range in {self.name}, {num_steps_start} is larger than or equal to {num_steps_end}.')
+                    pattern = pattern[match.end():]
+                elif match := re.match(r'[0-9]+', pattern):
+                    num_steps_start = num_steps_end = int(pattern[:match.end()])
+                    pattern = pattern[match.end():]
+            else:
+                num_steps_start = num_steps_end = 1
+
+            # Parse parentheses
+            if match := re.match(r'\(.*\)', pattern):
+                pattern = pattern[1:match.end()-1] + pattern[match.end():]
 
             # Parse direction
-            if match := re.match(r'X>|X<|<>|>=|<=|>|<|=|\+|X|\*|/', pattern):
+            if match := re.match(r'X>|X<|<>|>=|<=|>|<|=|\+|X|\*|[0-9]+/[0-9]+', pattern):
                 move_type: str = pattern[:match.end()]
                 pattern = pattern[match.end():]
 
@@ -315,16 +326,20 @@ class Piece:
                         for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
                             move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
 
+                    # Hippogonal moves
+                    if '/' in move_type:
+                        hippogonal_pattern: str = move_type
+                        move_type = '/'
+
+                        a: int
+                        b: int
+                        a, b = tuple([int(num_str) for num_str in hippogonal_pattern.split(move_type)][:2])
+
                     # Hippogonally
                     if move_type == '/':
-                        if match := re.match(r'[0-9]+', pattern):
-                            a: int = num_steps
-                            b: int = int(pattern[:match.end()])
-                            pattern = pattern[:match.end()]
-                            for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
-                                for x, y in [(c, d), (d, c)]:
-                                    move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, 1, leaps)
-                            pattern = pattern[match.end():]
+                        for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
+                            for x, y in [(c, d), (d, c)]:
+                                move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
 
             # Filter captures if 'c' was specified
             if must_capture:
@@ -472,5 +487,5 @@ class GameState:
         ret += '\033[0m'
         return ret
 
-state = GameState.default()
-print(state)
+# state = GameState.default()
+# print(state)
