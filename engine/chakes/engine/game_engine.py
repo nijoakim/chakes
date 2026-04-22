@@ -490,11 +490,14 @@ class GameState:
             self.add_piece(name, owner, x, y)
 
     def symmetry(self) -> None:
-        for y in range(self.size_y // 2):
-            for x in range(self.size_x):
-                piece: Optional[Piece] = self.board[x][y]
-                if piece is not None:
-                    self.add_piece(piece.name, piece.owner.other(), x, self.size_y-1-y)
+        for piece in [piece for pieces in self.board for piece in pieces]:
+            if piece is not None:
+                x: int = piece.pos_x
+                y: int = self.size_y-1 - piece.pos_y
+                other_piece: Optional[Piece] = self.board[x][y]
+                if other_piece is not None:
+                    raise RuntimeError(f'Impossible to make symmetry due to {piece.name} at {pos_to_str(piece.pos_x, piece.pos_y)} and {other_piece.name} at {pos_to_str(x, y)}.')
+                self.add_piece(piece.name, piece.owner.other(), x, y)
 
     def move_piece(self, pos_x1: int, pos_y1: int, pos_x2: int, pos_y2: int) -> None:
         piece: Optional[Piece] = self.board[pos_x1][pos_y1]
