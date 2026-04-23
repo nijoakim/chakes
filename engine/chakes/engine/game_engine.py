@@ -560,16 +560,32 @@ class GameState:
             x < self.size_x and \
             y < self.size_y
 
-    def attacked_squares(self, player: Player) -> set[tuple[int, int]]:
+    def attacked_squares(self, player: Player, require_cooldown = False) -> set[tuple[int, int]]:
         squares: set[tuple[int, int]] = set()
 
         for pieces in self.board:
             for piece in pieces:
                 if piece is not None:
                     if piece.owner == player.other():
-                        squares |= piece.legal_moves(check_attack=True)
+                        if not require_cooldown \
+                        or piece.get_cooldown() == 0.0:
+                            squares |= piece.legal_moves(check_attack = True)
 
         return squares
+
+    def winner(self) -> Optional[Player]:
+        for pieces in self.board:
+            for piece in pieces:
+                if piece is not None:
+                    if piece.name == 'King':
+                        if piece.legal_moves() == set() \
+                        and (piece.pos_x, piece.pos_y) in self.attacked_squares(piece.owner, require_cooldown = True):
+                            return piece.owner.other()
+
+                    # TODO: Anti-King
+
+        return None
+
 
     def __str__(self) -> str:
         ret: str = ''

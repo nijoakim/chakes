@@ -115,11 +115,22 @@ class TestPieces(ut.TestCase):
             {'C1', 'D1', 'F1', 'G1'}
 
         )
-
         game_state.move_piece_str('E1', 'C1')
         self.assertEqual(
             game_state.piece_at('D1').name,
             'Rook',
+        )
+
+    def test_check_mate(self):
+        game_state = GameState.default()
+        game_state.move_piece_str('F2', 'F3')
+        game_state.move_piece_str('G2', 'G4')
+        game_state.move_piece_str('E7', 'E6')
+        self.assertIsNone(game_state.winner())
+        game_state.move_piece_str('D8', 'H4')
+        self.assertEqual(
+            game_state.winner(),
+            Player.BLACK,
         )
 
     def test_nightrider(self):
