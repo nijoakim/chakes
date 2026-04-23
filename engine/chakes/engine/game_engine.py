@@ -64,8 +64,9 @@ piece_defs = {
     'King':   (3, '1*'),
 
     # Fairy
-    'Nightrider': (4, 'n(1/2)'),
-    'Anti-King':  (3, 'o1*,f1*'),
+    'Nightrider':  (4, 'n(1/2)'),
+    'Anti-King':   (3, 'o1*,f1*'),
+    'Grasshopper': (5, '^n*'),
 }
 
 
@@ -121,6 +122,7 @@ class Piece:
         diff_y:    int,
         num_steps: int,
         leaps:     bool,
+        hops:      bool,
         captures:  bool = True,
     ) -> list[Tuple[int, int]]:
         if num_steps == 0:
@@ -133,6 +135,13 @@ class Piece:
             return []
 
         new_piece: Optional[Piece] = self.game_state.board[new_x][new_y]
+
+        if hops:
+            if new_piece is not None:
+                return self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, 1, leaps, False)
+            else:
+                return self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, True)
+
         if new_piece is not None:
             ret: list[Tuple[int, int]] = []
 
@@ -141,14 +150,15 @@ class Piece:
                     ret += [(new_x, new_y)]
 
             if leaps or not captures:
-                ret += self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps)
+                ret += self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
             return ret
+
         else:
             if num_steps > 1:
-                return self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps)
+                return self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
             else:
-                return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps)
+                return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
     def move(self, new_pos_x: int, new_pos_y: int) -> None:
         if (new_pos_x, new_pos_y) not in self.valid_moves():
@@ -229,6 +239,7 @@ class Piece:
             must_capture:     bool = False
             must_not_capture: bool = False
             leaps:            bool = False
+            hops:             bool = False
 
             # Parse condtions
             if pattern[0] == 'i': # Can only move if first move
@@ -250,6 +261,9 @@ class Piece:
             # Parse move type
             if pattern[0] == '~':
                 leaps = True
+                pattern = pattern[1:]
+            if pattern[0] == '^':
+                hops = True
                 pattern = pattern[1:]
 
             # Parse number of steps
@@ -282,60 +296,60 @@ class Piece:
                 for num_steps in range(num_steps_start, num_steps_end+1):
                     # Orthogonally forwards
                     if move_type == '>':
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps)
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
 
                     # Orthogonally backwards
                     if move_type == '<':
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps, leaps)
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps, leaps, hops)
 
                     # Orthogonally forwards and backwards
                     if move_type == '<>':
                         for direction in (-1, 1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps, leaps)
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps, leaps, hops)
 
                     # Orthogonally sideways
                     if move_type == '=':
                         for direction in (-1, 1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps)
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
 
                     # Orthogonally forwards and sideways
                     if move_type == '>=':
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps)
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
                         for direction in (-1, 1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps)
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
 
                     # Orthogonally backwards and sideways
                     if move_type == '<=':
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1, leaps)
+                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1, leaps, hops)
                         for direction in (-1, 1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps, leaps)
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps, leaps, hops)
 
                     # Diagonally forwards
                     if move_type == 'X>':
                         y = self._forwards()
                         for x in -1, 1:
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Diagonally backwards
                     if move_type == 'X<':
                         y = -self._forwards()
                         for x in -1, 1:
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Orthogonally
                     if move_type == '+':
                         for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Diagonally
                     if move_type == 'X':
                         for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Any direction
                     if move_type == '*':
                         for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
+                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Hippogonally
                     if '/' in move_type:
@@ -344,7 +358,7 @@ class Piece:
                         a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
                         for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
                             for x, y in [(c, d), (d, c)]:
-                                move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
+                                move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
             # Filter captures if 'c' was specified
             if must_capture:

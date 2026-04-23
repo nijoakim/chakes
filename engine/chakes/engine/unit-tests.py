@@ -138,6 +138,14 @@ class TestPieces(ut.TestCase):
             {'D6', 'F6', 'D5', 'E5', 'F5'}
         )
 
+    def test_grasshopper(self):
+        game_state = GameState.default()
+        game_state.add_piece_str('Grasshopper', Player.WHITE, 'A5')
+        game_state.move_piece_str('E7', 'E5')
+        self.assertEqual(
+            set(pos_list_to_str(game_state.piece_at('A5').valid_moves())),
+            {'A8', 'D8', 'F5'},
+        )
 
 
 if __name__ == '__main__':
