@@ -124,15 +124,15 @@ class Piece:
         leaps:     bool,
         hops:      bool,
         captures:  bool = True,
-    ) -> list[Tuple[int, int]]:
+    ) -> set[Tuple[int, int]]:
         if num_steps == 0:
-            return []
+            return set()
 
         new_x: int = start_x + diff_x
         new_y: int = start_y + diff_y
 
         if not self.game_state.is_pos_within_board(new_x, new_y):
-            return []
+            return set()
 
         new_piece: Optional[Piece] = self.game_state.board[new_x][new_y]
 
@@ -147,18 +147,18 @@ class Piece:
 
             if captures:
                 if new_piece.owner != self.owner:
-                    ret += [(new_x, new_y)]
+                    ret += {(new_x, new_y)}
 
             if leaps or not captures:
                 ret += self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
-            return ret
+            return set(ret)
 
         else:
             if num_steps > 1:
                 return self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
             else:
-                return [(new_x, new_y)] + self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
+                return {(new_x, new_y)}.union(self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops))
 
     def move(self, new_pos_x: int, new_pos_y: int) -> None:
         if (new_pos_x, new_pos_y) not in self.valid_moves():
@@ -223,7 +223,7 @@ class Piece:
         cooldown: float = self.last_move_time - monotonic() + self.value
         return max(cooldown, 0.0)
 
-    def valid_moves(self, moveset: Optional['str'] = None) -> list[Tuple[int, int]]:
+    def valid_moves(self, moveset: Optional['str'] = None) -> set[Tuple[int, int]]:
         if moveset is None:
             moveset = self.moveset
 
@@ -375,7 +375,7 @@ class Piece:
         move_list += self._valid_moves_special()
 
         # Return unique moves in move_list
-        return list(set(move_list))
+        return set(move_list)
 
     def _valid_moves_special(self) -> list[Tuple[int, int]]:
         move_list: list[Tuple[int, int]] = []
