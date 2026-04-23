@@ -58,10 +58,10 @@ class TestPieces(ut.TestCase):
         game_state.move_piece_str('A4', 'A5')
         game_state.move_piece_str('A5', 'A6')
         game_state.move_piece_str('A6', 'B7')
-        game_state.move_piece_str('B7', 'A8')
+        game_state.move_piece_str('B7', 'A8', info = 'Knight')
         self.assertEqual(
             game_state.piece_at('A8').name,
-            'Queen',
+            'Knight',
         )
 
     def test_knight(self):

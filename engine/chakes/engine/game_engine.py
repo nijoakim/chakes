@@ -160,14 +160,14 @@ class Piece:
             else:
                 return {(new_x, new_y)} | self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
-    def move(self, new_pos_x: int, new_pos_y: int) -> None:
+    def move(self, new_pos_x: int, new_pos_y: int, info: str = '') -> None:
         if (new_pos_x, new_pos_y) not in self.legal_moves():
             raise ValueError(f'{self.name} can not move from {pos_to_str(self.pos_x, self.pos_y)} to {pos_to_str(new_pos_x, new_pos_y)}.')
 
         if (cooldown := self.get_cooldown()) != 0.0:
             raise ValueError(f'Cooldown for {self.name} at {pos_to_str(self.pos_x, self.pos_y)} is {cooldown}')
 
-        self._move_special(new_pos_x, new_pos_y)
+        self._move_special(new_pos_x, new_pos_y, info = info)
 
         self.game_state.board[new_pos_x][new_pos_y]   = self
         self.game_state.board[self.pos_x][self.pos_y] = None
@@ -178,7 +178,7 @@ class Piece:
         self.has_moved      = True
         self.last_move_time = monotonic()
 
-    def _move_special(self, new_pos_x: int, new_pos_y: int) -> None:
+    def _move_special(self, new_pos_x: int, new_pos_y: int, info: str = '') -> None:
         other: Optional[Piece]
 
         match self.name:
@@ -196,9 +196,10 @@ class Piece:
 
                 # Promote
                 if new_pos_y == 0 or new_pos_y == self.game_state.size_y-1:
-                    self.name = 'Queen'
+                    if info == '':
+                        info = 'Queen'
 
-                    # TODO: Allow promotion to other pieces
+                    self.name = info
 
                     self.value   = piece_defs[self.name][0]
                     self.moveset = piece_defs[self.name][1]
@@ -537,18 +538,18 @@ class GameState:
                     raise RuntimeError(f'Impossible to make symmetry due to {piece.name} at {pos_to_str(piece.pos_x, piece.pos_y)} and {new_piece.name} at {pos_to_str(x, y)}.')
                 self.add_piece(piece.name, piece.owner.other(), x, y)
 
-    def move_piece(self, pos_x1: int, pos_y1: int, pos_x2: int, pos_y2: int) -> None:
+    def move_piece(self, pos_x1: int, pos_y1: int, pos_x2: int, pos_y2: int, info: str = '') -> None:
         piece: Optional[Piece] = self.board[pos_x1][pos_y1]
 
         if piece is None:
             raise ValueError(f'There is no piece at {pos_to_str(pos_x1, pos_y1)}.')
         else:
-            piece.move(pos_x2, pos_y2)
+            piece.move(pos_x2, pos_y2, info = info)
 
-    def move_piece_str(self, pos1: str, pos2: str) -> None:
+    def move_piece_str(self, pos1: str, pos2: str, info: str = '') -> None:
         x1, y1 = str_to_pos(pos1)
         x2, y2 = str_to_pos(pos2)
-        self.move_piece(x1, y1, x2, y2)
+        self.move_piece(x1, y1, x2, y2, info = info)
 
     def is_pos_within_board(self, x: int, y: int):
         return \
