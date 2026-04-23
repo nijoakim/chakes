@@ -43,6 +43,27 @@ class TestPieces(ut.TestCase):
             {'A7', 'C7'},
         )
 
+    def test_en_passent(self):
+        game_state = GameState.default()
+        game_state.move_piece_str('B2', 'B4')
+        game_state.move_piece_str('B4', 'B5')
+        game_state.move_piece_str('C7', 'C5')
+        game_state.piece_at('C5')._enable_cooldown = True
+        game_state.move_piece_str('B5', 'C6')
+        self.assertIsNone(game_state.piece_at('C5'))
+
+    def test_promotion(self):
+        game_state = GameState.default()
+        game_state.move_piece_str('A2', 'A4')
+        game_state.move_piece_str('A4', 'A5')
+        game_state.move_piece_str('A5', 'A6')
+        game_state.move_piece_str('A6', 'B7')
+        game_state.move_piece_str('B7', 'A8')
+        self.assertEqual(
+            game_state.piece_at('A8').name,
+            'Queen',
+        )
+
     def test_knight(self):
         game_state = GameState.default()
         game_state.move_piece_str('B1', 'C3')
@@ -72,20 +93,13 @@ class TestPieces(ut.TestCase):
     def test_king(self):
         game_state = GameState.default()
         game_state.move_piece_str('E2', 'E4')
+        game_state.move_piece_str('D7', 'D5')
+        game_state.move_piece_str('D5', 'D4')
         game_state.move_piece_str('E1', 'E2')
         self.assertEqual(
             set(pos_list_to_str(game_state.piece_at('E2').legal_moves())),
-            {'E1', 'D3', 'E3', 'F3'},
+            {'E1', 'D3', 'F3'},
         )
-
-    def test_en_passent(self):
-        game_state = GameState.default()
-        game_state.move_piece_str('B2', 'B4')
-        game_state.move_piece_str('B4', 'B5')
-        game_state.move_piece_str('C7', 'C5')
-        game_state.piece_at('C5')._enable_cooldown = True
-        game_state.move_piece_str('B5', 'C6')
-        self.assertIsNone(game_state.piece_at('C5'))
 
     def test_castling(self):
         game_state = GameState.default()
@@ -106,18 +120,6 @@ class TestPieces(ut.TestCase):
         self.assertEqual(
             game_state.piece_at('D1').name,
             'Rook',
-        )
-
-    def test_promotion(self):
-        game_state = GameState.default()
-        game_state.move_piece_str('A2', 'A4')
-        game_state.move_piece_str('A4', 'A5')
-        game_state.move_piece_str('A5', 'A6')
-        game_state.move_piece_str('A6', 'B7')
-        game_state.move_piece_str('B7', 'A8')
-        self.assertEqual(
-            game_state.piece_at('A8').name,
-            'Queen',
         )
 
     def test_nightrider(self):

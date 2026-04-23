@@ -61,7 +61,7 @@ piece_defs = {
     'Knight': (3, '1/2'),
     'Bishop': (3, 'nX'),
     'Queen':  (9, 'n*'),
-    'King':   (3, '1*'),
+    'King':   (3, 's1*'),
 
     # Fairy
     'Nightrider':  (4, 'n(1/2)'),
@@ -141,6 +141,7 @@ class Piece:
             else:
                 return self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, True)
 
+        # If square occupied
         if new_piece is not None:
             ret: list[Tuple[int, int]] = []
 
@@ -152,6 +153,7 @@ class Piece:
 
             return set(ret)
 
+        # If square unoccupied
         else:
             if num_steps > 1:
                 return self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
@@ -221,7 +223,11 @@ class Piece:
         cooldown: float = self.last_move_time - monotonic() + self.value
         return max(cooldown, 0.0)
 
-    def legal_moves(self, moveset: Optional['str'] = None) -> set[Tuple[int, int]]:
+    def legal_moves(
+            self,
+            moveset:      Optional['str'] = None,
+            check_attack: bool            = False,
+        ) -> set[Tuple[int, int]]:
         if moveset is None:
             moveset = self.moveset
 
@@ -238,6 +244,7 @@ class Piece:
             must_not_capture: bool = False
             leaps:            bool = False
             hops:             bool = False
+            safe:             bool = False
 
             # Parse condtions
             if pattern[0] == 'i': # Can only move if first move
@@ -245,16 +252,23 @@ class Piece:
                     continue
                 pattern = pattern[1:]
             if pattern[0] == 'o': # Move can not capture
+                if check_attack:
+                    continue
                 must_not_capture = True
                 pattern = pattern[1:]
             if pattern[0] == 'c': # Move must capture enemy piece
-                must_capture = True
+                if not check_attack:
+                    must_capture = True
                 pattern = pattern[1:]
             if pattern[0] == 'f': # Move must capture friendly piece
                 self.owner = self.owner.other()
-                move_list += self.legal_moves(pattern[1:])
+                move_list += self.legal_moves(moveset = pattern[1:])
                 self.owner = self.owner.other()
                 continue
+            if pattern[0] == 's': # May not move to attacked square
+                if not check_attack:
+                    safe = True
+                pattern = pattern[1:]
 
             # Parse move type
             if pattern[0] == '~':
@@ -362,9 +376,14 @@ class Piece:
             if must_capture:
                 move_list_temp = list(filter(lambda pos: self._is_capture_move(pos[0], pos[1]), move_list_temp))
 
-            # Filter non-captures if 'i' was specified
+            # Filter non-captures if 'o' was specified
             if must_not_capture:
                 move_list_temp = list(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), move_list_temp))
+
+            # Filter unsafe moves if 's' was specified
+            if safe:
+                attacked: set[Tuple[int, int]] = self.game_state.attacked_squares(self.owner)
+                move_list_temp = [move for move in move_list_temp if move not in attacked]
 
             # Append temporary move list to main move list
             move_list += move_list_temp
@@ -375,7 +394,7 @@ class Piece:
         # Return unique moves in move_list
         return set(move_list)
 
-    def _legal_moves_special(self) -> list[Tuple[int, int]]:
+    def _legal_moves_special(self) -> set[Tuple[int, int]]:
         move_list: list[Tuple[int, int]] = []
         other: Optional[Piece]
 
@@ -408,7 +427,7 @@ class Piece:
                             break
                         cur_x += diff_x
 
-        return move_list
+        return set(move_list)
 
 
 class GameState:
@@ -525,6 +544,17 @@ class GameState:
             y >= 0 and \
             x < self.size_x and \
             y < self.size_y
+
+    def attacked_squares(self, player: Player) -> set[Tuple[int, int]]:
+        squares: list[Tuple[int, int]] = []
+
+        for pieces in self.board:
+            for piece in pieces:
+                if piece is not None:
+                    if piece.owner == player.other():
+                        squares += piece.legal_moves(check_attack=True)
+
+        return set(squares)
 
     def __str__(self) -> str:
         ret: str = ''
