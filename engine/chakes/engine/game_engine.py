@@ -22,7 +22,7 @@ import re
 import random
 from enum import auto, Enum
 from time import monotonic, sleep
-from typing import Optional, Tuple
+from typing import Optional
 
 
 print('Hello Chakes!')
@@ -32,11 +32,11 @@ def pos_to_str(x: int, y: int) -> str:
     return chr(ord('A')+x) + str(y+1)
 
 
-def pos_list_to_str(lst: list[Tuple[int, int]]) -> list[str]:
-    return list(map(lambda pos: pos_to_str(pos[0], pos[1]), lst))
+def poses_to_str(lst: set[tuple[int, int]]) -> set[str]:
+    return set(map(lambda pos: pos_to_str(pos[0], pos[1]), lst))
 
 
-def str_to_pos(pos: str) -> Tuple[int, int]:
+def str_to_pos(pos: str) -> tuple[int, int]:
     x: int = ord(pos[0]) - ord('A')
     y: int = int(pos[1:]) - 1
     return x, y
@@ -123,7 +123,7 @@ class Piece:
         num_steps: int,
         leaps:     bool,
         hops:      bool,
-    ) -> set[Tuple[int, int]]:
+    ) -> set[tuple[int, int]]:
         if num_steps == 0:
             return set()
 
@@ -143,22 +143,22 @@ class Piece:
 
         # If square occupied
         if new_piece is not None:
-            ret: list[Tuple[int, int]] = []
+            ret: set[tuple[int, int]] = set()
 
             if new_piece.owner != self.owner:
-                ret += {(new_x, new_y)}
+                ret |= {(new_x, new_y)}
 
             if leaps:
-                ret += self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
+                ret |= self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
-            return set(ret)
+            return ret
 
         # If square unoccupied
         else:
             if num_steps > 1:
                 return self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
             else:
-                return {(new_x, new_y)}.union(self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops))
+                return {(new_x, new_y)} | self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
     def move(self, new_pos_x: int, new_pos_y: int) -> None:
         if (new_pos_x, new_pos_y) not in self.legal_moves():
@@ -227,14 +227,14 @@ class Piece:
             self,
             moveset:      Optional['str'] = None,
             check_attack: bool            = False,
-        ) -> set[Tuple[int, int]]:
+        ) -> set[tuple[int, int]]:
         if moveset is None:
             moveset = self.moveset
 
-        move_list: list[Tuple[int, int]] = []
+        moves: set[tuple[int, int]] = set()
 
         for pattern in moveset.split(','):
-            move_list_temp: list[Tuple[int, int]] = []
+            moves_temp: set[tuple[int, int]] = set()
             match: Optional[re.Match] = None
 
             num_steps_start: int
@@ -310,60 +310,60 @@ class Piece:
                 for num_steps in range(num_steps_start, num_steps_end+1):
                     # Orthogonally forwards
                     if move_type == '>':
-                        move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
+                        moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
 
                     # Orthogonally backwards
                     if move_type == '<':
-                        move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps, leaps, hops)
+                        moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps, leaps, hops)
 
                     # Orthogonally forwards and backwards
                     if move_type == '<>':
                         for direction in (-1, 1):
-                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps, leaps, hops)
+                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps, leaps, hops)
 
                     # Orthogonally sideways
                     if move_type == '=':
                         for direction in (-1, 1):
-                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
+                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
 
                     # Orthogonally forwards and sideways
                     if move_type == '>=':
-                        move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
+                        moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
                         for direction in (-1, 1):
-                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
+                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
 
                     # Orthogonally backwards and sideways
                     if move_type == '<=':
-                        move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1, leaps, hops)
+                        moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1, leaps, hops)
                         for direction in (-1, 1):
-                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps, leaps, hops)
+                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps, leaps, hops)
 
                     # Diagonally forwards
                     if move_type == 'X>':
                         y = self._forwards()
                         for x in -1, 1:
-                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Diagonally backwards
                     if move_type == 'X<':
                         y = -self._forwards()
                         for x in -1, 1:
-                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Orthogonally
                     if move_type == '+':
                         for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
-                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Diagonally
                     if move_type == 'X':
                         for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
-                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Any direction
                     if move_type == '*':
                         for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
-                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Hippogonally
                     if '/' in move_type:
@@ -372,17 +372,17 @@ class Piece:
                         a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
                         for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
                             for x, y in [(c, d), (d, c)]:
-                                move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
             # Filter captures if 'c' was specified
             if must_capture:
-                move_list_temp = list(filter(lambda pos: self._is_capture_move(pos[0], pos[1]), move_list_temp))
+                moves_temp = set(filter(lambda pos: self._is_capture_move(pos[0], pos[1]), moves_temp))
 
             # Filter non-captures if 'o' was specified
             if must_not_capture:
-                move_list_temp = list(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), move_list_temp))
+                moves_temp = set(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), moves_temp))
 
-            attacked: set[Tuple[int, int]]
+            attacked: set[tuple[int, int]]
 
             # Restore owner if needed
             if captures_friends:
@@ -391,24 +391,23 @@ class Piece:
             # Filter unsafe moves if 's' was specified
             if safe:
                 attacked = self.game_state.attacked_squares(self.owner)
-                move_list_temp = list(set(move_list_temp) - attacked)
+                moves_temp -= attacked
 
             # Filter safe moves if 'S' was specified
             if unsafe:
                 attacked = self.game_state.attacked_squares(self.owner)
-                move_list_temp = list(set(move_list_temp) & attacked)
+                moves_temp &= attacked
 
-            # Append temporary move list to main move list
-            move_list += move_list_temp
+            # Append temporary moves to main moves
+            moves |= moves_temp
 
         # Add special moves
-        move_list += self._legal_moves_special()
+        moves |= self._legal_moves_special()
 
-        # Return unique moves in move_list
-        return set(move_list)
+        return moves
 
-    def _legal_moves_special(self) -> set[Tuple[int, int]]:
-        move_list: list[Tuple[int, int]] = []
+    def _legal_moves_special(self) -> set[tuple[int, int]]:
+        moves: set[tuple[int, int]] = set()
         other: Optional[Piece]
 
         match self.name:
@@ -421,7 +420,7 @@ class Piece:
                             if getattr(other, '_enpassantable', False) \
                             and other.owner != self.owner \
                             and other.get_cooldown() > 0:
-                                move_list.append((x, y+self._forwards()))
+                                moves |= {(x, y+self._forwards())}
 
             case 'King':
                 # Castling
@@ -436,11 +435,11 @@ class Piece:
                             and not other.has_moved \
                             and self.game_state.is_pos_within_board(self.pos_x-2*diff_x, self.pos_y) \
                             and self.game_state.board[self.pos_x-2*diff_x][self.pos_y] is None:
-                                move_list.append((self.pos_x-2*diff_x, self.pos_y))
+                                moves |= {(self.pos_x-2*diff_x, self.pos_y)}
                             break
                         cur_x += diff_x
 
-        return set(move_list)
+        return moves
 
 
 class GameState:
@@ -558,16 +557,16 @@ class GameState:
             x < self.size_x and \
             y < self.size_y
 
-    def attacked_squares(self, player: Player) -> set[Tuple[int, int]]:
-        squares: list[Tuple[int, int]] = []
+    def attacked_squares(self, player: Player) -> set[tuple[int, int]]:
+        squares: set[tuple[int, int]] = set()
 
         for pieces in self.board:
             for piece in pieces:
                 if piece is not None:
                     if piece.owner == player.other():
-                        squares += piece.legal_moves(check_attack=True)
+                        squares |= piece.legal_moves(check_attack=True)
 
-        return set(squares)
+        return squares
 
     def __str__(self) -> str:
         ret: str = ''
