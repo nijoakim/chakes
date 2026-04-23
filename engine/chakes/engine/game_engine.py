@@ -114,7 +114,7 @@ class Piece:
         else:
             return piece.owner != self.owner
 
-    def _valid_moves_in_direction(
+    def _legal_moves_in_direction(
         self,
         start_x:   int,
         start_y:   int,
@@ -123,7 +123,6 @@ class Piece:
         num_steps: int,
         leaps:     bool,
         hops:      bool,
-        captures:  bool = True,
     ) -> set[Tuple[int, int]]:
         if num_steps == 0:
             return set()
@@ -138,30 +137,29 @@ class Piece:
 
         if hops:
             if new_piece is not None:
-                return self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, 1, leaps, False)
+                return self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, 1, leaps, False)
             else:
-                return self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, True)
+                return self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, True)
 
         if new_piece is not None:
             ret: list[Tuple[int, int]] = []
 
-            if captures:
-                if new_piece.owner != self.owner:
-                    ret += {(new_x, new_y)}
+            if new_piece.owner != self.owner:
+                ret += {(new_x, new_y)}
 
-            if leaps or not captures:
-                ret += self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
+            if leaps:
+                ret += self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
             return set(ret)
 
         else:
             if num_steps > 1:
-                return self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
+                return self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
             else:
-                return {(new_x, new_y)}.union(self._valid_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops))
+                return {(new_x, new_y)}.union(self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops))
 
     def move(self, new_pos_x: int, new_pos_y: int) -> None:
-        if (new_pos_x, new_pos_y) not in self.valid_moves():
+        if (new_pos_x, new_pos_y) not in self.legal_moves():
             raise ValueError(f'{self.name} can not move from {pos_to_str(self.pos_x, self.pos_y)} to {pos_to_str(new_pos_x, new_pos_y)}.')
 
         if (cooldown := self.get_cooldown()) != 0.0:
@@ -223,7 +221,7 @@ class Piece:
         cooldown: float = self.last_move_time - monotonic() + self.value
         return max(cooldown, 0.0)
 
-    def valid_moves(self, moveset: Optional['str'] = None) -> set[Tuple[int, int]]:
+    def legal_moves(self, moveset: Optional['str'] = None) -> set[Tuple[int, int]]:
         if moveset is None:
             moveset = self.moveset
 
@@ -254,7 +252,7 @@ class Piece:
                 pattern = pattern[1:]
             if pattern[0] == 'f': # Move must capture friendly piece
                 self.owner = self.owner.other()
-                move_list += self.valid_moves(pattern[1:])
+                move_list += self.legal_moves(pattern[1:])
                 self.owner = self.owner.other()
                 continue
 
@@ -296,60 +294,60 @@ class Piece:
                 for num_steps in range(num_steps_start, num_steps_end+1):
                     # Orthogonally forwards
                     if move_type == '>':
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
+                        move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
 
                     # Orthogonally backwards
                     if move_type == '<':
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps, leaps, hops)
+                        move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps, leaps, hops)
 
                     # Orthogonally forwards and backwards
                     if move_type == '<>':
                         for direction in (-1, 1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps, leaps, hops)
+                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps, leaps, hops)
 
                     # Orthogonally sideways
                     if move_type == '=':
                         for direction in (-1, 1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
+                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
 
                     # Orthogonally forwards and sideways
                     if move_type == '>=':
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
+                        move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
                         for direction in (-1, 1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
+                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
 
                     # Orthogonally backwards and sideways
                     if move_type == '<=':
-                        move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1, leaps, hops)
+                        move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1, leaps, hops)
                         for direction in (-1, 1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps, leaps, hops)
+                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps, leaps, hops)
 
                     # Diagonally forwards
                     if move_type == 'X>':
                         y = self._forwards()
                         for x in -1, 1:
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Diagonally backwards
                     if move_type == 'X<':
                         y = -self._forwards()
                         for x in -1, 1:
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Orthogonally
                     if move_type == '+':
                         for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Diagonally
                     if move_type == 'X':
                         for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Any direction
                     if move_type == '*':
                         for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
-                            move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                            move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
                     # Hippogonally
                     if '/' in move_type:
@@ -358,7 +356,7 @@ class Piece:
                         a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
                         for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
                             for x, y in [(c, d), (d, c)]:
-                                move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                                move_list_temp += self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
 
             # Filter captures if 'c' was specified
             if must_capture:
@@ -372,12 +370,12 @@ class Piece:
             move_list += move_list_temp
 
         # Add special moves
-        move_list += self._valid_moves_special()
+        move_list += self._legal_moves_special()
 
         # Return unique moves in move_list
         return set(move_list)
 
-    def _valid_moves_special(self) -> list[Tuple[int, int]]:
+    def _legal_moves_special(self) -> list[Tuple[int, int]]:
         move_list: list[Tuple[int, int]] = []
         other: Optional[Piece]
 
