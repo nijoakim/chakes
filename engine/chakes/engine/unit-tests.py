@@ -135,9 +135,12 @@ class TestPieces(ut.TestCase):
         game_state.add_piece_str('Anti-King', Player.WHITE, 'E6')
         game_state.move_piece_str('E2', 'E4')
         game_state.move_piece_str('E4', 'E5')
+        game_state.move_piece_str('D7', 'D6')
+        print()
+        print(game_state)
         self.assertEqual(
             set(pos_list_to_str(game_state.piece_at('E6').legal_moves())),
-            {'D6', 'F6', 'D5', 'E5', 'F5'}
+            {'D7', 'E5', 'F6'}
         )
 
     def test_grasshopper(self):

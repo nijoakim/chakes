@@ -65,7 +65,7 @@ piece_defs = {
 
     # Fairy
     'Nightrider':  (4, 'n(1/2)'),
-    'Anti-King':   (3, 'o1*,f1*'),
+    'Anti-King':   (3, 'So1*,Sf1*'),
     'Grasshopper': (5, '^n*'),
 }
 
@@ -242,33 +242,35 @@ class Piece:
 
             must_capture:     bool = False
             must_not_capture: bool = False
+            captures_friends: bool = False
             leaps:            bool = False
             hops:             bool = False
             safe:             bool = False
+            unsafe:           bool = False
 
             # Parse condtions
-            if pattern[0] == 'i': # Can only move if first move
-                if self.has_moved:
-                    continue
-                pattern = pattern[1:]
-            if pattern[0] == 'o': # Move can not capture
-                if check_attack:
-                    continue
-                must_not_capture = True
-                pattern = pattern[1:]
-            if pattern[0] == 'c': # Move must capture enemy piece
-                if not check_attack:
-                    must_capture = True
-                pattern = pattern[1:]
-            if pattern[0] == 'f': # Move must capture friendly piece
-                self.owner = self.owner.other()
-                move_list += self.legal_moves(moveset = pattern[1:])
-                self.owner = self.owner.other()
-                continue
-            if pattern[0] == 's': # May not move to attacked square
-                if not check_attack:
-                    safe = True
-                pattern = pattern[1:]
+            while re.match(r'f|i|o|c|s|S', pattern):
+                if pattern[0] == 'f': # Must capture friend
+                    self.owner = self.owner.other()
+                    captures_friends = True
+                    pattern = pattern[1:]
+                if pattern[0] == 'i': # Must be initial move
+                    pattern = pattern[1:] if not self.has_moved else '_'
+                if pattern[0] == 'o': # Must not capture
+                    must_not_capture = True
+                    pattern = pattern[1:] if not check_attack else '_'
+                if pattern[0] == 'c': # Must capture enemy
+                    if not check_attack:
+                        must_capture = True
+                    pattern = pattern[1:]
+                if pattern[0] == 's': # Must not move to attacked square
+                    if not check_attack:
+                        safe = True
+                    pattern = pattern[1:]
+                if pattern[0] == 'S': # Must move to an attacked square
+                    if not check_attack:
+                        unsafe = True
+                    pattern = pattern[1:]
 
             # Parse move type
             if pattern[0] == '~':
@@ -380,10 +382,21 @@ class Piece:
             if must_not_capture:
                 move_list_temp = list(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), move_list_temp))
 
+            attacked: set[Tuple[int, int]]
+
+            # Restore owner if needed
+            if captures_friends:
+                self.owner = self.owner.other()
+
             # Filter unsafe moves if 's' was specified
             if safe:
-                attacked: set[Tuple[int, int]] = self.game_state.attacked_squares(self.owner)
-                move_list_temp = [move for move in move_list_temp if move not in attacked]
+                attacked = self.game_state.attacked_squares(self.owner)
+                move_list_temp = list(set(move_list_temp) - attacked)
+
+            # Filter safe moves if 'S' was specified
+            if unsafe:
+                attacked = self.game_state.attacked_squares(self.owner)
+                move_list_temp = list(set(move_list_temp) & attacked)
 
             # Append temporary move list to main move list
             move_list += move_list_temp
