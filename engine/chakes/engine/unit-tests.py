@@ -133,7 +133,6 @@ class TestPieces(ut.TestCase):
         game_state.add_piece_str('Anti-King', Player.WHITE, 'E6')
         game_state.move_piece_str('E2', 'E4')
         game_state.move_piece_str('E4', 'E5')
-        print(game_state)
         self.assertEqual(
             set(pos_list_to_str(game_state.piece_at('E6').valid_moves())),
             {'D6', 'F6', 'D5', 'E5', 'F5'}

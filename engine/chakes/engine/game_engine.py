@@ -213,9 +213,13 @@ class Piece:
         cooldown: float = self.last_move_time - monotonic() + self.value
         return max(cooldown, 0.0)
 
-    def valid_moves(self) -> list[Tuple[int, int]]:
+    def valid_moves(self, moveset: Optional['str'] = None) -> list[Tuple[int, int]]:
+        if moveset is None:
+            moveset = self.moveset
+
         move_list: list[Tuple[int, int]] = []
-        for pattern in self.moveset.split(','):
+
+        for pattern in moveset.split(','):
             move_list_temp: list[Tuple[int, int]] = []
             match: Optional[re.Match] = None
 
@@ -239,10 +243,7 @@ class Piece:
                 pattern = pattern[1:]
             if pattern[0] == 'f': # Move must capture friendly piece
                 self.owner = self.owner.other()
-                moveset: str = self.moveset
-                self.moveset = pattern[1:]
-                move_list += self.valid_moves()
-                self.moveset = moveset
+                move_list += self.valid_moves(pattern[1:])
                 self.owner = self.owner.other()
                 continue
 
@@ -336,17 +337,11 @@ class Piece:
                         for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
                             move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
 
-                    # Hippogonal moves
+                    # Hippogonally
                     if '/' in move_type:
-                        hippogonal_pattern: str = move_type
-                        move_type = '/'
-
                         a: int
                         b: int
-                        a, b = tuple([int(num_str) for num_str in hippogonal_pattern.split(move_type)][:2])
-
-                    # Hippogonally
-                    if move_type == '/':
+                        a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
                         for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
                             for x, y in [(c, d), (d, c)]:
                                 move_list_temp += self._valid_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps)
