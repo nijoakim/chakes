@@ -58,14 +58,14 @@ class TestPieces(ut.TestCase):
         game_state.move_piece_str('B4', 'B5')
         game_state.move_piece_str('C7', 'C5')
 
-        pawn: Optional[Piece] = game_state.piece_at('C5')
-        assert isinstance(pawn, Piece)
-        game_state.piece_at('C5')._enable_cooldown = True # type: ignore
+        enemy_pawn: Optional[Piece] = game_state.piece_at('C5')
+        assert enemy_pawn is not None
+
+        enemy_pawn._enable_cooldown = True # type: ignore
         game_state.move_piece_str('B5', 'C6')
 
-        piece: Optional[Piece] = game_state.piece_at('C5')
-
-        self.assertIsNone(piece)
+        captured_pawn: Optional[Piece] = game_state.piece_at('C5')
+        self.assertIsNone(captured_pawn)
 
     def test_promotion(self) -> None:
         game_state = GameState.default()
