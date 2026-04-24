@@ -144,10 +144,16 @@ class TestPieces(ut.TestCase):
         game_state.move_piece_str('E2', 'E3')
         game_state.move_piece_str('D1', 'F3')
         game_state.move_piece_str('F1', 'E2')
-        game_state.move_piece_str('G1', 'H3')
 
         king: Optional[Piece] = game_state.piece_at('E1')
         assert isinstance(king, Piece)
+
+        self.assertEqual(
+            poses_to_str(king.legal_moves()),
+            {'C1', 'D1', 'F1'}
+        )
+
+        game_state.move_piece_str('G1', 'H3')
 
         self.assertEqual(
             poses_to_str(king.legal_moves()),

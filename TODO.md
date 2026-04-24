@@ -18,5 +18,4 @@
 
 # Bugs:
 - King can capture pieces even though will be attacked.
-- King can castle condition applies to the wrong flank.
 - Back-end should not return 500 for illegal move (4xx).

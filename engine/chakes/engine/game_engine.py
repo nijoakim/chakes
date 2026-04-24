@@ -446,6 +446,7 @@ class Piece:
 
             case 'King':
                 # Castling
+                # TODO: Can't make unsafe move
                 for diff_x in (-1, 1):
                     cur_x: int = self.pos_x + diff_x
                     while self.game_state.is_pos_within_board(cur_x, self.pos_y):
@@ -455,9 +456,9 @@ class Piece:
                             and other.owner == self.owner \
                             and not self.has_moved \
                             and not other.has_moved \
-                            and self.game_state.is_pos_within_board(self.pos_x-2*diff_x, self.pos_y) \
-                            and self.game_state.board[self.pos_x-2*diff_x][self.pos_y] is None:
-                                moves |= {(self.pos_x-2*diff_x, self.pos_y)}
+                            and self.game_state.is_pos_within_board(self.pos_x+2*diff_x, self.pos_y) \
+                            and self.game_state.board[self.pos_x+2*diff_x][self.pos_y] is None:
+                                moves |= {(self.pos_x+2*diff_x, self.pos_y)}
                             break
                         cur_x += diff_x
 
