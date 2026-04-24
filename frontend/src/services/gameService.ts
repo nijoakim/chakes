@@ -22,7 +22,8 @@ class GameService {
   }
 
   connect(roomId: string, events: GameEvents): () => void {
-    const ws = new WebSocket(`ws://${location.host}/api/rooms/${roomId}/ws`)
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const ws = new WebSocket(`${protocol}//${location.host}/api/rooms/${roomId}/ws`)
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       console.log(data);
