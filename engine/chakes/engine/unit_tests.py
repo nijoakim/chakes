@@ -17,7 +17,7 @@
 
 import unittest as ut
 from typing import Optional
-from chakes.engine.game_engine import *
+from engine.chakes.engine.game_engine import *
 
 # Patch piece.get_cooldown to always return 0.0 in order to not have to wait for cooldown unless self._enable_cooldown is True
 piece_get_cooldown = Piece.get_cooldown

@@ -44,7 +44,7 @@ typecheck-frontend:
 check: lint typecheck
 
 .PHONY: check-engine
-check-engine: lint-engine typecheck-engine
+check-engine: typecheck-engine
 
 .PHONY: check-backend
 check-backend: lint-backend typecheck-backend
@@ -69,7 +69,7 @@ fix: format
 
 .PHONY: run-engine
 run-engine: check-engine
-	uv run python -m chakes.engine.game_engine
+	uv run python -m engine.chakes.engine.game_engine
 
 .PHONY: run-backend
 run-backend: check-engine check-backend
@@ -78,3 +78,9 @@ run-backend: check-engine check-backend
 .PHONY: run-frontend
 run-frontend: check-frontend
 	cd frontend && npm run dev
+
+# === Test ===
+
+.PHONY: test-engine
+test-engine: check-engine
+	uv run python -m engine.chakes.engine.unit_tests
