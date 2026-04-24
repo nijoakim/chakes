@@ -1,16 +1,22 @@
-Högprio:
-- Visa text och frys spelet när man vinner.
-- Visa legal moves (med svag grön).
-- När man skapar så bestämmer man cooldowns (behöver "Läs default pjäser från motor och presentera klienten (e.g. coolsdowns ska komma från GameState)")
+# High priority:
+- Show text and freeze the game when winning.
+- Show legal moves (light green)
+- When creating a game, add the option to decide cooldowns (needs read pieces from engine and 1).
+- När man skapar så bestämmer man cooldowns (reqires ability to read pieces from engine and present to client).
 
-Medelprio:
-- Ny match (med nytt spel-id) med samma spelare
-- Dragloggar enkelt tillgängliga (motor som exponeras i klient).
+# Medium priority:
+- New game (with new game ID) with the same player
+- Move logs in engine that is exposed to client
 
-Lågprio:
-- Lägg till gå med höger (utför giltigt drag och avmarkerar) _och_ vänster klick på ogiltiga drag avmarkerar, esc avmarkerar. (edited) 
+# Low priority:
+- Add the following to the UI
+    - Right-click: Perform legal move
+    - Left-click:
+        - On illegal move: Select new piece
+        - On legal move:   Move
+    - Escape: Deselect
 
-Buggar:
-- Kung kan ta pjäser under hot
-- Kung kan bara rokadera om fel flank är fri
-- Backend borde ej returnera 500 vid illeagal move (4xx)
+# Bugs:
+- King can capture pieces even though will be attacked.
+- King can castle condition applies to the wrong flank.
+- Back-end should not return 500 for illegal move (4xx).
