@@ -404,8 +404,6 @@ class Piece:
             if must_not_capture:
                 moves_temp = set(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), moves_temp))
 
-            attacked: set[tuple[int, int]]
-
             # Restore owner if needed
             if captures_friends:
                 self.owner = self.owner.other()
@@ -466,7 +464,8 @@ class Piece:
 
 
 class GameState:
-    pieces: list[Piece] = []
+    pieces:   list[Piece]                                   = []
+    move_log: list[tuple[tuple[int, int], tuple[int, int]]] = []
 
     def __init__(self, size_x: int = 8, size_y: int = 8) -> None:
         self.size_x: int = size_x
@@ -567,10 +566,15 @@ class GameState:
         else:
             piece.move(pos_x2, pos_y2, info = info)
 
+        self.move_log.append(((pos_x1, pos_y1), (pos_x2, pos_y2)))
+
     def move_piece_str(self, pos1: str, pos2: str, info: str = '') -> None:
         x1, y1 = str_to_pos(pos1)
         x2, y2 = str_to_pos(pos2)
         self.move_piece(x1, y1, x2, y2, info = info)
+
+    def move_log_str(self):
+        return list(map(lambda move: (pos_to_str(move[0][0], move[0][1]), pos_to_str(move[1][0], move[1][1])), self.move_log))
 
     def is_pos_within_board(self, x: int, y: int):
         return \

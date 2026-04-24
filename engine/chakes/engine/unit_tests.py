@@ -167,6 +167,8 @@ class TestPieces(ut.TestCase):
 
         self.assertEqual(rook.name, 'Rook')
 
+        print(game_state.move_log_str())
+
     def test_check_mate(self) -> None:
         game_state = GameState.default()
         game_state.move_piece_str('F2', 'F3')

@@ -1,12 +1,10 @@
 # High priority:
 - Show text and freeze the game when winning.
 - Show legal moves (light green)
-- When creating a game, add the option to decide cooldowns (needs read pieces from engine and 1).
-- När man skapar så bestämmer man cooldowns (reqires ability to read pieces from engine and present to client).
+- When creating a game, add the option to decide cooldowns (needs read pieces from engine and present to client).
 
 # Medium priority:
 - New game (with new game ID) with the same player
-- Move logs in engine that is exposed to client
 
 # Low priority:
 - Add the following to the UI
@@ -17,5 +15,5 @@
     - Escape: Deselect
 
 # Bugs:
-- King can capture pieces pawns that are attacked by pawns.
+- King can capture pawns that are attacked by pawns.
 - Back-end should not return 500 for illegal move (4xx).
