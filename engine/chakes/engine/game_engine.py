@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 import random
 from enum import auto, Enum
-from time import monotonic, sleep
+from time import monotonic
 from typing import Optional
 
 
@@ -56,17 +56,17 @@ class Player(Enum):
 # Format: name: (value, movement)
 piece_defs = {
     # Orthodox
-    'Pawn':   (1, 'o1>,io2>,c1X>'),
-    'Rook':   (5, 'n+'),
+    'Pawn':   (3, 'o1>,io2>,c1X>'),
+    'Rook':   (3, 'n+'),
     'Knight': (3, '1/2'),
     'Bishop': (3, 'nX'),
-    'Queen':  (9, 'n*'),
+    'Queen':  (3, 'n*'),
     'King':   (3, 's1*'),
 
     # Fairy
-    'Nightrider':  (4, 'n(1/2)'),
+    'Nightrider':  (3, 'n(1/2)'),
     'Anti-King':   (3, 'So1*,Sf1*'),
-    'Grasshopper': (5, '^n*'),
+    'Grasshopper': (3, '^n*'),
 }
 
 
@@ -185,9 +185,9 @@ class Piece:
             case 'Pawn':
                 # Mark en passentable
                 if abs(self.pos_y - new_pos_y) == 2:
-                    self._en_passentable = True # type: ignore
+                    self._en_passentable = True
                 else:
-                    self._en_passentable = False # type: ignore
+                    self._en_passentable = False
 
                 # Perform en passent
                 if self.pos_x != new_pos_x:
@@ -468,7 +468,6 @@ class GameState:
     pieces: list[Piece] = []
 
     def __init__(self, size_x: int = 8, size_y: int = 8) -> None:
-        sly: int = 3
         self.size_x: int = size_x
         self.size_y: int = size_y
 

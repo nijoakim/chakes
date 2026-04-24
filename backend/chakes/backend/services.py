@@ -52,7 +52,7 @@ class ChakesService:
             "white" if len(self._connections._connections[game_id]) == 1 else "black"
         )
         print("Sending game state")
-        await ws.send_json({"color": color, "board": room.serialize_board()})
+        await ws.send_json({"color": color, "board": room.serialize_board(), "cooldowns": room.serialize_cooldowns()})
 
     def disconnect(self, game_id: uuid.UUID, ws: WebSocket) -> None:
         self._connections.disconnect(game_id, ws)
@@ -60,4 +60,4 @@ class ChakesService:
     async def move(self, game_id: uuid.UUID, move: MoveRequest) -> None:
         room = self._rooms[game_id]
         room.state.move_piece(move.from_c, 7 - move.from_r, move.to_c, 7 - move.to_r)
-        await self._connections.broadcast(game_id, {"board": room.serialize_board()})
+        await self._connections.broadcast(game_id, {"board": room.serialize_board(), "cooldowns": room.serialize_cooldowns()})

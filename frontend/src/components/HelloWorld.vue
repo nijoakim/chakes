@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import { gameService, type Board, type Color } from '../services/gameService'
+import { gameService, type Board, type Cooldowns, type Color } from '../services/gameService'
 
 const pieces: Record<string, string> = {
   K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
   k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
 }
 
+const maxCooldown: Record<string, number> = {
+  P: 3, R: 3, N: 3, B: 3, Q: 3, K: 3,
+  p: 3, r: 3, n: 3, b: 3, q: 3, k: 3,
+}
+
 const board = ref<Board>([])
+const cooldowns = ref<Cooldowns>([])
 const selected = ref<[number, number] | null>(null)
 const playerColor = ref<Color>('white')
 const preferredColor = ref<Color>('white')
@@ -15,13 +21,30 @@ const roomId = ref<string | null>(null)
 const joinRoomId = ref('')
 let disconnect: (() => void) | null = null
 
+let serverCooldowns: Cooldowns = []
+let serverCooldownTime = 0
+let rafId = 0
+
+function tickCooldowns() {
+  const elapsed = (performance.now() - serverCooldownTime) / 1000
+  cooldowns.value = serverCooldowns.map(row =>
+    row.map(cd => Math.max(cd - elapsed, 0))
+  )
+  rafId = requestAnimationFrame(tickCooldowns)
+}
+
 function connectToRoom(id: string) {
   disconnect?.()
   roomId.value = id
   playerColor.value = preferredColor.value
   disconnect = gameService.connect(id, {
     onBoard: (b) => { board.value = b },
+    onCooldowns: (c) => {
+      serverCooldowns = c
+      serverCooldownTime = performance.now()
+    },
   })
+  rafId = requestAnimationFrame(tickCooldowns)
 }
 
 async function createRoom() {
@@ -33,13 +56,23 @@ function joinRoom() {
   if (joinRoomId.value.trim()) connectToRoom(joinRoomId.value.trim())
 }
 
-onUnmounted(() => disconnect?.())
+onUnmounted(() => {
+  disconnect?.()
+  cancelAnimationFrame(rafId)
+})
 
 const displayBoard = computed<Board>(() => {
   if (playerColor.value === 'black') {
     return [...board.value].reverse().map(row => [...row].reverse())
   }
   return board.value
+})
+
+const displayCooldowns = computed<Cooldowns>(() => {
+  if (playerColor.value === 'black') {
+    return [...cooldowns.value].reverse().map(row => [...row].reverse())
+  }
+  return cooldowns.value
 })
 
 function displayToBoard(r: number, c: number): [number, number] {
@@ -52,13 +85,18 @@ function isSelected(displayR: number, displayC: number): boolean {
   return selected.value[0] === br && selected.value[1] === bc
 }
 
+function isOnCooldown(r: number, c: number): boolean {
+  return (cooldowns.value[r]?.[c] ?? 0) > 0
+}
+
 function handleClick(displayR: number, displayC: number) {
   const [r, c] = displayToBoard(displayR, displayC)
   const ownPiece = (p: string) =>
     playerColor.value === 'white' ? p === p.toUpperCase() : p === p.toLowerCase()
 
   if (selected.value === null) {
-    if (board.value[r][c] && ownPiece(board.value[r][c])) selected.value = [r, c]
+    if (board.value[r][c] && ownPiece(board.value[r][c]) && !isOnCooldown(r, c))
+      selected.value = [r, c]
   } else {
     const [fr, fc] = selected.value
     selected.value = null
@@ -94,10 +132,20 @@ function handleClick(displayR: number, displayC: number) {
           v-for="(piece, c) in row"
           :key="c"
           class="square"
-          :class="[(r + c) % 2 === 0 ? 'light' : 'dark', isSelected(r, c) ? 'selected' : '', piece ? 'piece' : '']"
+          :class="[
+            (r + c) % 2 === 0 ? 'light' : 'dark',
+            isSelected(r, c) ? 'selected' : '',
+            piece ? 'piece' : '',
+            (displayCooldowns[r]?.[c] ?? 0) > 0 ? 'on-cooldown' : '',
+          ]"
           @click="handleClick(r, c)"
         >
           {{ pieces[piece] ?? '' }}
+          <div
+            v-if="(displayCooldowns[r]?.[c] ?? 0) > 0"
+            class="cooldown-overlay"
+            :style="{ height: (displayCooldowns[r][c] / (maxCooldown[piece] ?? 1) * 100) + '%' }"
+          />
         </div>
       </div>
     </div>
@@ -126,6 +174,18 @@ function handleClick(displayR: number, displayC: number) {
 }
 .square.piece {
   cursor: pointer;
+}
+.square.on-cooldown {
+  cursor: not-allowed;
+  position: relative;
+}
+.cooldown-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(80, 80, 80, 0.5);
+  pointer-events: none;
 }
 .light { background: #f0d9b5; }
 .dark  { background: #b58863; }

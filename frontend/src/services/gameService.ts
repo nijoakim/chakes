@@ -1,8 +1,10 @@
 export type Board = string[][]
+export type Cooldowns = number[][]
 export type Color = 'white' | 'black'
 
 export interface GameEvents {
   onBoard: (board: Board) => void
+  onCooldowns?: (cooldowns: Cooldowns) => void
   onColor?: (color: Color) => void
 }
 
@@ -25,9 +27,11 @@ class GameService {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     const ws = new WebSocket(`${protocol}//${location.host}/api/rooms/${roomId}/ws`)
     ws.onmessage = (e) => {
+      if (!e.data) return
       const data = JSON.parse(e.data)
       console.log(data);
       if (data.board) events.onBoard(data.board)
+      if (data.cooldowns) events.onCooldowns?.(data.cooldowns)
       if (data.color) events.onColor?.(data.color)
     }
     return () => ws.close()

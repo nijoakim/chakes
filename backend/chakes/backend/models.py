@@ -26,13 +26,17 @@ class GameRoom:
         self.state = GameState.default()
         self.timestamp_start = datetime.now()
 
+    def _get_piece(self, c: int, r: int) -> Piece | None:
+        return self.state.board[c][7 - r]
+
     def serialize_board(self) -> list[list[str]]:
-        result = []
-        for r in range(8):
-            y = 7 - r
-            row = [
-                _piece_code(self.state.board[c][y]) if self.state.board[c][y] else ""
-                for c in range(8)
-            ]
-            result.append(row)
-        return result
+        return [
+            [_piece_code(p) if (p := self._get_piece(c, r)) else "" for c in range(8)]
+            for r in range(8)
+        ]
+
+    def serialize_cooldowns(self) -> list[list[float]]:
+        return [
+            [p.get_cooldown() if (p := self._get_piece(c, r)) else 0.0 for c in range(8)]
+            for r in range(8)
+        ]
