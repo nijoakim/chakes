@@ -17,5 +17,5 @@
     - Escape: Deselect
 
 # Bugs:
-- King can capture pieces even though will be attacked.
+- King can capture pieces pawns that are attacked by pawns.
 - Back-end should not return 500 for illegal move (4xx).
