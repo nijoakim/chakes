@@ -5,7 +5,7 @@
 
 # Medium priority:
 - New game (with new game ID) with the same player
-+ Refractor game engine to have a position object instead of relying on tuples and string conversions
+- Refractor game engine to have a position object instead of relying on tuples and string conversions
 
 # Low priority:
 - Add the following to the UI
@@ -16,6 +16,7 @@
     - Escape: Deselect
 - When creating a game, add the option to select game type (Orthodox, Chess 960, Anti Chess, and more)
 - When creating a game, add the checkbox to play upside-down chess
+
 
 # Bugs:
 - Back-end should not return 500 for illegal move (4xx).
