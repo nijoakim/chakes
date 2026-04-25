@@ -579,6 +579,18 @@ class GameState:
         x, y = str_to_pos(pos)
         self.remove_piece(x, y)
 
+    def upside_down(self) -> None:
+        for y1 in range(self.size_y // 2):
+            for x in range(self.size_x):
+                y2: int = self.size_y-1 - y1
+                piece1: Optional[Piece] = self.board[x][y1]
+                piece2: Optional[Piece] = self.board[x][y2]
+                self.board[x][y1], self.board[x][y2] = self.board[x][y2], self.board[x][y1]
+                if piece1 is not None:
+                    piece1.pos_y = y2
+                if piece2 is not None:
+                    piece2.pos_y = y1
+
     def symmetry(self) -> None:
         for piece in [piece for pieces in self.board for piece in pieces]:
             if piece is not None:
@@ -655,6 +667,3 @@ class GameState:
         ret += ' '.join([f'\033[33m{pos_to_str(x, 0)[0]}' for x in range(self.size_x)])
         ret += '\033[0m'
         return ret
-
-# state = GameState.chess960()
-# print(state)
