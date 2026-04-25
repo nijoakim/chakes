@@ -278,6 +278,45 @@ class TestPieces(ut.TestCase):
             {'C6', 'C5', 'D5', 'E7'}
         )
 
+    def test_anti_check_mate(self) -> None:
+        game_state = GameState.anti_king_chess()
+
+        anti_king: Optional[Piece] = game_state.piece_at('D6')
+        assert anti_king is not None
+
+        # Move pawns
+        game_state.move_piece_str('A7', 'A5')
+        game_state.move_piece_str('B7', 'B5')
+
+        # Set-up knight for blocking
+        game_state.move_piece_str('B8', 'A6')
+        game_state.move_piece_str('A6', 'C5')
+
+        # Move anti-king to edge
+        game_state.move_piece_str('D6', 'C6')
+        game_state.move_piece_str('C6', 'B6')
+        game_state.move_piece_str('B6', 'A6')
+
+        # Move pawns
+        game_state.move_piece_str('C7', 'C6')
+        game_state.move_piece_str('E7', 'E6')
+
+        # Move queen
+        game_state.move_piece_str('D8', 'E7')
+
+        # Block bishop with knight
+        game_state.move_piece_str('C5', 'B7')
+
+        self.assertIsNone(game_state.winner())
+
+        # Move rook
+        game_state.move_piece_str('A8', 'B8')
+
+        self.assertEqual(
+            game_state.winner(),
+            Player.BLACK,
+        )
+
     def test_grasshopper(self) -> None:
         game_state = GameState.default()
         game_state.add_piece_str('Grasshopper', Player.WHITE, 'A5')

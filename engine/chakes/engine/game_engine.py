@@ -643,12 +643,16 @@ class GameState:
         for pieces in self.board:
             for piece in pieces:
                 if piece is not None:
-                    if piece.name == 'King':
-                        if piece.legal_moves() == set() \
-                        and (piece.pos_x, piece.pos_y) in self.attacked_squares(piece.owner, require_cooldown = True):
-                            return piece.owner.other()
+                    match piece.name:
+                        case 'King':
+                            if  piece.legal_moves() == set() \
+                            and (piece.pos_x, piece.pos_y) in self.attacked_squares(piece.owner):
+                                return piece.owner.other()
 
-                    # TODO: Anti-King
+                        case 'Anti-King':
+                            if  piece.legal_moves() == set() \
+                            and (piece.pos_x, piece.pos_y) not in self.attacked_squares(piece.owner):
+                                return piece.owner.other()
 
         return None
 
@@ -659,7 +663,7 @@ class GameState:
             ret += f'\033[33m{pos_to_str(0, y)[1:]} \033[0m'
             for x in range(self.size_x):
                 piece = self.board[x][y]
-                ret += '∘' if piece is None else str(piece)
+                ret += '.' if piece is None else str(piece)
                 ret += ' ' if x < self.size_x else ''
             ret += '\n'
         ret = ret[:-1]
