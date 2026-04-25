@@ -66,7 +66,7 @@ piece_defs = {
 
     # Fairy
     'Nightrider':  (3, 'n(1/2)'),
-    'Anti-King':   (3, 'Sf1*'),
+    'Anti-King':   (3, 'f1*'),
     'Grasshopper': (3, '^n*'),
 }
 
@@ -229,9 +229,18 @@ class Piece:
 
     def legal_moves(
             self,
-            check_attack: bool = False,
-            check_safe:   bool = True,
+            check_safe: bool = True,
         ) -> set[tuple[int, int]]:
+        """
+        Returns a set of legal moves for a piece.
+
+        Args:
+            check_safe: Whether to exclude moves that are unsafe
+
+        Returns:
+            Set of legal moves
+        """
+
         moves: set[tuple[int, int]] = set()
 
         for pattern in self.moveset.split(','):
@@ -264,18 +273,11 @@ class Piece:
                     # Must not capture
                     case 'o':
                         must_not_capture = True
-                        pattern = pattern[1:] if not check_attack else '_'
+                        pattern = pattern[1:]
 
                     # Must capture enemy
                     case 'c':
-                        if not check_attack:
-                            must_capture = True
-                        pattern = pattern[1:]
-
-                    # Must move to an attacked square
-                    case 'S':
-                        if not check_attack:
-                            unsafe = True
+                        must_capture = True
                         pattern = pattern[1:]
 
                     # No more conditions
@@ -399,20 +401,19 @@ class Piece:
             if captures_friends:
                 self.owner = self.owner.other()
 
-            # Filter safe moves if 'S' was specified
-            if unsafe:
-                attacked = self.game_state.attacked_squares(self.owner)
-                moves_temp &= attacked
-
             # Append temporary moves to main moves
             moves |= moves_temp
 
         # Apply special rules
-        moves = self._legal_moves_special(moves, check_attack = check_attack, check_safe = check_safe)
+        moves = self._legal_moves_special(moves, check_safe = check_safe)
 
         return moves
 
-    def _legal_moves_special(self, moves, check_attack = False, check_safe = True) -> set[tuple[int, int]]:
+    def _legal_moves_special(
+            self,
+            moves:      set[tuple[int, int]],
+            check_safe: bool = True,
+        ) -> set[tuple[int, int]]:
         other: Optional[Piece]
 
         match self.name:
@@ -446,17 +447,28 @@ class Piece:
                         cur_x += diff_x
 
         # Filter unsafe moves
-        if not check_attack \
-        and check_safe:
+        if check_safe:
             for new_x, new_y in set(moves):
                 test_state: GameState = deepcopy(self.game_state)
                 test_state.move_piece(self.pos_x, self.pos_y, new_x, new_y)
-                attacked: set[tuple[int, int]] = test_state.attacked_squares(self.owner)
-                for att_x, att_y in attacked:
+                attacked_anti_kings: set[Piece] = set()
+                all_anti_kings:      set[Piece] = set([
+                    piece
+                    for pieces in test_state.board
+                    for piece  in pieces if piece is not None and piece.name == 'Anti-King'
+                ])
+                for att_x, att_y in test_state.attacked_squares(self.owner):
                     piece: Optional[Piece] = test_state.board[att_x][att_y]
                     if piece is not None:
-                        if piece.name == 'King':
-                            moves -= set(((new_x, new_y),))
+                        match piece.name:
+                            case 'King':
+                                moves -= {(new_x, new_y)}
+                            case 'Anti-King':
+                                attacked_anti_kings |= {piece}
+
+                # Remove move if any Anti-King is unattacked
+                if all_anti_kings != attacked_anti_kings:
+                    moves -= {(new_x, new_y)}
 
         return moves
 
@@ -590,7 +602,7 @@ class GameState:
                     if piece.owner == player.other():
                         if not require_cooldown \
                         or piece.get_cooldown() == 0.0:
-                            squares |= piece.legal_moves(check_attack = True)
+                            squares |= piece.legal_moves(check_safe = False)
 
         return squares
 

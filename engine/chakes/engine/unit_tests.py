@@ -220,7 +220,7 @@ class TestPieces(ut.TestCase):
 
         self.assertEqual(
             poses_to_str(anti_king.legal_moves()),
-            {'D7', 'E5', 'F6'}
+            {'D7', 'E5', 'F5', 'F6'}
         )
 
     def test_grasshopper(self) -> None:
