@@ -13,6 +13,8 @@
         - On illegal move: Select new piece
         - On legal move:   Move
     - Escape: Deselect
+- When creating a game, add the option to select game type (Orthodox, Chess 960, Anti Chess, and more)
+- When creating a game, add the checkbox to play upside-down chess
 
 # Bugs:
 - Back-end should not return 500 for illegal move (4xx).
