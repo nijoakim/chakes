@@ -456,16 +456,20 @@ class Piece:
                 all_anti_kings:      set[Piece] = set([
                     piece
                     for pieces in test_state.board
-                    for piece  in pieces if piece is not None and piece.name == 'Anti-King'
+                    for piece  in pieces
+                        if  piece is not None
+                        and piece.owner == self.owner
+                        and piece.name == 'Anti-King'
                 ])
                 for att_x, att_y in test_state.attacked_squares(self.owner):
                     piece: Optional[Piece] = test_state.board[att_x][att_y]
                     if piece is not None:
-                        match piece.name:
-                            case 'King':
-                                moves -= {(new_x, new_y)}
-                            case 'Anti-King':
-                                attacked_anti_kings |= {piece}
+                        if piece.owner == self.owner:
+                            match piece.name:
+                                case 'King':
+                                    moves -= {(new_x, new_y)}
+                                case 'Anti-King':
+                                    attacked_anti_kings |= {piece}
 
                 # Remove move if any Anti-King is unattacked
                 if all_anti_kings != attacked_anti_kings:
@@ -503,6 +507,15 @@ class GameState:
         state.add_piece_str('Rook',   Player.WHITE, 'H1')
 
         state.symmetry()
+
+        return state
+
+    @staticmethod
+    def anti_king_chess() -> GameState:
+        state = GameState.default()
+
+        state.add_piece_str('Anti-King', Player.WHITE, 'D6')
+        state.add_piece_str('Anti-King', Player.BLACK, 'D3')
 
         return state
 

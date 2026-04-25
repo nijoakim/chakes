@@ -263,18 +263,19 @@ class TestPieces(ut.TestCase):
         )
 
     def test_anti_king(self) -> None:
-        game_state = GameState.default()
-        game_state.add_piece_str('Anti-King', Player.WHITE, 'E6')
-        game_state.move_piece_str('E2', 'E4')
-        game_state.move_piece_str('E4', 'E5')
-        game_state.move_piece_str('D7', 'D6')
+        game_state = GameState.anti_king_chess()
 
-        anti_king: Optional[Piece] = game_state.piece_at('E6')
+        game_state.move_piece_str('D3', 'C3')
+        game_state.move_piece_str('D2', 'D4')
+        game_state.move_piece_str('D4', 'D5')
+        game_state.move_piece_str('E7', 'E6')
+
+        anti_king: Optional[Piece] = game_state.piece_at('D6')
         assert anti_king is not None
 
         self.assertEqual(
             poses_to_str(anti_king.legal_moves()),
-            {'D7', 'E5', 'F5', 'F6'}
+            {'C6', 'C5', 'D5', 'E7'}
         )
 
     def test_grasshopper(self) -> None:
