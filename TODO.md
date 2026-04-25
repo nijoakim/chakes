@@ -15,5 +15,4 @@
     - Escape: Deselect
 
 # Bugs:
-- King can capture pawns that are attacked by pawns.
 - Back-end should not return 500 for illegal move (4xx).

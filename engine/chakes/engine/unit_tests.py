@@ -123,10 +123,24 @@ class TestPieces(ut.TestCase):
 
     def test_king(self) -> None:
         game_state = GameState.default()
-        game_state.move_piece_str('E2', 'E4')
+        game_state.move_piece_str('E2', 'E3')
         game_state.move_piece_str('D7', 'D5')
         game_state.move_piece_str('D5', 'D4')
+        game_state.move_piece_str('F7', 'F5')
+        game_state.move_piece_str('F5', 'F4')
+        game_state.move_piece_str('D8', 'D7')
+        game_state.move_piece_str('D7', 'E6')
         game_state.move_piece_str('E1', 'E2')
+
+        pawn: Optional[Piece] = game_state.piece_at('E3')
+        assert pawn is not None
+
+        self.assertEqual(
+            poses_to_str(pawn.legal_moves()),
+            {'E4'},
+        )
+
+        game_state.move_piece_str('F4', 'E3')
 
         king: Optional[Piece] = game_state.piece_at('E2')
         assert king is not None
@@ -166,8 +180,6 @@ class TestPieces(ut.TestCase):
         assert isinstance(rook, Piece)
 
         self.assertEqual(rook.name, 'Rook')
-
-        print(game_state.move_log_str())
 
     def test_check_mate(self) -> None:
         game_state = GameState.default()

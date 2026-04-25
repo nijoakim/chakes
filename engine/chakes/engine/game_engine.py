@@ -23,6 +23,7 @@ import random
 from enum import auto, Enum
 from time import monotonic
 from typing import Optional
+from copy import deepcopy
 
 
 print('Hello Chakes!')
@@ -61,11 +62,11 @@ piece_defs = {
     'Knight': (3, '1/2'),
     'Bishop': (3, 'nX'),
     'Queen':  (3, 'n*'),
-    'King':   (3, 's1*'),
+    'King':   (3, '1*'),
 
     # Fairy
     'Nightrider':  (3, 'n(1/2)'),
-    'Anti-King':   (3, 'So1*,Sf1*'),
+    'Anti-King':   (3, 'Sf1*'),
     'Grasshopper': (3, '^n*'),
 }
 
@@ -161,7 +162,7 @@ class Piece:
                 return {(new_x, new_y)} | self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
     def move(self, new_pos_x: int, new_pos_y: int, info: str = '') -> None:
-        if (new_pos_x, new_pos_y) not in self.legal_moves():
+        if (new_pos_x, new_pos_y) not in self.legal_moves(check_safe = False):
             raise ValueError(f'{self.name} can not move from {pos_to_str(self.pos_x, self.pos_y)} to {pos_to_str(new_pos_x, new_pos_y)}.')
 
         if (cooldown := self.get_cooldown()) != 0.0:
@@ -228,15 +229,12 @@ class Piece:
 
     def legal_moves(
             self,
-            moveset:      Optional['str'] = None,
-            check_attack: bool            = False,
+            check_attack: bool = False,
+            check_safe:   bool = True,
         ) -> set[tuple[int, int]]:
-        if moveset is None:
-            moveset = self.moveset
-
         moves: set[tuple[int, int]] = set()
 
-        for pattern in moveset.split(','):
+        for pattern in self.moveset.split(','):
             moves_temp: set[tuple[int, int]] = set()
             match: Optional[re.Match] = None
 
@@ -248,7 +246,6 @@ class Piece:
             captures_friends: bool = False
             leaps:            bool = False
             hops:             bool = False
-            safe:             bool = False
             unsafe:           bool = False
 
             # Parse condtions
@@ -273,12 +270,6 @@ class Piece:
                     case 'c':
                         if not check_attack:
                             must_capture = True
-                        pattern = pattern[1:]
-
-                    # Must not move to attacked square
-                    case 's':
-                        if not check_attack:
-                            safe = True
                         pattern = pattern[1:]
 
                     # Must move to an attacked square
@@ -408,11 +399,6 @@ class Piece:
             if captures_friends:
                 self.owner = self.owner.other()
 
-            # Filter unsafe moves if 's' was specified
-            if safe:
-                attacked = self.game_state.attacked_squares(self.owner)
-                moves_temp -= attacked
-
             # Filter safe moves if 'S' was specified
             if unsafe:
                 attacked = self.game_state.attacked_squares(self.owner)
@@ -421,13 +407,12 @@ class Piece:
             # Append temporary moves to main moves
             moves |= moves_temp
 
-        # Add special moves
-        moves |= self._legal_moves_special()
+        # Apply special rules
+        moves = self._legal_moves_special(moves, check_attack = check_attack, check_safe = check_safe)
 
         return moves
 
-    def _legal_moves_special(self) -> set[tuple[int, int]]:
-        moves: set[tuple[int, int]] = set()
+    def _legal_moves_special(self, moves, check_attack = False, check_safe = True) -> set[tuple[int, int]]:
         other: Optional[Piece]
 
         match self.name:
@@ -459,6 +444,19 @@ class Piece:
                                 moves |= {(self.pos_x+2*diff_x, self.pos_y)}
                             break
                         cur_x += diff_x
+
+        # Filter unsafe moves
+        if not check_attack \
+        and check_safe:
+            for new_x, new_y in set(moves):
+                test_state: GameState = deepcopy(self.game_state)
+                test_state.move_piece(self.pos_x, self.pos_y, new_x, new_y)
+                attacked: set[tuple[int, int]] = test_state.attacked_squares(self.owner)
+                for att_x, att_y in attacked:
+                    piece: Optional[Piece] = test_state.board[att_x][att_y]
+                    if piece is not None:
+                        if piece.name == 'King':
+                            moves -= set(((new_x, new_y),))
 
         return moves
 
