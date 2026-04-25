@@ -430,21 +430,22 @@ class Piece:
 
             case 'King':
                 # Castling
-                # TODO: Can't make unsafe move
+                attacked: set[tuple[int, int]] = self.game_state.attacked_squares(self.owner) if check_safe else set()
                 for diff_x in (-1, 1):
-                    cur_x: int = self.pos_x + diff_x
-                    while self.game_state.is_pos_within_board(cur_x, self.pos_y):
-                        other = self.game_state.board[cur_x][self.pos_y]
-                        if other is not None:
-                            if other.name == 'Rook' \
-                            and other.owner == self.owner \
-                            and not self.has_moved \
-                            and not other.has_moved \
-                            and self.game_state.is_pos_within_board(self.pos_x+2*diff_x, self.pos_y) \
-                            and self.game_state.board[self.pos_x+2*diff_x][self.pos_y] is None:
-                                moves |= {(self.pos_x+2*diff_x, self.pos_y)}
-                            break
-                        cur_x += diff_x
+                    if {(self.pos_x, self.pos_y), (self.pos_x + diff_x, self.pos_y)} & attacked == set():
+                        cur_x: int = self.pos_x + diff_x
+                        while self.game_state.is_pos_within_board(cur_x, self.pos_y):
+                            other = self.game_state.board[cur_x][self.pos_y]
+                            if other is not None:
+                                if other.name == 'Rook' \
+                                and other.owner == self.owner \
+                                and not self.has_moved \
+                                and not other.has_moved \
+                                and self.game_state.is_pos_within_board(self.pos_x+2*diff_x, self.pos_y) \
+                                and self.game_state.board[self.pos_x+2*diff_x][self.pos_y] is None:
+                                    moves |= {(self.pos_x+2*diff_x, self.pos_y)}
+                                break
+                            cur_x += diff_x
 
         # Filter unsafe moves
         if check_safe:
@@ -557,6 +558,13 @@ class GameState:
 
         for x in range(self.size_x):
             self.add_piece(name, owner, x, y)
+
+    def remove_piece(self, pos_x: int, pos_y: int):
+        self.board[pos_x][pos_y] = None
+
+    def remove_piece_str(self, pos: str) -> None:
+        x, y = str_to_pos(pos)
+        self.remove_piece(x, y)
 
     def symmetry(self) -> None:
         for piece in [piece for pieces in self.board for piece in pieces]:

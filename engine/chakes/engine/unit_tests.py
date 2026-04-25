@@ -164,16 +164,70 @@ class TestPieces(ut.TestCase):
 
         self.assertEqual(
             poses_to_str(king.legal_moves()),
-            {'C1', 'D1', 'F1'}
+            {'C1', 'D1', 'F1'},
         )
 
         game_state.move_piece_str('G1', 'H3')
 
+        # Attack E1
+        game_state.move_piece_str('B8', 'C6')
+        game_state.move_piece_str('C6', 'B4')
+        game_state.move_piece_str('B4', 'D3')
+
         self.assertEqual(
             poses_to_str(king.legal_moves()),
-            {'C1', 'D1', 'F1', 'G1'}
+            {'D1', 'F1'},
         )
 
+        # Attack D1
+        game_state.move_piece_str('D3', 'C5')
+        game_state.move_piece_str('C5', 'A4')
+        game_state.move_piece_str('A4', 'C3')
+
+        self.assertEqual(
+            poses_to_str(king.legal_moves()),
+            {'F1', 'G1'},
+        )
+
+        # Attack C1
+        game_state.move_piece_str('C3', 'A4')
+        game_state.move_piece_str('A4', 'C5')
+        game_state.move_piece_str('C5', 'B3')
+
+        self.assertEqual(
+            poses_to_str(king.legal_moves()),
+            {'D1', 'F1', 'G1'},
+        )
+
+        # Attack F1
+        game_state.move_piece_str('B3', 'C5')
+        game_state.move_piece_str('C5', 'E4')
+        game_state.move_piece_str('E4', 'G3')
+
+        self.assertEqual(
+            poses_to_str(king.legal_moves()),
+            {'C1', 'D1'},
+        )
+
+        # Attack G1
+        game_state.move_piece_str('G3', 'H5')
+        game_state.move_piece_str('H5', 'F4')
+        game_state.move_piece_str('F4', 'H3')
+
+        self.assertEqual(
+            poses_to_str(king.legal_moves()),
+            {'C1', 'D1', 'F1'},
+        )
+
+        # Stop attacking
+        game_state.move_piece_str('H3', 'G5')
+
+        self.assertEqual(
+            poses_to_str(king.legal_moves()),
+            {'C1', 'D1', 'F1', 'G1'},
+        )
+
+        # Castle
         game_state.move_piece_str('E1', 'C1')
 
         rook: Optional[Piece] = game_state.piece_at('D1')
