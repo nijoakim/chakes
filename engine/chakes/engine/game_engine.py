@@ -30,7 +30,7 @@ print('Hello Chakes!')
 
 
 def pos_to_str(x: int, y: int) -> str:
-    return chr(ord('A')+x) + str(y+1)
+    return chr(ord('a')+x) + str(y+1)
 
 
 def poses_to_str(lst: set[tuple[int, int]]) -> set[str]:
@@ -38,7 +38,7 @@ def poses_to_str(lst: set[tuple[int, int]]) -> set[str]:
 
 
 def str_to_pos(pos: str) -> tuple[int, int]:
-    x: int = ord(pos[0]) - ord('A')
+    x: int = ord(pos[0]) - ord('a')
     y: int = int(pos[1:]) - 1
     return x, y
 
@@ -497,14 +497,14 @@ class GameState:
 
         state.add_piece_row('Pawn', Player.WHITE, '2')
 
-        state.add_piece_str('Rook',   Player.WHITE, 'A1')
-        state.add_piece_str('Knight', Player.WHITE, 'B1')
-        state.add_piece_str('Bishop', Player.WHITE, 'C1')
-        state.add_piece_str('Queen',  Player.WHITE, 'D1')
-        state.add_piece_str('King',   Player.WHITE, 'E1')
-        state.add_piece_str('Bishop', Player.WHITE, 'F1')
-        state.add_piece_str('Knight', Player.WHITE, 'G1')
-        state.add_piece_str('Rook',   Player.WHITE, 'H1')
+        state.add_piece_str('Rook',   Player.WHITE, 'a1')
+        state.add_piece_str('Knight', Player.WHITE, 'b1')
+        state.add_piece_str('Bishop', Player.WHITE, 'c1')
+        state.add_piece_str('Queen',  Player.WHITE, 'd1')
+        state.add_piece_str('King',   Player.WHITE, 'e1')
+        state.add_piece_str('Bishop', Player.WHITE, 'f1')
+        state.add_piece_str('Knight', Player.WHITE, 'g1')
+        state.add_piece_str('Rook',   Player.WHITE, 'h1')
 
         state.symmetry()
 
@@ -514,8 +514,8 @@ class GameState:
     def anti_king_chess() -> GameState:
         state = GameState.default()
 
-        state.add_piece_str('Anti-King', Player.WHITE, 'D6')
-        state.add_piece_str('Anti-King', Player.BLACK, 'D3')
+        state.add_piece_str('Anti-King', Player.WHITE, 'd6')
+        state.add_piece_str('Anti-King', Player.BLACK, 'd3')
 
         return state
 
