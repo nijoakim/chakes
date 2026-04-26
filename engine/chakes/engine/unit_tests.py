@@ -245,6 +245,12 @@ class TestPieces(ut.TestCase):
 
         game_state.move_piece_str('d8', 'h4')
 
+        queen: Optional[Piece] = game_state.piece_at('h4')
+        assert queen is not None
+
+        # Assert King can not be captured
+        self.assertTrue('e1' not in poses_to_str(queen.legal_moves()))
+
         self.assertEqual(
             game_state.winner(),
             Player.BLACK,

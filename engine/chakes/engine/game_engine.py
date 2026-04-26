@@ -161,8 +161,8 @@ class Piece:
             else:
                 return {(new_x, new_y)} | self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
-    def move(self, new_pos_x: int, new_pos_y: int, info: str = '') -> None:
-        if (new_pos_x, new_pos_y) not in self.legal_moves(check_safe = False):
+    def move(self, new_pos_x: int, new_pos_y: int, info: str = '', check_safe = True) -> None:
+        if (new_pos_x, new_pos_y) not in self.legal_moves(check_safe = check_safe):
             raise ValueError(f'{self.name} can not move from {pos_to_str(self.pos_x, self.pos_y)} to {pos_to_str(new_pos_x, new_pos_y)}.')
 
         if (cooldown := self.get_cooldown()) != 0.0:
@@ -451,7 +451,7 @@ class Piece:
         if check_safe:
             for new_x, new_y in set(moves):
                 test_state: GameState = deepcopy(self.game_state)
-                test_state.move_piece(self.pos_x, self.pos_y, new_x, new_y)
+                test_state.move_piece(self.pos_x, self.pos_y, new_x, new_y, check_safe = False)
                 attacked_anti_kings: set[Piece] = set()
                 all_anti_kings:      set[Piece] = set([
                     piece
@@ -474,6 +474,15 @@ class Piece:
                 # Remove move if any Anti-King is unattacked
                 if all_anti_kings != attacked_anti_kings:
                     moves -= {(new_x, new_y)}
+
+        # Filter moves that capture invinsible pieces
+        if check_safe:
+            for pos_x, pos_y in set(moves):
+                other = self.game_state.board[pos_x][pos_y]
+                if other is not None:
+                    if other.name == 'King' \
+                    or other.name == 'Anti-King':
+                        moves -= {(pos_x, pos_y)}
 
         return moves
 
@@ -601,13 +610,13 @@ class GameState:
                     raise RuntimeError(f'Impossible to make symmetry due to {piece.name} at {pos_to_str(piece.pos_x, piece.pos_y)} and {new_piece.name} at {pos_to_str(x, y)}.')
                 self.add_piece(piece.name, piece.owner.other(), x, y)
 
-    def move_piece(self, pos_x1: int, pos_y1: int, pos_x2: int, pos_y2: int, info: str = '') -> None:
+    def move_piece(self, pos_x1: int, pos_y1: int, pos_x2: int, pos_y2: int, info: str = '', check_safe = True) -> None:
         piece: Optional[Piece] = self.board[pos_x1][pos_y1]
 
         if piece is None:
             raise ValueError(f'There is no piece at {pos_to_str(pos_x1, pos_y1)}.')
         else:
-            piece.move(pos_x2, pos_y2, info = info)
+            piece.move(pos_x2, pos_y2, info = info, check_safe = check_safe)
 
         self.move_log.append(((pos_x1, pos_y1), (pos_x2, pos_y2)))
 
