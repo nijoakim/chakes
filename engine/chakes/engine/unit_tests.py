@@ -336,6 +336,87 @@ class TestPieces(ut.TestCase):
             {'a8', 'd8', 'f5'},
         )
 
+    def test_camel(self) -> None:
+        game_state = GameState.default()
+        game_state.remove_piece_str('b1')
+        game_state.add_piece_str('Camel', Player.WHITE, 'b1')
+        game_state.move_piece_str('b1', 'c4')
+
+        camel: Optional[Piece] = game_state.piece_at('c4')
+        assert camel is not None
+
+        self.assertEqual(
+            poses_to_str(camel.legal_moves()),
+            {'b1', 'b7', 'd7', 'f3', 'f5'},
+        )
+
+    def test_berolina_pawn(self) -> None:
+        game_state = GameState.berolina_chess()
+        game_state.move_piece_str('a2', 'c4')
+        game_state.move_piece_str('c4', 'b5')
+        game_state.move_piece_str('b5', 'c6')
+
+        berolina_pawn: Optional[Piece] = game_state.piece_at('c6')
+        assert berolina_pawn is not None
+
+        self.assertEqual(
+            poses_to_str(berolina_pawn.legal_moves()),
+            {'c7'},
+        )
+
+        game_state.move_piece_str('c6', 'c7')
+        game_state.move_piece_str('c7', 'c8', info = 'Knight')
+
+        knight: Optional[Piece] = game_state.piece_at('c8')
+        assert knight is not None
+
+        self.assertEqual(
+            knight.name,
+            'Knight',
+        )
+
+    def test_chameleon(self) -> None:
+        game_state = GameState.default()
+        game_state.remove_piece_str('b1')
+        game_state.add_piece_str('Chameleon', Player.WHITE, 'b1')
+
+        chameleon: Optional[Piece] = game_state.piece_at('b1')
+        assert chameleon is not None
+
+        # Is knight
+        self.assertEqual(
+            poses_to_str(chameleon.legal_moves()),
+            {'a3', 'c3'},
+        )
+
+        # Shift into bishop
+        game_state.move_piece_str('b1', 'c3')
+        self.assertEqual(
+            poses_to_str(chameleon.legal_moves()),
+            {'b4', 'a5', 'd4', 'e5', 'f6', 'g7'},
+        )
+
+        # Shift into rook
+        game_state.move_piece_str('c3', 'e5')
+        self.assertEqual(
+            poses_to_str(chameleon.legal_moves()),
+            {'a5', 'b5', 'c5', 'd5', 'f5', 'g5', 'h5', 'e3', 'e4', 'e6', 'e7'},
+        )
+
+        # Shift into queen
+        game_state.move_piece_str('e5', 'c5')
+        self.assertEqual(
+            poses_to_str(chameleon.legal_moves()),
+            {'a5', 'b5', 'd5', 'e5', 'f5', 'g5', 'h5', 'c3', 'c4', 'c6', 'c7', 'a7', 'b6', 'd4', 'e3', 'a3', 'b4', 'd6', 'e7'},
+        )
+
+        # Shift back into knight
+        game_state.move_piece_str('c5', 'e3')
+        self.assertEqual(
+            poses_to_str(chameleon.legal_moves()),
+            {'c4', 'd5', 'f5', 'g4'},
+        )
+
 
 if __name__ == '__main__':
     ut.main()

@@ -55,7 +55,7 @@ class Player(Enum):
 
 
 # Format: name: (value, movement)
-piece_defs = {
+piece_defs: dict[str, tuple[int, str]] = {
     # Orthodox
     'Pawn':   (3, 'o1>,io2>,c1X>'),
     'Rook':   (3, 'n+'),
@@ -65,9 +65,13 @@ piece_defs = {
     'King':   (3, '1*'),
 
     # Fairy
-    'Nightrider':  (3, 'n(1/2)'),
-    'Anti-King':   (3, 'f1*'),
-    'Grasshopper': (3, '^n*'),
+    'Anti-King':     (3, 'f1*'),
+    'Berolina Pawn': (3, 'o1X>,io2X>,c1>'),
+    'Camel':         (3, '1/3'),
+    'Chameleon':     (3, '1/2'),
+    'Grasshopper':   (3, '^n*'),
+    'Man':           (3, '1*'),
+    'Nightrider':    (3, 'n(1/2)'),
 }
 
 
@@ -161,7 +165,13 @@ class Piece:
             else:
                 return {(new_x, new_y)} | self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
 
-    def move(self, new_pos_x: int, new_pos_y: int, info: str = '', check_safe = True) -> None:
+    def move(
+            self,
+            new_pos_x:   int,
+            new_pos_y:   int,
+            info:        str = '',
+            check_safe:  bool = True
+        ) -> None:
         if (new_pos_x, new_pos_y) not in self.legal_moves(check_safe = check_safe):
             raise ValueError(f'{self.name} can not move from {pos_to_str(self.pos_x, self.pos_y)} to {pos_to_str(new_pos_x, new_pos_y)}.')
 
@@ -179,7 +189,12 @@ class Piece:
         self.has_moved      = True
         self.last_move_time = monotonic()
 
-    def _move_special(self, new_pos_x: int, new_pos_y: int, info: str = '') -> None:
+    def _move_special(
+            self,
+            new_pos_x: int,
+            new_pos_y: int,
+            info:      str = ''
+        ) -> None:
         other: Optional[Piece]
 
         match self.name:
@@ -197,19 +212,8 @@ class Piece:
                         if getattr(other, '_en_passentable', False):
                             self.game_state.board[new_pos_x][self.pos_y] = None
 
-                # Promote
-                if new_pos_y == 0 or new_pos_y == self.game_state.size_y-1:
-                    if info == '':
-                        info = 'Queen'
-
-                    self.name = info
-
-                    self.value   = piece_defs[self.name][0]
-                    self.moveset = piece_defs[self.name][1]
-
             case 'King':
                 # Castling
-                # TODO: King should be captured if castling square is captured before cooldown
                 if abs(new_pos_x - self.pos_x) == 2:
                     diff_x: int = (new_pos_x - self.pos_x) // abs(new_pos_x - self.pos_x)
                     cur_x:  int = self.pos_x + diff_x
@@ -222,6 +226,28 @@ class Piece:
                                 other.pos_x = self.pos_x+diff_x
                                 return
                         cur_x += diff_x
+
+            case 'Chameleon':
+                # Shape shift
+                if self.moveset == piece_defs['Knight'][1]:
+                    self.value, self.moveset = piece_defs['Bishop']
+                elif self.moveset == piece_defs['Bishop'][1]:
+                    self.value, self.moveset = piece_defs['Rook']
+                elif self.moveset == piece_defs['Rook'][1]:
+                    self.value, self.moveset = piece_defs['Queen']
+                elif self.moveset == piece_defs['Queen'][1]:
+                    self.value, self.moveset = piece_defs['Knight']
+
+        # Promote
+        if 'Pawn' in self.name:
+            if new_pos_y == 0 or new_pos_y == self.game_state.size_y-1:
+                if info == '':
+                    info = 'Queen'
+
+                self.name = info
+
+                self.value   = piece_defs[self.name][0]
+                self.moveset = piece_defs[self.name][1]
 
     def get_cooldown(self) -> float:
         cooldown: float = self.last_move_time - monotonic() + self.value
@@ -520,6 +546,26 @@ class GameState:
         return state
 
     @staticmethod
+    def berolina_chess() -> GameState:
+        state = GameState(8, 8)
+
+        state.add_piece_row('Berolina Pawn', Player.WHITE, '2')
+
+        state.add_piece_str('Rook',   Player.WHITE, 'a1')
+        state.add_piece_str('Knight', Player.WHITE, 'b1')
+        state.add_piece_str('Bishop', Player.WHITE, 'c1')
+        state.add_piece_str('Queen',  Player.WHITE, 'd1')
+        state.add_piece_str('King',   Player.WHITE, 'e1')
+        state.add_piece_str('Bishop', Player.WHITE, 'f1')
+        state.add_piece_str('Knight', Player.WHITE, 'g1')
+        state.add_piece_str('Rook',   Player.WHITE, 'h1')
+
+        state.symmetry()
+
+        return state
+
+
+    @staticmethod
     def anti_king_chess() -> GameState:
         state = GameState.default()
 
@@ -610,7 +656,15 @@ class GameState:
                     raise RuntimeError(f'Impossible to make symmetry due to {piece.name} at {pos_to_str(piece.pos_x, piece.pos_y)} and {new_piece.name} at {pos_to_str(x, y)}.')
                 self.add_piece(piece.name, piece.owner.other(), x, y)
 
-    def move_piece(self, pos_x1: int, pos_y1: int, pos_x2: int, pos_y2: int, info: str = '', check_safe = True) -> None:
+    def move_piece(
+            self,
+            pos_x1:     int,
+            pos_y1:     int,
+            pos_x2:     int,
+            pos_y2:     int,
+            info:       str  = '',
+            check_safe: bool = True,
+        ) -> None:
         piece: Optional[Piece] = self.board[pos_x1][pos_y1]
 
         if piece is None:
