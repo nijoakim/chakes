@@ -5,6 +5,7 @@
 
 # Medium priority:
 - New game (with new game ID) with the same player
++ Refractor game engine to have a position object instead of relying on tuples and string conversions
 
 # Low priority:
 - Add the following to the UI
