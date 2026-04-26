@@ -65,13 +65,16 @@ piece_defs: dict[str, tuple[int, str]] = {
     'King':   (3, '1*'),
 
     # Fairy
+    'Amazon':        (3, 'n*,1/2'),
     'Anti-King':     (3, 'f1*'),
     'Berolina Pawn': (3, 'o1X>,io2X>,c1>'),
     'Camel':         (3, '1/3'),
     'Chameleon':     (3, '1/2'),
+    'Ferz':          (3, '1X'),
     'Grasshopper':   (3, '^n*'),
     'Man':           (3, '1*'),
     'Nightrider':    (3, 'n(1/2)'),
+    'Wazir':         (3, '1+'),
 }
 
 
