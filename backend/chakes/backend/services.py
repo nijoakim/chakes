@@ -96,6 +96,12 @@ class ChakesService:
         await self._connections.broadcast(lobby_name, self._game_state_msg(game))
         return game
 
+    def get_legal_moves(self, lobby_name: str, game_id: uuid.UUID, r: int, c: int) -> list[list[int]]:
+        lobby = self._lobbies[lobby_name]
+        if not lobby.game or lobby.game.id != game_id:
+            raise ValueError("Game not found")
+        return lobby.game.get_legal_moves(r, c)
+
     async def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> None:
         lobby = self._lobbies[lobby_name]
         if not lobby.game or lobby.game.id != game_id:

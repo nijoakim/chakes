@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { gameService, type Board, type Cooldowns, type Color } from '../services/gameService'
 
 const pieces: Record<string, string> = {
@@ -15,6 +15,7 @@ const maxCooldown: Record<string, number> = {
 const board = ref<Board>([])
 const cooldowns = ref<Cooldowns>([])
 const selected = ref<[number, number] | null>(null)
+const legalMoves = ref<Set<string>>(new Set())
 const playerColor = ref<Color>('white')
 const lobbyName = ref<string | null>(null)
 const gameId = ref<string | null>(null)
@@ -78,9 +79,11 @@ if (lobbyFromUrl) {
   connectToLobby(decodeURIComponent(lobbyFromUrl))
 }
 
+onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => {
   disconnect?.()
   cancelAnimationFrame(rafId)
+  window.removeEventListener('keydown', onKeydown)
 })
 
 const displayBoard = computed<Board>(() => {
@@ -111,22 +114,62 @@ function isOnCooldown(r: number, c: number): boolean {
   return (cooldowns.value[r]?.[c] ?? 0) > 0
 }
 
+function isLegalMove(displayR: number, displayC: number): boolean {
+  const [br, bc] = displayToBoard(displayR, displayC)
+  return legalMoves.value.has(`${br},${bc}`)
+}
+
+async function selectPiece(r: number, c: number) {
+  selected.value = [r, c]
+  legalMoves.value = new Set()
+  const moves = await gameService.getLegalMoves(lobbyName.value!, gameId.value!, r, c)
+  if (selected.value && selected.value[0] === r && selected.value[1] === c) {
+    legalMoves.value = new Set(moves.map(([mr, mc]: number[]) => `${mr},${mc}`))
+  }
+}
+
+const isOwnPiece = (p: string) =>
+  playerColor.value === 'white' ? p === p.toUpperCase() : p === p.toLowerCase()
+
+function deselect() {
+  selected.value = null
+  legalMoves.value = new Set()
+}
+
 function handleClick(displayR: number, displayC: number) {
   if (!gameId.value || winner.value) return
   const [r, c] = displayToBoard(displayR, displayC)
-  const ownPiece = (p: string) =>
-    playerColor.value === 'white' ? p === p.toUpperCase() : p === p.toLowerCase()
+  const piece = board.value[r][c]
 
   if (selected.value === null) {
-    if (board.value[r][c] && ownPiece(board.value[r][c]) && !isOnCooldown(r, c))
-      selected.value = [r, c]
+    if (piece && isOwnPiece(piece) && !isOnCooldown(r, c))
+      selectPiece(r, c)
   } else {
-    const [fr, fc] = selected.value
-    selected.value = null
-    if (fr !== r || fc !== c) {
+    if (piece && isOwnPiece(piece) && !isOnCooldown(r, c)) {
+      const [fr, fc] = selected.value
+      if (fr === r && fc === c) deselect()
+      else selectPiece(r, c)
+    } else if (legalMoves.value.has(`${r},${c}`)) {
+      const [fr, fc] = selected.value
+      deselect()
       gameService.sendMove(lobbyName.value!, gameId.value, fr, fc, r, c)
     }
   }
+}
+
+function handleRightClick(e: MouseEvent, displayR: number, displayC: number) {
+  if (!gameId.value || winner.value || !selected.value) return
+  e.preventDefault()
+  const [r, c] = displayToBoard(displayR, displayC)
+  const [fr, fc] = selected.value
+  if (fr !== r || fc !== c) {
+    deselect()
+    gameService.sendMove(lobbyName.value!, gameId.value, fr, fc, r, c)
+  }
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') deselect()
 }
 </script>
 
@@ -178,10 +221,12 @@ function handleClick(displayR: number, displayC: number) {
             :class="[
               (r + c) % 2 === 0 ? 'light' : 'dark',
               isSelected(r, c) ? 'selected' : '',
+              isLegalMove(r, c) ? 'legal-move' : '',
               piece ? 'piece' : '',
               (displayCooldowns[r]?.[c] ?? 0) > 0 ? 'on-cooldown' : '',
             ]"
             @click="handleClick(r, c)"
+            @contextmenu="handleRightClick($event, r, c)"
           >
             {{ pieces[piece] ?? '' }}
             <div
@@ -232,9 +277,11 @@ function handleClick(displayR: number, displayC: number) {
 .square.piece {
   cursor: pointer;
 }
+.square {
+  position: relative;
+}
 .square.on-cooldown {
   cursor: not-allowed;
-  position: relative;
 }
 .cooldown-overlay {
   position: absolute;
@@ -246,7 +293,16 @@ function handleClick(displayR: number, displayC: number) {
 }
 .light { background: #f0d9b5; }
 .dark  { background: #b58863; }
-.selected { background: #f6f669; }
+.square.selected::after,
+.square.legal-move::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.square.selected::after { background: rgba(246, 246, 105, 0.6); }
+.square.legal-move::after { background: rgba(130, 190, 80, 0.45); }
+.square.legal-move { cursor: pointer; }
 .color-label {
   margin-top: 6px;
   font-size: 18px;

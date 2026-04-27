@@ -24,6 +24,12 @@ class GameService {
     return String(data.game_id)
   }
 
+  async getLegalMoves(lobbyName: string, gameId: string, r: number, c: number): Promise<number[][]> {
+    const res = await fetch(`/api/lobby/${lobbyName}/game/${gameId}/legal-moves?r=${r}&c=${c}`)
+    const data = await res.json()
+    return data.moves
+  }
+
   async sendMove(lobbyName: string, gameId: string, fromR: number, fromC: number, toR: number, toC: number): Promise<void> {
     await fetch(`/api/lobby/${lobbyName}/game/${gameId}/move`, {
       method: 'POST',

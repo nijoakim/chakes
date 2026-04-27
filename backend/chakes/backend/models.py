@@ -103,6 +103,14 @@ class ActiveGame:
             for r in range(8)
         ]
 
+    def get_legal_moves(self, r: int, c: int) -> list[list[int]]:
+        """Return legal moves for the piece at board position (r, c) as [[r, c], ...]."""
+        piece = self._get_piece(c, r)
+        if piece is None:
+            return []
+        engine_moves = piece.legal_moves()
+        return [[7 - ey, ex] for ex, ey in engine_moves]
+
     def to_game(self) -> Game:
         pieces = []
         for r in range(8):

@@ -36,6 +36,12 @@ async def game_create(name: str, game_def: GameDef | None = None):
     return {"game_id": str(game.id)}
 
 
+@router.get("/lobby/{name}/game/{game_id}/legal-moves")
+def game_legal_moves(name: str, game_id: uuid.UUID, r: int, c: int):
+    moves = chakes.get_legal_moves(name, game_id, r, c)
+    return {"moves": moves}
+
+
 @router.post("/lobby/{name}/game/{game_id}/move")
 async def game_move(name: str, game_id: uuid.UUID, move: MoveRequest):
     await chakes.move(name, game_id, move)
