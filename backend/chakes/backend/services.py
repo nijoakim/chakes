@@ -2,62 +2,104 @@ import uuid
 
 from fastapi import WebSocket
 
-from chakes.backend.models import GameRoom, MoveRequest
+from chakes.backend.models import (
+    ActiveGame,
+    GameDef,
+    Lobby,
+    MoveRequest,
+    generate_lobby_name,
+)
 
 
 class ConnectionManager:
     def __init__(self):
-        self._connections: dict[uuid.UUID, list[WebSocket]] = {}
+        self._connections: dict[str, list[WebSocket]] = {}
 
-    async def connect(self, game_id: uuid.UUID, ws: WebSocket) -> None:
+    async def connect(self, lobby_name: str, ws: WebSocket) -> None:
         await ws.accept()
-        self._connections.setdefault(game_id, []).append(ws)
+        self._connections.setdefault(lobby_name, []).append(ws)
 
-    def disconnect(self, game_id: uuid.UUID, ws: WebSocket) -> None:
-        self._connections[game_id].remove(ws)
+    def disconnect(self, lobby_name: str, ws: WebSocket) -> None:
+        self._connections[lobby_name].remove(ws)
+        if not self._connections[lobby_name]:
+            del self._connections[lobby_name]
 
-    async def broadcast(self, game_id: uuid.UUID, data: dict) -> None:
-        for ws in list(self._connections.get(game_id, [])):
+    def connection_count(self, lobby_name: str) -> int:
+        return len(self._connections.get(lobby_name, []))
+
+    async def broadcast(self, lobby_name: str, data: dict) -> None:
+        for ws in list(self._connections.get(lobby_name, [])):
             try:
                 await ws.send_json(data)
             except Exception:
                 pass
 
 
-class GameRoomService:
-    _storage: dict[uuid.UUID, GameRoom] = dict()
+class LobbyService:
+    def __init__(self):
+        self._lobbies: dict[str, Lobby] = {}
 
-    def __getitem__(self, key: uuid.UUID):
-        return self._storage[key]
+    def __getitem__(self, name: str) -> Lobby:
+        return self._lobbies[name]
 
-    def create(self):
-        key = uuid.uuid4()
-        self._storage[key] = GameRoom()
-        print(f"Created game room: {key}")
-        return key
+    def create(self, name: str | None = None) -> Lobby:
+        lobby_name = name or generate_lobby_name()
+        lobby = Lobby(lobby_name)
+        self._lobbies[lobby_name] = lobby
+        print(f"Created lobby: {lobby_name}")
+        return lobby
 
-    def list(self):
-        return list(self._storage.keys())
+    def list(self) -> list[str]:
+        return list(self._lobbies.keys())
+
+    def get(self, name: str) -> Lobby | None:
+        return self._lobbies.get(name)
+
+    def remove(self, name: str) -> None:
+        self._lobbies.pop(name, None)
 
 
 class ChakesService:
-    def __init__(self, rooms: GameRoomService, connections: ConnectionManager):
-        self._rooms = rooms
+    def __init__(self, lobbies: LobbyService, connections: ConnectionManager):
+        self._lobbies = lobbies
         self._connections = connections
 
-    async def connect(self, game_id: uuid.UUID, ws: WebSocket) -> None:
-        await self._connections.connect(game_id, ws)
-        room = self._rooms[game_id]
-        color = (
-            "white" if len(self._connections._connections[game_id]) == 1 else "black"
-        )
-        print("Sending game state")
-        await ws.send_json({"color": color, "board": room.serialize_board(), "cooldowns": room.serialize_cooldowns()})
+    def _game_state_msg(self, game: ActiveGame) -> dict:
+        msg: dict = {
+            "board": game.serialize_board(),
+            "cooldowns": game.serialize_cooldowns(),
+            "game_id": str(game.id),
+        }
+        winner = game.state.winner()
+        if winner:
+            msg["winner"] = "white" if winner.name == "WHITE" else "black"
+        return msg
 
-    def disconnect(self, game_id: uuid.UUID, ws: WebSocket) -> None:
-        self._connections.disconnect(game_id, ws)
+    async def connect(self, lobby_name: str, ws: WebSocket) -> None:
+        await self._connections.connect(lobby_name, ws)
+        lobby = self._lobbies[lobby_name]
+        color = "white" if self._connections.connection_count(lobby_name) == 1 else "black"
+        msg: dict = {"color": color}
+        if lobby.game:
+            msg.update(self._game_state_msg(lobby.game))
+        await ws.send_json(msg)
 
-    async def move(self, game_id: uuid.UUID, move: MoveRequest) -> None:
-        room = self._rooms[game_id]
-        room.state.move_piece(move.from_c, 7 - move.from_r, move.to_c, 7 - move.to_r)
-        await self._connections.broadcast(game_id, {"board": room.serialize_board(), "cooldowns": room.serialize_cooldowns()})
+    def disconnect(self, lobby_name: str, ws: WebSocket) -> None:
+        self._connections.disconnect(lobby_name, ws)
+        if self._connections.connection_count(lobby_name) == 0:
+            self._lobbies.remove(lobby_name)
+            print(f"Destroyed lobby: {lobby_name}")
+
+    async def create_game(self, lobby_name: str, game_def: GameDef) -> ActiveGame:
+        lobby = self._lobbies[lobby_name]
+        game = lobby.create_game(game_def)
+        await self._connections.broadcast(lobby_name, self._game_state_msg(game))
+        return game
+
+    async def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> None:
+        lobby = self._lobbies[lobby_name]
+        if not lobby.game or lobby.game.id != game_id:
+            raise ValueError("Game not found")
+        game = lobby.game
+        game.state.move_piece(move.from_c, 7 - move.from_r, move.to_c, 7 - move.to_r)
+        await self._connections.broadcast(lobby_name, self._game_state_msg(game))

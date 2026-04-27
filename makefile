@@ -36,7 +36,7 @@ typecheck-backend:
 
 .PHONY: typecheck-frontend
 typecheck-frontend:
-	cd frontend && npm run typecheck
+	cd frontend && npm run type-check
 
 # === Check (lint + typecheck) ===
 

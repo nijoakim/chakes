@@ -16,9 +16,10 @@ const board = ref<Board>([])
 const cooldowns = ref<Cooldowns>([])
 const selected = ref<[number, number] | null>(null)
 const playerColor = ref<Color>('white')
-const preferredColor = ref<Color>('white')
-const roomId = ref<string | null>(null)
-const joinRoomId = ref('')
+const lobbyName = ref<string | null>(null)
+const gameId = ref<string | null>(null)
+const winner = ref<Color | null>(null)
+const joinLobbyName = ref('')
 let disconnect: (() => void) | null = null
 
 let serverCooldowns: Cooldowns = []
@@ -33,27 +34,48 @@ function tickCooldowns() {
   rafId = requestAnimationFrame(tickCooldowns)
 }
 
-function connectToRoom(id: string) {
+function connectToLobby(name: string) {
   disconnect?.()
-  roomId.value = id
-  playerColor.value = preferredColor.value
-  disconnect = gameService.connect(id, {
+  lobbyName.value = name
+  history.pushState(null, '', `/lobby/${encodeURIComponent(name)}`)
+  disconnect = gameService.connect(name, {
     onBoard: (b) => { board.value = b },
     onCooldowns: (c) => {
       serverCooldowns = c
       serverCooldownTime = performance.now()
     },
+    onColor: (c) => { playerColor.value = c },
+    onGameId: (id) => { gameId.value = id },
+    onWinner: (w) => { winner.value = w },
   })
   rafId = requestAnimationFrame(tickCooldowns)
 }
 
-async function createRoom() {
-  const id = await gameService.createRoom()
-  connectToRoom(id)
+async function createLobby() {
+  const customName = joinLobbyName.value.trim() || undefined
+  const name = await gameService.createLobby(customName)
+  connectToLobby(name)
 }
 
-function joinRoom() {
-  if (joinRoomId.value.trim()) connectToRoom(joinRoomId.value.trim())
+async function newGame() {
+  if (lobbyName.value) {
+    board.value = []
+    cooldowns.value = []
+    serverCooldowns = []
+    gameId.value = null
+    winner.value = null
+    selected.value = null
+    await gameService.createGame(lobbyName.value)
+  }
+}
+
+function joinLobby() {
+  if (joinLobbyName.value.trim()) connectToLobby(joinLobbyName.value.trim())
+}
+
+const lobbyFromUrl = window.location.pathname.match(/^\/lobby\/([^/]+)/)?.[1]
+if (lobbyFromUrl) {
+  connectToLobby(decodeURIComponent(lobbyFromUrl))
 }
 
 onUnmounted(() => {
@@ -90,6 +112,7 @@ function isOnCooldown(r: number, c: number): boolean {
 }
 
 function handleClick(displayR: number, displayC: number) {
+  if (!gameId.value || winner.value) return
   const [r, c] = displayToBoard(displayR, displayC)
   const ownPiece = (p: string) =>
     playerColor.value === 'white' ? p === p.toUpperCase() : p === p.toLowerCase()
@@ -101,7 +124,7 @@ function handleClick(displayR: number, displayC: number) {
     const [fr, fc] = selected.value
     selected.value = null
     if (fr !== r || fc !== c) {
-      gameService.sendMove(roomId.value!, fr, fc, r, c)
+      gameService.sendMove(lobbyName.value!, gameId.value, fr, fc, r, c)
     }
   }
 }
@@ -109,47 +132,81 @@ function handleClick(displayR: number, displayC: number) {
 
 <template>
   <section id="center">
-    <div v-if="!roomId" class="lobby">
-      <div class="color-picker">
-        <button :class="{ active: preferredColor === 'white' }" @click="preferredColor = 'white'">♔ White</button>
-        <button :class="{ active: preferredColor === 'black' }" @click="preferredColor = 'black'">♚ Black</button>
-      </div>
-      <button @click="createRoom">Create game</button>
+    <div
+      v-if="!lobbyName"
+      class="lobby"
+    >
+      <button @click="createLobby">
+        Create lobby
+      </button>
       <div class="join">
-        <input v-model="joinRoomId" placeholder="Room ID" @keyup.enter="joinRoom" />
-        <button @click="joinRoom">Join game</button>
+        <input
+          v-model="joinLobbyName"
+          placeholder="Lobby name"
+          @keyup.enter="joinLobby"
+        >
+        <button @click="joinLobby">
+          Join lobby
+        </button>
       </div>
     </div>
     <template v-else>
-    <div class="room-name">Room: {{ roomId }}</div>
-    <div class="board">
+      <div class="room-name">
+        Lobby: {{ lobbyName }}
+      </div>
       <div
-        v-for="(row, r) in displayBoard"
-        :key="r"
-        class="row"
+        v-if="!gameId"
+        class="game-setup"
+      >
+        <button @click="newGame">
+          Start game
+        </button>
+      </div>
+      <div
+        v-else
+        class="board"
       >
         <div
-          v-for="(piece, c) in row"
-          :key="c"
-          class="square"
-          :class="[
-            (r + c) % 2 === 0 ? 'light' : 'dark',
-            isSelected(r, c) ? 'selected' : '',
-            piece ? 'piece' : '',
-            (displayCooldowns[r]?.[c] ?? 0) > 0 ? 'on-cooldown' : '',
-          ]"
-          @click="handleClick(r, c)"
+          v-for="(row, r) in displayBoard"
+          :key="r"
+          class="row"
         >
-          {{ pieces[piece] ?? '' }}
           <div
-            v-if="(displayCooldowns[r]?.[c] ?? 0) > 0"
-            class="cooldown-overlay"
-            :style="{ height: (displayCooldowns[r][c] / (maxCooldown[piece] ?? 1) * 100) + '%' }"
-          />
+            v-for="(piece, c) in row"
+            :key="c"
+            class="square"
+            :class="[
+              (r + c) % 2 === 0 ? 'light' : 'dark',
+              isSelected(r, c) ? 'selected' : '',
+              piece ? 'piece' : '',
+              (displayCooldowns[r]?.[c] ?? 0) > 0 ? 'on-cooldown' : '',
+            ]"
+            @click="handleClick(r, c)"
+          >
+            {{ pieces[piece] ?? '' }}
+            <div
+              v-if="(displayCooldowns[r]?.[c] ?? 0) > 0"
+              class="cooldown-overlay"
+              :style="{ height: (displayCooldowns[r][c] / (maxCooldown[piece] ?? 1) * 100) + '%' }"
+            />
+          </div>
         </div>
       </div>
-    </div>
-    <div class="color-label">{{ playerColor === 'white' ? '♔ White' : '♚ Black' }}</div>
+      <div
+        v-if="winner"
+        class="winner-banner"
+      >
+        {{ winner === 'white' ? '♔ White' : '♚ Black' }} won!
+      </div>
+      <div class="color-label">
+        {{ playerColor === 'white' ? '♔ White' : '♚ Black' }}
+      </div>
+      <button
+        class="new-game"
+        @click="newGame"
+      >
+        New Game
+      </button>
     </template>
   </section>
 </template>
@@ -201,14 +258,6 @@ function handleClick(displayR: number, displayC: number) {
   gap: 12px;
   align-items: center;
 }
-.color-picker {
-  display: flex;
-  gap: 8px;
-}
-.color-picker button.active {
-  outline: 2px solid #333;
-  font-weight: bold;
-}
 .join {
   display: flex;
   gap: 8px;
@@ -218,5 +267,24 @@ function handleClick(displayR: number, displayC: number) {
   font-size: 13px;
   color: #666;
   text-align: center;
+}
+.game-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  padding: 24px;
+}
+.winner-banner {
+  margin-top: 12px;
+  padding: 12px 24px;
+  font-size: 28px;
+  font-weight: bold;
+  text-align: center;
+  background: #f6f669;
+  border-radius: 6px;
+}
+.new-game {
+  margin-top: 12px;
 }
 </style>

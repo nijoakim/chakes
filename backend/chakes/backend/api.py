@@ -2,42 +2,50 @@ import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from chakes.backend.models import MoveRequest
-from chakes.backend.services import ChakesService, ConnectionManager, GameRoomService
+from chakes.backend.models import GameDef, MoveRequest
+from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
 
 router = APIRouter(prefix="/api")
 
-rooms = GameRoomService()
+lobbies = LobbyService()
 connections = ConnectionManager()
-chakes = ChakesService(rooms, connections)
+chakes = ChakesService(lobbies, connections)
 
 
-@router.get("/rooms")
-def rooms_list():
-    return {"rooms": rooms.list()}
+@router.get("/lobby")
+def lobby_list():
+    return {"lobbies": lobbies.list()}
 
 
-@router.post("/rooms")
-def room_create():
-    # TODO: Add name, starting pieces, player color...
-    return {"room": rooms.create()}
+@router.post("/lobby")
+def lobby_create(name: str | None = None):
+    lobby = lobbies.create(name)
+    return {"lobby": lobby.name}
 
 
-@router.get("/rooms/{id}")
-def room_state(id: uuid.UUID):
-    return {"state": rooms[id].state}
+@router.get("/lobby/{name}")
+def lobby_get(name: str):
+    lobby = lobbies[name]
+    game_id = str(lobby.game.id) if lobby.game else None
+    return {"name": lobby.name, "game_id": game_id}
 
 
-@router.post("/rooms/{id}/move")
-async def room_move(id: uuid.UUID, move: MoveRequest):
-    await chakes.move(id, move)
+@router.post("/lobby/{name}/game")
+async def game_create(name: str, game_def: GameDef | None = None):
+    game = await chakes.create_game(name, game_def or GameDef())
+    return {"game_id": str(game.id)}
 
 
-@router.websocket("/rooms/{id}/ws")
-async def game_state_ws(id: uuid.UUID, ws: WebSocket):
-    await chakes.connect(id, ws)
+@router.post("/lobby/{name}/game/{game_id}/move")
+async def game_move(name: str, game_id: uuid.UUID, move: MoveRequest):
+    await chakes.move(name, game_id, move)
+
+
+@router.websocket("/lobby/{name}/ws")
+async def lobby_ws(name: str, ws: WebSocket):
+    await chakes.connect(name, ws)
     try:
         while True:
             await ws.receive_text()
     except WebSocketDisconnect:
-        chakes.disconnect(id, ws)
+        chakes.disconnect(name, ws)
