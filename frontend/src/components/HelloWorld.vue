@@ -256,6 +256,10 @@ function handleRightClick(e: MouseEvent, displayR: number, displayC: number) {
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') deselect()
 }
+
+function copyLobbyName() {
+  if (lobbyName.value) navigator.clipboard.writeText(lobbyName.value)
+}
 </script>
 
 <template>
@@ -281,6 +285,13 @@ function onKeydown(e: KeyboardEvent) {
     <template v-else>
       <div class="room-name">
         Lobby: {{ lobbyName }}
+        <button
+          class="copy-btn"
+          title="Copy lobby name"
+          @click="copyLobbyName"
+        >
+          ⎘
+        </button>
       </div>
       <div
         v-if="!gameId"
@@ -434,9 +445,7 @@ function onKeydown(e: KeyboardEvent) {
       >
         {{ winner === 'white' ? '♔ White' : '♚ Black' }} won!
       </div>
-      <div class="color-label">
-        {{ playerColor === 'white' ? '♔ White' : '♚ Black' }}
-      </div>
+
       <button
         v-if="playerColor === 'white' && gameId"
         class="new-game"
@@ -530,11 +539,6 @@ function onKeydown(e: KeyboardEvent) {
 .square.selected::after { background: rgba(246, 246, 105, 0.6); }
 .square.legal-move::after { background: rgba(130, 190, 80, 0.45); }
 .square.legal-move { cursor: pointer; }
-.color-label {
-  margin-top: 6px;
-  font-size: 18px;
-  text-align: center;
-}
 .lobby {
   display: flex;
   flex-direction: column;
@@ -550,6 +554,24 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 13px;
   color: #666;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.copy-btn {
+  padding: 0 5px;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  color: #888;
+}
+.copy-btn:hover {
+  border-color: #888;
+  color: #333;
 }
 .game-setup {
   display: flex;
