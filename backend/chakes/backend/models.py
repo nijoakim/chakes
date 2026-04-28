@@ -66,6 +66,7 @@ class GameDef(BaseModel):
     piece_defs: list[str] | None = None  # piece names to include; None = orthodox default
     cooldowns: dict[str, float] | None = None  # per-piece-type cooldown override
     game_type: str = "orthodox"
+    upside_down: bool = False
 
     def get_piece_defs(self, state: "GameState | None" = None) -> list[PieceDef]:
         if state is not None:
@@ -114,6 +115,12 @@ class ActiveGame:
         self.game_def = game_def
         self.timestamp_start = datetime.now()
         self.timestamp_end: datetime | None = None
+
+        if game_def.upside_down:
+            for col in self.state.board:
+                for piece in col:
+                    if piece is not None:
+                        piece.owner = piece.owner.other()
 
         if game_def.cooldowns:
             for col in self.state.board:

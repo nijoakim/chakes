@@ -25,6 +25,7 @@ const pieceDefs = ref<PieceDef[]>([])
 const cooldownSettings = ref<Record<string, number>>({})
 const gameTypes = ref<GameType[]>([])
 const selectedGameType = ref('orthodox')
+const upsideDown = ref(false)
 let disconnect: (() => void) | null = null
 
 let serverCooldowns: Cooldowns = []
@@ -84,7 +85,7 @@ async function newGame() {
     gameId.value = null
     winner.value = null
     selected.value = null
-    await gameService.createGame(lobbyName.value, selectedGameType.value, cooldownSettings.value)
+    await gameService.createGame(lobbyName.value, selectedGameType.value, cooldownSettings.value, upsideDown.value)
   }
 }
 
@@ -274,6 +275,16 @@ function onKeydown(e: KeyboardEvent) {
         >
           Waiting for host to start the game…
         </p>
+        <label
+          v-if="playerColor === 'white'"
+          class="checkbox-label"
+        >
+          <input
+            v-model="upsideDown"
+            type="checkbox"
+          >
+          Upside-down chess
+        </label>
         <button
           v-if="playerColor === 'white'"
           @click="newGame"
@@ -420,6 +431,13 @@ function onKeydown(e: KeyboardEvent) {
 }
 .new-game {
   margin-top: 12px;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
 }
 .waiting-text {
   color: #888;

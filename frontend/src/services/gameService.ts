@@ -41,8 +41,8 @@ class GameService {
     return data.pieces
   }
 
-  async createGame(lobbyName: string, gameType?: string, cooldowns?: Record<string, number>): Promise<string> {
-    const body = JSON.stringify({ game_type: gameType ?? 'orthodox', cooldowns })
+  async createGame(lobbyName: string, gameType?: string, cooldowns?: Record<string, number>, upsideDown?: boolean): Promise<string> {
+    const body = JSON.stringify({ game_type: gameType ?? 'orthodox', cooldowns, upside_down: upsideDown ?? false })
     const res = await fetch(`/api/lobby/${lobbyName}/game`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
