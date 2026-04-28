@@ -10,12 +10,16 @@ import wBishop from '../assets/white/bishop.svg'
 import wKnight from '../assets/white/knight.svg'
 import wPawn   from '../assets/white/pawn.svg'
 // Fairy — white
-import wAntiKing   from '../assets/white/anti-king.svg'
-import wAntiBishop from '../assets/white/anti-bishop.svg'
-import wAntiKnight from '../assets/white/anti-knight.svg'
-import wAntiPawn   from '../assets/white/anti-pawn.svg'
-import wAntiQueen  from '../assets/white/anti-queen.svg'
-import wAntiRook   from '../assets/white/anti-rook.svg'
+import wAntiKing    from '../assets/white/anti-king.svg'
+import wAntiPawn    from '../assets/white/anti-pawn.svg'
+import wAntiQueen   from '../assets/white/anti-queen.svg'
+import wAmazon      from '../assets/white/amazon.svg'
+import wChancellor  from '../assets/white/chancellor.svg'
+import wCommoner    from '../assets/white/commoner.svg'
+import wDragon      from '../assets/white/dragon.svg'
+import wFool        from '../assets/white/fool.svg'
+import wShip        from '../assets/white/ship.svg'
+import wZebra       from '../assets/white/zebra.svg'
 // Orthodox — black
 import bKing   from '../assets/black/king.svg'
 import bQueen  from '../assets/black/queen.svg'
@@ -24,12 +28,16 @@ import bBishop from '../assets/black/bishop.svg'
 import bKnight from '../assets/black/knight.svg'
 import bPawn   from '../assets/black/pawn.svg'
 // Fairy — black
-import bAntiKing   from '../assets/black/anti-king.svg'
-import bAntiBishop from '../assets/black/anti-bishop.svg'
-import bAntiKnight from '../assets/black/anti-knight.svg'
-import bAntiPawn   from '../assets/black/anti-pawn.svg'
-import bAntiQueen  from '../assets/black/anti-queen.svg'
-import bAntiRook   from '../assets/black/anti-rook.svg'
+import bAntiKing    from '../assets/black/anti-king.svg'
+import bAntiPawn    from '../assets/black/anti-pawn.svg'
+import bAntiQueen   from '../assets/black/anti-queen.svg'
+import bAmazon      from '../assets/black/amazon.svg'
+import bChancellor  from '../assets/black/chancellor.svg'
+import bCommoner    from '../assets/black/commoner.svg'
+import bDragon      from '../assets/black/dragon.svg'
+import bFool        from '../assets/black/fool.svg'
+import bShip        from '../assets/black/ship.svg'
+import bZebra       from '../assets/black/zebra.svg'
 
 // Maps piece name to { white: svgUrl, black: svgUrl }.
 // Pieces without an entry fall back to displaying their name as text.
@@ -41,13 +49,17 @@ const pieces: Partial<Record<string, { white: string; black: string }>> = {
   Bishop:          { white: wBishop, black: bBishop },
   Knight:          { white: wKnight, black: bKnight },
   Pawn:            { white: wPawn,   black: bPawn   },
-  // Fairy — mapped to nearest available SVG
-  'Anti-King':     { white: wAntiKing,   black: bAntiKing   },
-  Grasshopper:     { white: wAntiQueen,  black: bAntiQueen  },
-  Nightrider:      { white: wAntiKnight, black: bAntiKnight },
-  Man:             { white: wAntiRook,   black: bAntiRook   },
-  'Berolina Pawn': { white: wAntiPawn,   black: bAntiPawn   },
-  Amazon:          { white: wAntiBishop, black: bAntiBishop },
+  // Fairy
+  Amazon:          { white: wAmazon,     black: bAmazon     }, // A = Amazon = Q+N
+  'Anti-King':     { white: wFool,       black: bFool       }, // Fool = seeks check
+  'Berolina Pawn': { white: wAntiPawn,   black: bAntiPawn   }, // h = pawn variant
+  Camel:           { white: wZebra,      black: bZebra      }, // Z = extended leaper family
+  Chameleon:       { white: wDragon,     black: bDragon     }, // D = multi-mode piece
+  Ferz:            { white: wAntiKing,   black: bAntiKing   }, // f = Ferz in Wikimedia
+  Grasshopper:     { white: wAntiQueen,  black: bAntiQueen  }, // g = Grasshopper
+  Man:             { white: wCommoner,   black: bCommoner   }, // x = Commoner = non-royal king
+  Nightrider:      { white: wChancellor, black: bChancellor }, // c = Chancellor, knight-based
+  Wazir:           { white: wShip,       black: bShip       }, // s = Ship, orthogonal mover
 }
 
 const maxCooldown = ref<Record<string, number>>({
