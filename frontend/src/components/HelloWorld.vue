@@ -139,14 +139,19 @@ function adjustAllCooldowns(delta: number) {
   }
 }
 
+function returnToSetup() {
+  board.value = []
+  cooldowns.value = []
+  serverCooldowns = []
+  gameId.value = null
+  winner.value = null
+  selected.value = null
+  legalMoves.value = new Set()
+}
+
 async function newGame() {
   if (lobbyName.value) {
-    board.value = []
-    cooldowns.value = []
-    serverCooldowns = []
-    gameId.value = null
-    winner.value = null
-    selected.value = null
+    returnToSetup()
     await gameService.createGame(lobbyName.value, selectedGameType.value, cooldownSettings.value, upsideDown.value)
   }
 }
@@ -433,8 +438,9 @@ function onKeydown(e: KeyboardEvent) {
         {{ playerColor === 'white' ? '♔ White' : '♚ Black' }}
       </div>
       <button
+        v-if="playerColor === 'white' && gameId"
         class="new-game"
-        @click="newGame"
+        @click="returnToSetup"
       >
         New Game
       </button>
