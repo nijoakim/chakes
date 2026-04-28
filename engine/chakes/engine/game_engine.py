@@ -706,19 +706,19 @@ class GameState:
         return squares
 
     def winner(self) -> Optional[Player]:
+        can_move_by_player: dict[Player, bool] = {
+            Player.WHITE: False,
+            Player.BLACK: False,
+        }
         for pieces in self.board:
             for piece in pieces:
                 if piece is not None:
-                    match piece.name:
-                        case 'King':
-                            if  piece.legal_moves() == set() \
-                            and (piece.pos_x, piece.pos_y) in self.attacked_squares(piece.owner):
-                                return piece.owner.other()
+                    if piece.legal_moves() != set():
+                        can_move_by_player[piece.owner] = True
 
-                        case 'Anti-King':
-                            if  piece.legal_moves() == set() \
-                            and (piece.pos_x, piece.pos_y) not in self.attacked_squares(piece.owner):
-                                return piece.owner.other()
+        for player, can_move in can_move_by_player.items():
+            if not can_move:
+                return player.other()
 
         return None
 

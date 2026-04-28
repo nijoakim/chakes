@@ -235,21 +235,33 @@ class TestPieces(ut.TestCase):
 
         self.assertEqual(rook.name, 'Rook')
 
-    def test_check_mate(self) -> None:
+    def test_checkmate(self) -> None:
         game_state = GameState.default()
-        game_state.move_piece_str('f2', 'f3')
-        game_state.move_piece_str('g2', 'g4')
         game_state.move_piece_str('e7', 'e6')
+        game_state.move_piece_str('d8', 'e7')
+        game_state.move_piece_str('e7', 'b4')
+        game_state.move_piece_str('b4', 'd2')
 
         self.assertIsNone(game_state.winner())
 
-        game_state.move_piece_str('d8', 'h4')
+        game_state.move_piece_str('d2', 'a5')
 
-        queen: Optional[Piece] = game_state.piece_at('h4')
+        self.assertIsNone(game_state.winner())
+
+        queen: Optional[Piece] = game_state.piece_at('a5')
         assert queen is not None
 
         # Assert King can not be captured
         self.assertTrue('e1' not in poses_to_str(queen.legal_moves()))
+
+        game_state.move_piece_str('b1', 'd2')
+        game_state.move_piece_str('h2', 'h3')
+        game_state.move_piece_str('a5', 'f5')
+        game_state.move_piece_str('f5', 'f2')
+
+        self.assertIsNone(game_state.winner())
+
+        game_state.move_piece_str('f2', 'g3')
 
         self.assertEqual(
             game_state.winner(),
@@ -284,7 +296,7 @@ class TestPieces(ut.TestCase):
             {'c6', 'c5', 'd5', 'e7'}
         )
 
-    def test_anti_check_mate(self) -> None:
+    def test_anti_checkmate(self) -> None:
         game_state = GameState.anti_king_chess()
 
         anti_king: Optional[Piece] = game_state.piece_at('d6')
