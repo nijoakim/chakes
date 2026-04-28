@@ -2,25 +2,52 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { gameService, type Board, type Cooldowns, type Color, type PieceDef, type GameType, type PieceInstance } from '../services/gameService'
 
-const pieces: Record<string, { white: string; black: string }> = {
+// Orthodox — white
+import wKing   from '../assets/white/king.svg'
+import wQueen  from '../assets/white/queen.svg'
+import wRook   from '../assets/white/rook.svg'
+import wBishop from '../assets/white/bishop.svg'
+import wKnight from '../assets/white/knight.svg'
+import wPawn   from '../assets/white/pawn.svg'
+// Fairy — white
+import wAntiKing   from '../assets/white/anti-king.svg'
+import wAntiBishop from '../assets/white/anti-bishop.svg'
+import wAntiKnight from '../assets/white/anti-knight.svg'
+import wAntiPawn   from '../assets/white/anti-pawn.svg'
+import wAntiQueen  from '../assets/white/anti-queen.svg'
+import wAntiRook   from '../assets/white/anti-rook.svg'
+// Orthodox — black
+import bKing   from '../assets/black/king.svg'
+import bQueen  from '../assets/black/queen.svg'
+import bRook   from '../assets/black/rook.svg'
+import bBishop from '../assets/black/bishop.svg'
+import bKnight from '../assets/black/knight.svg'
+import bPawn   from '../assets/black/pawn.svg'
+// Fairy — black
+import bAntiKing   from '../assets/black/anti-king.svg'
+import bAntiBishop from '../assets/black/anti-bishop.svg'
+import bAntiKnight from '../assets/black/anti-knight.svg'
+import bAntiPawn   from '../assets/black/anti-pawn.svg'
+import bAntiQueen  from '../assets/black/anti-queen.svg'
+import bAntiRook   from '../assets/black/anti-rook.svg'
+
+// Maps piece name to { white: svgUrl, black: svgUrl }.
+// Pieces without an entry fall back to displaying their name as text.
+const pieces: Partial<Record<string, { white: string; black: string }>> = {
   // Orthodox
-  King:            { white: '♔', black: '♚' },
-  Queen:           { white: '♕', black: '♛' },
-  Rook:            { white: '♖', black: '♜' },
-  Bishop:          { white: '♗', black: '♝' },
-  Knight:          { white: '♘', black: '♞' },
-  Pawn:            { white: '♙', black: '♟' },
-  // Fairy
-  Amazon:          { white: '★', black: '☆' },
-  'Anti-King':     { white: '⊛', black: '⊚' },
-  'Berolina Pawn': { white: '◆', black: '◇' },
-  Camel:           { white: '✦', black: '✧' },
-  Chameleon:       { white: '◑', black: '◐' },
-  Ferz:            { white: '✶', black: '✷' },
-  Grasshopper:     { white: '▲', black: '△' },
-  Man:             { white: '⊕', black: '⊗' },
-  Nightrider:      { white: '⬡', black: '⬢' },
-  Wazir:           { white: '✚', black: '✛' },
+  King:            { white: wKing,   black: bKing   },
+  Queen:           { white: wQueen,  black: bQueen  },
+  Rook:            { white: wRook,   black: bRook   },
+  Bishop:          { white: wBishop, black: bBishop },
+  Knight:          { white: wKnight, black: bKnight },
+  Pawn:            { white: wPawn,   black: bPawn   },
+  // Fairy — mapped to nearest available SVG
+  'Anti-King':     { white: wAntiKing,   black: bAntiKing   },
+  Grasshopper:     { white: wAntiQueen,  black: bAntiQueen  },
+  Nightrider:      { white: wAntiKnight, black: bAntiKnight },
+  Man:             { white: wAntiRook,   black: bAntiRook   },
+  'Berolina Pawn': { white: wAntiPawn,   black: bAntiPawn   },
+  Amazon:          { white: wAntiBishop, black: bAntiBishop },
 }
 
 const maxCooldown = ref<Record<string, number>>({
@@ -330,7 +357,16 @@ function onKeydown(e: KeyboardEvent) {
             ]"
             @click="selectedPromotion = name"
           >
-            {{ pieces[name]?.[playerColor] ?? name }}
+            <img
+              v-if="pieces[name]"
+              :src="pieces[name]![playerColor]"
+              class="piece-img"
+              :alt="name"
+            >
+            <span
+              v-else
+              class="piece-text"
+            >{{ name }}</span>
           </div>
         </div>
       </div>
@@ -357,7 +393,16 @@ function onKeydown(e: KeyboardEvent) {
             @click="handleClick(r, c)"
             @contextmenu="handleRightClick($event, r, c)"
           >
-            {{ piece ? (pieces[piece.name]?.[piece.owner] ?? piece.name) : '' }}
+            <img
+              v-if="piece && pieces[piece.name]"
+              :src="pieces[piece.name]![piece.owner]"
+              class="piece-img"
+              :alt="piece.name"
+            >
+            <span
+              v-else-if="piece"
+              class="piece-text"
+            >{{ piece.name }}</span>
             <div
               v-if="(displayCooldowns[r]?.[c] ?? 0) > 0"
               class="cooldown-overlay"
@@ -400,9 +445,22 @@ function onKeydown(e: KeyboardEvent) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(var(--sq) * 0.656);
-  line-height: 1;
   cursor: default;
+  user-select: none;
+}
+.piece-img {
+  width: calc(var(--sq) * 0.9);
+  height: calc(var(--sq) * 0.9);
+  pointer-events: none;
+  user-select: none;
+  display: block;
+}
+.piece-text {
+  font-size: calc(var(--sq) * 0.35);
+  line-height: 1;
+  text-align: center;
+  font-weight: bold;
+  pointer-events: none;
   user-select: none;
 }
 .square.piece {
