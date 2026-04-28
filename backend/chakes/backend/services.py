@@ -71,6 +71,7 @@ class ChakesService:
             "board": game.serialize_board(),
             "cooldowns": game.serialize_cooldowns(),
             "max_cooldowns": game.serialize_max_cooldowns(),
+            "piece_names": game.serialize_piece_names(),
             "game_id": str(game.id),
         }
         winner = game.state.winner()
@@ -111,7 +112,7 @@ class ChakesService:
             raise ValueError("Game not found")
         game = lobby.game
         try:
-            game.state.move_piece(move.from_c, 7 - move.from_r, move.to_c, 7 - move.to_r)
+            game.state.move_piece(move.from_c, 7 - move.from_r, move.to_c, 7 - move.to_r, info=move.promotion or '')
         except ValueError:
             return False
         await self._connections.broadcast(lobby_name, self._game_state_msg(game))

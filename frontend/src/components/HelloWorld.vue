@@ -11,6 +11,9 @@ const maxCooldown = ref<Record<string, number>>({
   P: 3, R: 3, N: 3, B: 3, Q: 3, K: 3,
   p: 3, r: 3, n: 3, b: 3, q: 3, k: 3,
 })
+// code -> name, uppercase only (e.g. {Q: 'Queen', R: 'Rook', ...})
+const pieceNames = ref<Record<string, string>>({})
+const selectedPromotion = ref('Queen')
 
 const board = ref<Board>([])
 const cooldowns = ref<Cooldowns>([])
@@ -51,6 +54,12 @@ async function connectToLobby(name: string) {
       serverCooldownTime = performance.now()
     },
     onMaxCooldowns: (mc) => { maxCooldown.value = mc },
+    onPieceNames: (pn) => {
+      pieceNames.value = pn
+      if (!(selectedPromotion.value in Object.values(pn))) {
+        selectedPromotion.value = Object.values(pn).find(n => n !== 'King' && n !== 'Pawn') ?? Object.values(pn)[0]
+      }
+    },
     onColor: (c) => { playerColor.value = c },
     onGameId: (id) => { gameId.value = id },
     onWinner: (w) => { winner.value = w },
@@ -171,7 +180,7 @@ function handleClick(displayR: number, displayC: number) {
     } else if (legalMoves.value.has(`${r},${c}`)) {
       const [fr, fc] = selected.value
       deselect()
-      gameService.sendMove(lobbyName.value!, gameId.value, fr, fc, r, c)
+      gameService.sendMove(lobbyName.value!, gameId.value, fr, fc, r, c, selectedPromotion.value)
     }
   }
 }
@@ -183,7 +192,7 @@ function handleRightClick(e: MouseEvent, displayR: number, displayC: number) {
   const [fr, fc] = selected.value
   if (fr !== r || fc !== c) {
     deselect()
-    gameService.sendMove(lobbyName.value!, gameId.value, fr, fc, r, c)
+    gameService.sendMove(lobbyName.value!, gameId.value, fr, fc, r, c, selectedPromotion.value)
   }
 }
 
@@ -293,7 +302,27 @@ function onKeydown(e: KeyboardEvent) {
         </button>
       </div>
       <div
-        v-else
+        v-if="gameId && Object.keys(pieceNames).length"
+        class="promotion-bar"
+      >
+        <span class="promotion-label">Promote to</span>
+        <div class="promotion-squares">
+          <div
+            v-for="(name, code) in pieceNames"
+            :key="code"
+            class="square"
+            :class="[
+              (Object.keys(pieceNames).indexOf(String(code))) % 2 === 0 ? 'light' : 'dark',
+              selectedPromotion === name ? 'selected' : '',
+            ]"
+            @click="selectedPromotion = name"
+          >
+            {{ pieces[playerColor === 'white' ? String(code) : String(code).toLowerCase()] ?? '' }}
+          </div>
+        </div>
+      </div>
+      <div
+        v-if="gameId"
         class="board"
       >
         <div
@@ -379,6 +408,26 @@ function onKeydown(e: KeyboardEvent) {
   width: 100%;
   background: rgba(80, 80, 80, 0.5);
   pointer-events: none;
+}
+.promotion-bar {
+  --sq: min(64px, calc((100vw - 44px) / 8));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border: 2px solid #333;
+  border-bottom: none;
+  background: rgba(0, 0, 0, 0.04);
+}
+.promotion-label {
+  font-size: 12px;
+  color: #666;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.promotion-squares {
+  display: flex;
 }
 .light { background: #f0d9b5; }
 .dark  { background: #b58863; }

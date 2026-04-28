@@ -43,6 +43,7 @@ class MoveRequest(BaseModel):
     from_c: int
     to_r: int
     to_c: int
+    promotion: str | None = None
 
 
 class PieceDef(BaseModel):
@@ -136,6 +137,14 @@ class ActiveGame:
             [_piece_code(p) if (p := self._get_piece(c, r)) else "" for c in range(8)]
             for r in range(8)
         ]
+
+    def serialize_piece_names(self) -> dict[str, str]:
+        """Return {piece_code: piece_name} for each unique piece type, uppercase codes only."""
+        result: dict[str, str] = {}
+        for pd in self.game_def.get_piece_defs(self.state):
+            letter = "N" if pd.name == "Knight" else pd.name[0]
+            result[letter] = pd.name
+        return result
 
     def serialize_max_cooldowns(self) -> dict[str, float]:
         result: dict[str, float] = {}

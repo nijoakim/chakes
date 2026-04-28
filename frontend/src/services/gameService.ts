@@ -16,6 +16,7 @@ export interface GameEvents {
   onBoard: (board: Board) => void
   onCooldowns?: (cooldowns: Cooldowns) => void
   onMaxCooldowns?: (maxCooldowns: Record<string, number>) => void
+  onPieceNames?: (pieceNames: Record<string, string>) => void
   onColor?: (color: Color) => void
   onGameId?: (gameId: string) => void
   onWinner?: (winner: Color | null) => void
@@ -58,11 +59,11 @@ class GameService {
     return data.moves
   }
 
-  async sendMove(lobbyName: string, gameId: string, fromR: number, fromC: number, toR: number, toC: number): Promise<void> {
+  async sendMove(lobbyName: string, gameId: string, fromR: number, fromC: number, toR: number, toC: number, promotion?: string): Promise<void> {
     await fetch(`/api/lobby/${lobbyName}/game/${gameId}/move`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from_r: fromR, from_c: fromC, to_r: toR, to_c: toC }),
+      body: JSON.stringify({ from_r: fromR, from_c: fromC, to_r: toR, to_c: toC, promotion }),
     })
   }
 
@@ -83,6 +84,7 @@ class GameService {
       if (data.board) events.onBoard(data.board)
       if (data.cooldowns) events.onCooldowns?.(data.cooldowns)
       if (data.max_cooldowns) events.onMaxCooldowns?.(data.max_cooldowns)
+      if (data.piece_names) events.onPieceNames?.(data.piece_names)
       if (data.color) events.onColor?.(data.color)
       if (data.game_id) events.onGameId?.(data.game_id)
       events.onWinner?.(data.winner ?? null)
