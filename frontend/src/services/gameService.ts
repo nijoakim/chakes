@@ -2,9 +2,15 @@ export type Board = string[][]
 export type Cooldowns = number[][]
 export type Color = 'white' | 'black'
 
+export interface PieceDef {
+  name: string
+  default_cooldown: number
+}
+
 export interface GameEvents {
   onBoard: (board: Board) => void
   onCooldowns?: (cooldowns: Cooldowns) => void
+  onMaxCooldowns?: (maxCooldowns: Record<string, number>) => void
   onColor?: (color: Color) => void
   onGameId?: (gameId: string) => void
   onWinner?: (winner: Color | null) => void
@@ -18,8 +24,19 @@ class GameService {
     return String(data.lobby)
   }
 
-  async createGame(lobbyName: string): Promise<string> {
-    const res = await fetch(`/api/lobby/${lobbyName}/game`, { method: 'POST' })
+  async getPieceDefs(): Promise<PieceDef[]> {
+    const res = await fetch('/api/piece-defs')
+    const data = await res.json()
+    return data.pieces
+  }
+
+  async createGame(lobbyName: string, cooldowns?: Record<string, number>): Promise<string> {
+    const body = cooldowns ? JSON.stringify({ cooldowns }) : undefined
+    const res = await fetch(`/api/lobby/${lobbyName}/game`, {
+      method: 'POST',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body,
+    })
     const data = await res.json()
     return String(data.game_id)
   }
@@ -47,6 +64,7 @@ class GameService {
       console.log(data);
       if (data.board) events.onBoard(data.board)
       if (data.cooldowns) events.onCooldowns?.(data.cooldowns)
+      if (data.max_cooldowns) events.onMaxCooldowns?.(data.max_cooldowns)
       if (data.color) events.onColor?.(data.color)
       if (data.game_id) events.onGameId?.(data.game_id)
       events.onWinner?.(data.winner ?? null)

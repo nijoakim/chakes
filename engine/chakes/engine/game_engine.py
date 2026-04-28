@@ -178,7 +178,7 @@ class Piece:
         if (new_pos_x, new_pos_y) not in self.legal_moves(check_safe = check_safe):
             raise ValueError(f'{self.name} can not move from {pos_to_str(self.pos_x, self.pos_y)} to {pos_to_str(new_pos_x, new_pos_y)}.')
 
-        if (cooldown := self.get_cooldown()) != 0.0:
+        if check_safe and (cooldown := self.get_cooldown()) != 0.0:
             raise ValueError(f'Cooldown for {self.name} at {pos_to_str(self.pos_x, self.pos_y)} is {cooldown}')
 
         self._move_special(new_pos_x, new_pos_y, info = info)

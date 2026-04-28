@@ -51,15 +51,22 @@ class Piece(BaseModel):
     cooldown: float
 
 
+_DEFAULT_PIECE_NAMES = ["Pawn", "Rook", "Knight", "Bishop", "Queen", "King"]
+
+
 class GameDef(BaseModel):
     piece_defs: list[str] | None = None  # piece names to include; None = orthodox default
+    cooldowns: dict[str, float] | None = None  # per-piece-type cooldown override
 
     def get_piece_defs(self) -> list[PieceDef]:
-        names = self.piece_defs if self.piece_defs else [
-            "Pawn", "Rook", "Knight", "Bishop", "Queen", "King",
-        ]
+        names = self.piece_defs if self.piece_defs else _DEFAULT_PIECE_NAMES
+        cooldowns = self.cooldowns or {}
         return [
-            PieceDef(name=n, value=engine_piece_defs[n][0], moveset=engine_piece_defs[n][1])
+            PieceDef(
+                name=n,
+                value=int(cooldowns.get(n, engine_piece_defs[n][0])),
+                moveset=engine_piece_defs[n][1],
+            )
             for n in names
         ]
 
@@ -88,6 +95,12 @@ class ActiveGame:
         self.timestamp_start = datetime.now()
         self.timestamp_end: datetime | None = None
 
+        if game_def.cooldowns:
+            for col in self.state.board:
+                for piece in col:
+                    if piece is not None and piece.name in game_def.cooldowns:
+                        piece.value = int(game_def.cooldowns[piece.name])
+
     def _get_piece(self, c: int, r: int) -> EnginePiece | None:
         return self.state.board[c][7 - r]
 
@@ -96,6 +109,14 @@ class ActiveGame:
             [_piece_code(p) if (p := self._get_piece(c, r)) else "" for c in range(8)]
             for r in range(8)
         ]
+
+    def serialize_max_cooldowns(self) -> dict[str, float]:
+        result: dict[str, float] = {}
+        for pd in self.game_def.get_piece_defs():
+            letter = "N" if pd.name == "Knight" else pd.name[0]
+            result[letter] = float(pd.value)
+            result[letter.lower()] = float(pd.value)
+        return result
 
     def serialize_cooldowns(self) -> list[list[float]]:
         return [

@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { gameService, type Board, type Cooldowns, type Color } from '../services/gameService'
+import { gameService, type Board, type Cooldowns, type Color, type PieceDef } from '../services/gameService'
 
 const pieces: Record<string, string> = {
   K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
   k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
 }
 
-const maxCooldown: Record<string, number> = {
+const maxCooldown = ref<Record<string, number>>({
   P: 3, R: 3, N: 3, B: 3, Q: 3, K: 3,
   p: 3, r: 3, n: 3, b: 3, q: 3, k: 3,
-}
+})
 
 const board = ref<Board>([])
 const cooldowns = ref<Cooldowns>([])
@@ -21,6 +21,8 @@ const lobbyName = ref<string | null>(null)
 const gameId = ref<string | null>(null)
 const winner = ref<Color | null>(null)
 const joinLobbyName = ref('')
+const pieceDefs = ref<PieceDef[]>([])
+const cooldownSettings = ref<Record<string, number>>({})
 let disconnect: (() => void) | null = null
 
 let serverCooldowns: Cooldowns = []
@@ -35,7 +37,7 @@ function tickCooldowns() {
   rafId = requestAnimationFrame(tickCooldowns)
 }
 
-function connectToLobby(name: string) {
+async function connectToLobby(name: string) {
   disconnect?.()
   lobbyName.value = name
   history.pushState(null, '', `/lobby/${encodeURIComponent(name)}`)
@@ -45,17 +47,28 @@ function connectToLobby(name: string) {
       serverCooldowns = c
       serverCooldownTime = performance.now()
     },
+    onMaxCooldowns: (mc) => { maxCooldown.value = mc },
     onColor: (c) => { playerColor.value = c },
     onGameId: (id) => { gameId.value = id },
     onWinner: (w) => { winner.value = w },
   })
   rafId = requestAnimationFrame(tickCooldowns)
+  pieceDefs.value = await gameService.getPieceDefs()
+  cooldownSettings.value = Object.fromEntries(
+    pieceDefs.value.map(p => [p.name, p.default_cooldown])
+  )
 }
 
 async function createLobby() {
   const customName = joinLobbyName.value.trim() || undefined
   const name = await gameService.createLobby(customName)
   connectToLobby(name)
+}
+
+function adjustAllCooldowns(delta: number) {
+  for (const name in cooldownSettings.value) {
+    cooldownSettings.value[name] = Math.max(0, cooldownSettings.value[name] + delta)
+  }
 }
 
 async function newGame() {
@@ -66,7 +79,7 @@ async function newGame() {
     gameId.value = null
     winner.value = null
     selected.value = null
-    await gameService.createGame(lobbyName.value)
+    await gameService.createGame(lobbyName.value, cooldownSettings.value)
   }
 }
 
@@ -201,6 +214,41 @@ function onKeydown(e: KeyboardEvent) {
         v-if="!gameId"
         class="game-setup"
       >
+        <template v-if="playerColor === 'white' && pieceDefs.length">
+          <div class="cooldown-all">
+            <button @click="adjustAllCooldowns(-1)">
+              −
+            </button>
+            <span>All cooldowns</span>
+            <button @click="adjustAllCooldowns(1)">
+              +
+            </button>
+          </div>
+          <table class="cooldown-table">
+            <thead>
+              <tr>
+                <th>Piece</th>
+                <th>Cooldown (s)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="p in pieceDefs"
+                :key="p.name"
+              >
+                <td>{{ p.name }}</td>
+                <td>
+                  <input
+                    v-model.number="cooldownSettings[p.name]"
+                    type="number"
+                    min="0"
+                    step="1"
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
         <button @click="newGame">
           Start game
         </button>
@@ -258,6 +306,7 @@ function onKeydown(e: KeyboardEvent) {
 
 <style scoped>
 .board {
+  --sq: min(64px, calc((100vw - 44px) / 8));
   display: inline-block;
   border: 2px solid #333;
 }
@@ -265,14 +314,15 @@ function onKeydown(e: KeyboardEvent) {
   display: flex;
 }
 .square {
-  width: 64px;
-  height: 64px;
+  width: var(--sq);
+  height: var(--sq);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 42px;
+  font-size: calc(var(--sq) * 0.656);
   line-height: 1;
   cursor: default;
+  user-select: none;
 }
 .square.piece {
   cursor: pointer;
@@ -342,5 +392,24 @@ function onKeydown(e: KeyboardEvent) {
 }
 .new-game {
   margin-top: 12px;
+}
+.cooldown-all {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.cooldown-table {
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.cooldown-table th,
+.cooldown-table td {
+  padding: 4px 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+.cooldown-table input[type=number] {
+  width: 60px;
 }
 </style>

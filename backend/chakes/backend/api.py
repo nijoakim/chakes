@@ -1,8 +1,10 @@
 import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 
-from chakes.backend.models import GameDef, MoveRequest
+from chakes.backend.models import GameDef, MoveRequest, _DEFAULT_PIECE_NAMES
+from chakes.engine.game_engine import piece_defs as engine_piece_defs
 from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
 
 router = APIRouter(prefix="/api")
@@ -10,6 +12,16 @@ router = APIRouter(prefix="/api")
 lobbies = LobbyService()
 connections = ConnectionManager()
 chakes = ChakesService(lobbies, connections)
+
+
+@router.get("/piece-defs")
+def piece_defs_list():
+    return {
+        "pieces": [
+            {"name": n, "default_cooldown": engine_piece_defs[n][0]}
+            for n in _DEFAULT_PIECE_NAMES
+        ]
+    }
 
 
 @router.get("/lobby")
@@ -44,7 +56,9 @@ def game_legal_moves(name: str, game_id: uuid.UUID, r: int, c: int):
 
 @router.post("/lobby/{name}/game/{game_id}/move")
 async def game_move(name: str, game_id: uuid.UUID, move: MoveRequest):
-    await chakes.move(name, game_id, move)
+    ok = await chakes.move(name, game_id, move)
+    if not ok:
+        return JSONResponse(status_code=400, content={"error": "Illegal move"})
 
 
 @router.websocket("/lobby/{name}/ws")

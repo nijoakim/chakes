@@ -40,6 +40,8 @@ class LobbyService:
         self._lobbies: dict[str, Lobby] = {}
 
     def __getitem__(self, name: str) -> Lobby:
+        if name not in self._lobbies:
+            self.create(name)
         return self._lobbies[name]
 
     def create(self, name: str | None = None) -> Lobby:
@@ -68,6 +70,7 @@ class ChakesService:
         msg: dict = {
             "board": game.serialize_board(),
             "cooldowns": game.serialize_cooldowns(),
+            "max_cooldowns": game.serialize_max_cooldowns(),
             "game_id": str(game.id),
         }
         winner = game.state.winner()
@@ -102,10 +105,14 @@ class ChakesService:
             raise ValueError("Game not found")
         return lobby.game.get_legal_moves(r, c)
 
-    async def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> None:
+    async def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> bool:
         lobby = self._lobbies[lobby_name]
         if not lobby.game or lobby.game.id != game_id:
             raise ValueError("Game not found")
         game = lobby.game
-        game.state.move_piece(move.from_c, 7 - move.from_r, move.to_c, 7 - move.to_r)
+        try:
+            game.state.move_piece(move.from_c, 7 - move.from_r, move.to_c, 7 - move.to_r)
+        except ValueError:
+            return False
         await self._connections.broadcast(lobby_name, self._game_state_msg(game))
+        return True
