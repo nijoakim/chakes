@@ -103,11 +103,6 @@ class Game(BaseModel):
 # --- Internal state ---
 
 
-def _piece_code(piece: EnginePiece) -> str:
-    letter = "N" if piece.name == "Knight" else piece.name[0]
-    return letter if piece.owner.name == "WHITE" else letter.lower()
-
-
 class ActiveGame:
     def __init__(self, game_def: GameDef):
         self.id = uuid.uuid4()
@@ -132,27 +127,22 @@ class ActiveGame:
     def _get_piece(self, c: int, r: int) -> EnginePiece | None:
         return self.state.board[c][7 - r]
 
-    def serialize_board(self) -> list[list[str]]:
+    def serialize_board(self) -> list[list[dict | None]]:
         return [
-            [_piece_code(p) if (p := self._get_piece(c, r)) else "" for c in range(8)]
+            [
+                {"name": p.name, "owner": "white" if p.owner.name == "WHITE" else "black"}
+                if (p := self._get_piece(c, r)) else None
+                for c in range(8)
+            ]
             for r in range(8)
         ]
 
-    def serialize_piece_names(self) -> dict[str, str]:
-        """Return {piece_code: piece_name} for each unique piece type, uppercase codes only."""
-        result: dict[str, str] = {}
-        for pd in self.game_def.get_piece_defs(self.state):
-            letter = "N" if pd.name == "Knight" else pd.name[0]
-            result[letter] = pd.name
-        return result
+    def serialize_piece_names(self) -> list[str]:
+        """Return list of piece names for each unique piece type on the board."""
+        return [pd.name for pd in self.game_def.get_piece_defs(self.state)]
 
     def serialize_max_cooldowns(self) -> dict[str, float]:
-        result: dict[str, float] = {}
-        for pd in self.game_def.get_piece_defs(self.state):
-            letter = "N" if pd.name == "Knight" else pd.name[0]
-            result[letter] = float(pd.value)
-            result[letter.lower()] = float(pd.value)
-        return result
+        return {pd.name: float(pd.value) for pd in self.game_def.get_piece_defs(self.state)}
 
     def serialize_cooldowns(self) -> list[list[float]]:
         return [

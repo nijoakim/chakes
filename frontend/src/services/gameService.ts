@@ -1,4 +1,5 @@
-export type Board = string[][]
+export type PieceInstance = { name: string; owner: Color }
+export type Board = (PieceInstance | null)[][]
 export type Cooldowns = number[][]
 export type Color = 'white' | 'black'
 
@@ -16,7 +17,7 @@ export interface GameEvents {
   onBoard: (board: Board) => void
   onCooldowns?: (cooldowns: Cooldowns) => void
   onMaxCooldowns?: (maxCooldowns: Record<string, number>) => void
-  onPieceNames?: (pieceNames: Record<string, string>) => void
+  onPieceNames?: (pieceNames: string[]) => void
   onColor?: (color: Color) => void
   onGameId?: (gameId: string) => void
   onWinner?: (winner: Color | null) => void

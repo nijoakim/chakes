@@ -1,18 +1,32 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { gameService, type Board, type Cooldowns, type Color, type PieceDef, type GameType } from '../services/gameService'
+import { gameService, type Board, type Cooldowns, type Color, type PieceDef, type GameType, type PieceInstance } from '../services/gameService'
 
-const pieces: Record<string, string> = {
-  K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
-  k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
+const pieces: Record<string, { white: string; black: string }> = {
+  // Orthodox
+  King:            { white: '♔', black: '♚' },
+  Queen:           { white: '♕', black: '♛' },
+  Rook:            { white: '♖', black: '♜' },
+  Bishop:          { white: '♗', black: '♝' },
+  Knight:          { white: '♘', black: '♞' },
+  Pawn:            { white: '♙', black: '♟' },
+  // Fairy
+  Amazon:          { white: '★', black: '☆' },
+  'Anti-King':     { white: '⊛', black: '⊚' },
+  'Berolina Pawn': { white: '◆', black: '◇' },
+  Camel:           { white: '✦', black: '✧' },
+  Chameleon:       { white: '◑', black: '◐' },
+  Ferz:            { white: '✶', black: '✷' },
+  Grasshopper:     { white: '▲', black: '△' },
+  Man:             { white: '⊕', black: '⊗' },
+  Nightrider:      { white: '⬡', black: '⬢' },
+  Wazir:           { white: '✚', black: '✛' },
 }
 
 const maxCooldown = ref<Record<string, number>>({
-  P: 3, R: 3, N: 3, B: 3, Q: 3, K: 3,
-  p: 3, r: 3, n: 3, b: 3, q: 3, k: 3,
+  Pawn: 3, Rook: 3, Knight: 3, Bishop: 3, Queen: 3, King: 3,
 })
-// code -> name, uppercase only (e.g. {Q: 'Queen', R: 'Rook', ...})
-const pieceNames = ref<Record<string, string>>({})
+const pieceNames = ref<string[]>([])
 const selectedPromotion = ref('Queen')
 
 const board = ref<Board>([])
@@ -54,10 +68,10 @@ async function connectToLobby(name: string) {
       serverCooldownTime = performance.now()
     },
     onMaxCooldowns: (mc) => { maxCooldown.value = mc },
-    onPieceNames: (pn) => {
-      pieceNames.value = pn
-      if (!(selectedPromotion.value in Object.values(pn))) {
-        selectedPromotion.value = Object.values(pn).find(n => n !== 'King' && n !== 'Pawn') ?? Object.values(pn)[0]
+    onPieceNames: (names) => {
+      pieceNames.value = names
+      if (!names.includes(selectedPromotion.value)) {
+        selectedPromotion.value = names.find(n => n !== 'King' && n !== 'Pawn') ?? names[0]
       }
     },
     onColor: (c) => { playerColor.value = c },
@@ -156,8 +170,7 @@ async function selectPiece(r: number, c: number) {
   }
 }
 
-const isOwnPiece = (p: string) =>
-  playerColor.value === 'white' ? p === p.toUpperCase() : p === p.toLowerCase()
+const isOwnPiece = (p: PieceInstance) => p.owner === playerColor.value
 
 function deselect() {
   selected.value = null
@@ -302,22 +315,22 @@ function onKeydown(e: KeyboardEvent) {
         </button>
       </div>
       <div
-        v-if="gameId && Object.keys(pieceNames).length"
+        v-if="gameId && pieceNames.length"
         class="promotion-bar"
       >
         <span class="promotion-label">Promote to</span>
         <div class="promotion-squares">
           <div
-            v-for="(name, code) in pieceNames"
-            :key="code"
+            v-for="(name, i) in pieceNames"
+            :key="name"
             class="square"
             :class="[
-              (Object.keys(pieceNames).indexOf(String(code))) % 2 === 0 ? 'light' : 'dark',
+              i % 2 === 0 ? 'light' : 'dark',
               selectedPromotion === name ? 'selected' : '',
             ]"
             @click="selectedPromotion = name"
           >
-            {{ pieces[playerColor === 'white' ? String(code) : String(code).toLowerCase()] ?? '' }}
+            {{ pieces[name]?.[playerColor] ?? name }}
           </div>
         </div>
       </div>
@@ -344,11 +357,11 @@ function onKeydown(e: KeyboardEvent) {
             @click="handleClick(r, c)"
             @contextmenu="handleRightClick($event, r, c)"
           >
-            {{ pieces[piece] ?? '' }}
+            {{ piece ? (pieces[piece.name]?.[piece.owner] ?? piece.name) : '' }}
             <div
               v-if="(displayCooldowns[r]?.[c] ?? 0) > 0"
               class="cooldown-overlay"
-              :style="{ height: (displayCooldowns[r][c] / (maxCooldown[piece] ?? 1) * 100) + '%' }"
+              :style="{ height: (displayCooldowns[r][c] / (maxCooldown[piece?.name ?? ''] ?? 1) * 100) + '%' }"
             />
           </div>
         </div>
