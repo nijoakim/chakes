@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
-from chakes.backend.models import GameDef, MoveRequest, _DEFAULT_PIECE_NAMES
+from chakes.backend.models import GameDef, MoveRequest, _DEFAULT_PIECE_NAMES, GAME_TYPES
 from chakes.engine.game_engine import piece_defs as engine_piece_defs
 from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
 
@@ -12,6 +12,16 @@ router = APIRouter(prefix="/api")
 lobbies = LobbyService()
 connections = ConnectionManager()
 chakes = ChakesService(lobbies, connections)
+
+
+@router.get("/game-types")
+def game_types_list():
+    return {
+        "game_types": [
+            {"id": key, "name": label}
+            for key, (label, _) in GAME_TYPES.items()
+        ]
+    }
 
 
 @router.get("/piece-defs")
@@ -62,8 +72,8 @@ async def game_move(name: str, game_id: uuid.UUID, move: MoveRequest):
 
 
 @router.websocket("/lobby/{name}/ws")
-async def lobby_ws(name: str, ws: WebSocket):
-    await chakes.connect(name, ws)
+async def lobby_ws(name: str, ws: WebSocket, token: str | None = None):
+    await chakes.connect(name, ws, token)
     try:
         while True:
             await ws.receive_text()

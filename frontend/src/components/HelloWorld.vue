@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { gameService, type Board, type Cooldowns, type Color, type PieceDef } from '../services/gameService'
+import { gameService, type Board, type Cooldowns, type Color, type PieceDef, type GameType } from '../services/gameService'
 
 const pieces: Record<string, string> = {
   K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
@@ -23,6 +23,8 @@ const winner = ref<Color | null>(null)
 const joinLobbyName = ref('')
 const pieceDefs = ref<PieceDef[]>([])
 const cooldownSettings = ref<Record<string, number>>({})
+const gameTypes = ref<GameType[]>([])
+const selectedGameType = ref('orthodox')
 let disconnect: (() => void) | null = null
 
 let serverCooldowns: Cooldowns = []
@@ -53,7 +55,10 @@ async function connectToLobby(name: string) {
     onWinner: (w) => { winner.value = w },
   })
   rafId = requestAnimationFrame(tickCooldowns)
-  pieceDefs.value = await gameService.getPieceDefs()
+  ;[pieceDefs.value, gameTypes.value] = await Promise.all([
+    gameService.getPieceDefs(),
+    gameService.getGameTypes(),
+  ])
   cooldownSettings.value = Object.fromEntries(
     pieceDefs.value.map(p => [p.name, p.default_cooldown])
   )
@@ -79,7 +84,7 @@ async function newGame() {
     gameId.value = null
     winner.value = null
     selected.value = null
-    await gameService.createGame(lobbyName.value, cooldownSettings.value)
+    await gameService.createGame(lobbyName.value, selectedGameType.value, cooldownSettings.value)
   }
 }
 
@@ -215,6 +220,20 @@ function onKeydown(e: KeyboardEvent) {
         class="game-setup"
       >
         <template v-if="playerColor === 'white' && pieceDefs.length">
+          <div class="game-type-picker">
+            <label
+              v-for="gt in gameTypes"
+              :key="gt.id"
+              :class="{ active: selectedGameType === gt.id }"
+            >
+              <input
+                v-model="selectedGameType"
+                type="radio"
+                :value="gt.id"
+              >
+              {{ gt.name }}
+            </label>
+          </div>
           <div class="cooldown-all">
             <button @click="adjustAllCooldowns(-1)">
               −
@@ -249,7 +268,16 @@ function onKeydown(e: KeyboardEvent) {
             </tbody>
           </table>
         </template>
-        <button @click="newGame">
+        <p
+          v-if="playerColor !== 'white'"
+          class="waiting-text"
+        >
+          Waiting for host to start the game…
+        </p>
+        <button
+          v-if="playerColor === 'white'"
+          @click="newGame"
+        >
           Start game
         </button>
       </div>
@@ -392,6 +420,31 @@ function onKeydown(e: KeyboardEvent) {
 }
 .new-game {
   margin-top: 12px;
+}
+.waiting-text {
+  color: #888;
+  font-size: 15px;
+}
+.game-type-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.game-type-picker label {
+  padding: 4px 10px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.game-type-picker label.active {
+  border-color: #333;
+  font-weight: bold;
+  background: #f0f0f0;
+}
+.game-type-picker input[type=radio] {
+  display: none;
 }
 .cooldown-all {
   display: flex;

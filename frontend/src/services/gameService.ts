@@ -7,6 +7,11 @@ export interface PieceDef {
   default_cooldown: number
 }
 
+export interface GameType {
+  id: string
+  name: string
+}
+
 export interface GameEvents {
   onBoard: (board: Board) => void
   onCooldowns?: (cooldowns: Cooldowns) => void
@@ -24,17 +29,23 @@ class GameService {
     return String(data.lobby)
   }
 
+  async getGameTypes(): Promise<GameType[]> {
+    const res = await fetch('/api/game-types')
+    const data = await res.json()
+    return data.game_types
+  }
+
   async getPieceDefs(): Promise<PieceDef[]> {
     const res = await fetch('/api/piece-defs')
     const data = await res.json()
     return data.pieces
   }
 
-  async createGame(lobbyName: string, cooldowns?: Record<string, number>): Promise<string> {
-    const body = cooldowns ? JSON.stringify({ cooldowns }) : undefined
+  async createGame(lobbyName: string, gameType?: string, cooldowns?: Record<string, number>): Promise<string> {
+    const body = JSON.stringify({ game_type: gameType ?? 'orthodox', cooldowns })
     const res = await fetch(`/api/lobby/${lobbyName}/game`, {
       method: 'POST',
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: { 'Content-Type': 'application/json' },
       body,
     })
     const data = await res.json()
@@ -55,9 +66,16 @@ class GameService {
     })
   }
 
+  private _token: string = (() => {
+    const key = 'chakes_client_token'
+    let t = sessionStorage.getItem(key)
+    if (!t) { t = crypto.randomUUID(); sessionStorage.setItem(key, t) }
+    return t
+  })()
+
   connect(lobbyName: string, events: GameEvents): () => void {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const ws = new WebSocket(`${protocol}//${location.host}/api/lobby/${lobbyName}/ws`)
+    const ws = new WebSocket(`${protocol}//${location.host}/api/lobby/${lobbyName}/ws?token=${this._token}`)
     ws.onmessage = (e) => {
       if (!e.data) return
       const data = JSON.parse(e.data)

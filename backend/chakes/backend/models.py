@@ -1,10 +1,18 @@
 import random
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 
 from pydantic import BaseModel
 
 from chakes.engine.game_engine import GameState, Piece as EnginePiece, piece_defs as engine_piece_defs
+
+GAME_TYPES: dict[str, tuple[str, Callable[[], GameState]]] = {
+    "orthodox":      ("Orthodox",      GameState.default),
+    "chess960":      ("Chess 960",     GameState.chess960),
+    "berolina":      ("Berolina",      GameState.berolina_chess),
+    "anti_king":     ("Anti-King",     GameState.anti_king_chess),
+}
 
 
 # --- Name generation ---
@@ -57,9 +65,20 @@ _DEFAULT_PIECE_NAMES = ["Pawn", "Rook", "Knight", "Bishop", "Queen", "King"]
 class GameDef(BaseModel):
     piece_defs: list[str] | None = None  # piece names to include; None = orthodox default
     cooldowns: dict[str, float] | None = None  # per-piece-type cooldown override
+    game_type: str = "orthodox"
 
-    def get_piece_defs(self) -> list[PieceDef]:
-        names = self.piece_defs if self.piece_defs else _DEFAULT_PIECE_NAMES
+    def get_piece_defs(self, state: "GameState | None" = None) -> list[PieceDef]:
+        if state is not None:
+            # Derive unique piece names from the actual board
+            seen: set[str] = set()
+            names: list[str] = []
+            for col in state.board:
+                for piece in col:
+                    if piece is not None and piece.name not in seen:
+                        seen.add(piece.name)
+                        names.append(piece.name)
+        else:
+            names = self.piece_defs if self.piece_defs else _DEFAULT_PIECE_NAMES
         cooldowns = self.cooldowns or {}
         return [
             PieceDef(
@@ -90,7 +109,8 @@ def _piece_code(piece: EnginePiece) -> str:
 class ActiveGame:
     def __init__(self, game_def: GameDef):
         self.id = uuid.uuid4()
-        self.state = GameState.default()
+        factory = GAME_TYPES.get(game_def.game_type, GAME_TYPES["orthodox"])[1]
+        self.state = factory()
         self.game_def = game_def
         self.timestamp_start = datetime.now()
         self.timestamp_end: datetime | None = None
@@ -112,7 +132,7 @@ class ActiveGame:
 
     def serialize_max_cooldowns(self) -> dict[str, float]:
         result: dict[str, float] = {}
-        for pd in self.game_def.get_piece_defs():
+        for pd in self.game_def.get_piece_defs(self.state):
             letter = "N" if pd.name == "Knight" else pd.name[0]
             result[letter] = float(pd.value)
             result[letter.lower()] = float(pd.value)
@@ -155,9 +175,21 @@ class ActiveGame:
 
 
 class Lobby:
+    _SLOTS = ("white", "black")
+
     def __init__(self, name: str):
         self.name = name
         self.game: ActiveGame | None = None
+        self._token_colors: dict[str, str] = {}
+
+    def assign_color(self, token: str | None) -> str:
+        if token and token in self._token_colors:
+            return self._token_colors[token]
+        taken = set(self._token_colors.values())
+        color = next((s for s in self._SLOTS if s not in taken), "black")
+        if token:
+            self._token_colors[token] = color
+        return color
 
     def create_game(self, game_def: GameDef) -> ActiveGame:
         self.game = ActiveGame(game_def)

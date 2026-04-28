@@ -78,10 +78,10 @@ class ChakesService:
             msg["winner"] = "white" if winner.name == "WHITE" else "black"
         return msg
 
-    async def connect(self, lobby_name: str, ws: WebSocket) -> None:
+    async def connect(self, lobby_name: str, ws: WebSocket, token: str | None = None) -> None:
         await self._connections.connect(lobby_name, ws)
         lobby = self._lobbies[lobby_name]
-        color = "white" if self._connections.connection_count(lobby_name) == 1 else "black"
+        color = lobby.assign_color(token)
         msg: dict = {"color": color}
         if lobby.game:
             msg.update(self._game_state_msg(lobby.game))
