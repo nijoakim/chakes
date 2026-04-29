@@ -439,8 +439,8 @@ class Piece:
                                         for x, y in [(c, d), (d, c)]:
                                             moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
 
-            # Include compound moves in move alternatives
-            moves_alt |= moves_comp
+                # Include compound moves in move alternatives
+                moves_alt |= moves_comp
 
             # Filter captures if 'c' was specified
             if must_capture:

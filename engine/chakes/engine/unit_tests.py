@@ -469,7 +469,7 @@ class TestPieces(ut.TestCase):
 
         self.assertEqual(
             poses_to_str(gryphon.legal_moves()),
-            {'a3', 'a5', 'a6', 'a7', 'c3', 'c5', 'c6', 'c7', 'd4', 'e4', 'f4', 'g4', 'h4'},
+            {'a3', 'a4', 'a5', 'a6', 'a7', 'c3', 'c4', 'c5', 'c6', 'c7', 'd4', 'e4', 'f4', 'g4', 'h4'},
         )
 
 
