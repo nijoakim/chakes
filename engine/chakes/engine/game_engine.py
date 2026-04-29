@@ -227,6 +227,7 @@ class Piece:
                                 self.game_state.board[cur_x][self.pos_y] = None
                                 self.game_state.board[self.pos_x+diff_x][self.pos_y] = other
                                 other.pos_x = self.pos_x+diff_x
+                                other.last_move_time = monotonic()
                                 return
                         cur_x += diff_x
 
