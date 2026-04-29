@@ -202,17 +202,17 @@ class Piece:
 
         match self.name:
             case 'Pawn':
-                # Mark en passentable
+                # Mark en passantable
                 if abs(self.pos_y - new_pos_y) == 2:
-                    self._en_passentable = True
+                    self._en_passantable = True
                 else:
-                    self._en_passentable = False
+                    self._en_passantable = False
 
-                # Perform en passent
+                # Perform en passant
                 if self.pos_x != new_pos_x:
                     other = self.game_state.board[new_pos_x][self.pos_y]
                     if other is not None:
-                        if getattr(other, '_en_passentable', False):
+                        if getattr(other, '_en_passantable', False):
                             self.game_state.board[new_pos_x][self.pos_y] = None
 
             case 'King':
@@ -456,12 +456,12 @@ class Piece:
 
         match self.name:
             case 'Pawn':
-                # En passent
+                # En passant
                 for x, y in (self.pos_x-1, self.pos_y), (self.pos_x+1, self.pos_y):
                     if self.game_state.is_pos_within_board(x, y):
                         other = self.game_state.board[x][y]
                         if other is not None:
-                            if getattr(other, '_en_passentable', False) \
+                            if getattr(other, '_en_passantable', False) \
                             and other.owner != self.owner \
                             and other.get_cooldown() > 0:
                                 moves |= {(x, y+self._forwards())}

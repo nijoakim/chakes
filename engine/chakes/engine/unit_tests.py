@@ -52,7 +52,7 @@ class TestPieces(ut.TestCase):
             {'a7', 'c7'},
         )
 
-    def test_en_passent(self) -> None:
+    def test_en_passant(self) -> None:
         game_state = GameState.default()
         game_state.move_piece_str('b2', 'b4')
         game_state.move_piece_str('b4', 'b5')
