@@ -26,6 +26,7 @@ Piece.get_cooldown = lambda self: 0.0 if not getattr(self, '_enable_cooldown', F
 class TestPieces(ut.TestCase):
     def test_rook(self) -> None:
         game_state = GameState.default()
+
         game_state.move_piece_str('a2', 'a4')
         game_state.move_piece_str('a1', 'a3')
         game_state.move_piece_str('a3', 'b3')
@@ -455,6 +456,20 @@ class TestPieces(ut.TestCase):
         self.assertEqual(
             poses_to_str(chameleon.legal_moves()),
             {'c4', 'd5', 'f5', 'g4'},
+        )
+
+    def test_gryphon(self) -> None:
+        game_state = GameState.default()
+        game_state.add_piece_str('Gryphon', Player.WHITE, 'a1')
+        game_state.move_piece_str('b2', 'b4')
+        game_state.move_piece_str('a1', 'b3')
+
+        gryphon: Optional[Piece] = game_state.piece_at('b3')
+        assert gryphon is not None
+
+        self.assertEqual(
+            poses_to_str(gryphon.legal_moves()),
+            {'a3', 'a5', 'a6', 'a7', 'c3', 'c5', 'c6', 'c7', 'd4', 'e4', 'f4', 'g4', 'h4'},
         )
 
 

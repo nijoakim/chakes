@@ -72,6 +72,7 @@ piece_defs: dict[str, tuple[int, str]] = {
     'Chameleon':     (3, '1/2'),
     'Ferz':          (3, '1X'),
     'Grasshopper':   (3, '^n*'),
+    'Gryphon':       (3, '1X.n+'),
     'Man':           (3, '1*'),
     'Nightrider':    (3, 'n(1/2)'),
     'Wazir':         (3, '1+'),
@@ -275,175 +276,192 @@ class Piece:
 
         moves: set[tuple[int, int]] = set()
 
+        # Parse alternatives
         for pattern in self.moveset.split(','):
-            moves_temp: set[tuple[int, int]] = set()
-            match: Optional[re.Match] = None
+            moves_alt:  set[tuple[int, int]] = set()
+            moves_comp: set[tuple[int, int]] = {(self.pos_x, self.pos_y)}
 
-            num_steps_start: int
-            num_steps_end:   int
+            # Parse compounds
+            for pattern in pattern.split('.'):
+                moves_comp_temp: set[tuple[int, int]] = moves_comp
+                moves_comp:      set[tuple[int, int]] = set()
+                for pos_x, pos_y in moves_comp_temp:
+                    pattern_temp = pattern
 
-            must_capture:     bool = False
-            must_not_capture: bool = False
-            captures_friends: bool = False
-            leaps:            bool = False
-            hops:             bool = False
-            unsafe:           bool = False
+                    match: Optional[re.Match] = None
 
-            # Parse condtions
-            while True:
-                match pattern[0]:
-                    # Must capture friend
-                    case 'f':
-                        self.owner = self.owner.other()
-                        captures_friends = True
+                    num_steps_start: int
+                    num_steps_end:   int
 
-                        pattern = pattern[1:]
-                    # Must be initial move
-                    case 'i':
-                        pattern = pattern[1:] if not self.has_moved else '_'
+                    must_capture:     bool = False
+                    must_not_capture: bool = False
+                    captures_friends: bool = False
+                    leaps:            bool = False
+                    hops:             bool = False
+                    unsafe:           bool = False
 
-                    # Must not capture
-                    case 'o':
-                        if not invert_captures:
-                            must_not_capture = True
-                        else:
-                            must_capture = True
-                        pattern = pattern[1:]
+                    # Parse condtions
+                    while True:
+                        match pattern_temp[0]:
+                            # Must capture friend
+                            case 'f':
+                                self.owner = self.owner.other()
+                                captures_friends = True
 
-                    # Must capture enemy
-                    case 'c':
-                        if not invert_captures:
-                            must_capture = True
-                        else:
-                            must_not_capture = True
-                        pattern = pattern[1:]
+                                pattern_temp = pattern_temp[1:]
 
-                    # No more conditions
-                    case _:
-                        break
+                            # Must be initial move
+                            case 'i':
+                                pattern_temp = pattern_temp[1:] if not self.has_moved else '_'
 
-            # Parse move type
-            match pattern[0]:
-                case '~':
-                    leaps = True
-                    pattern = pattern[1:]
-                case '^':
-                    hops = True
-                    pattern = pattern[1:]
+                            # Must not capture
+                            case 'o':
+                                if not invert_captures:
+                                    must_not_capture = True
+                                else:
+                                    must_capture = True
+                                pattern_temp = pattern_temp[1:]
 
-            # Parse number of steps
-            if not re.match(r'\(?[0-9]+/', pattern):
-                if pattern[0] == 'n':
-                    num_steps_start = num_steps_end = -1
-                    pattern = pattern[1:]
-                elif match := re.match(r'[0-9]+\-[0-9]+', pattern):
-                    num_steps_start, num_steps_end = \
-                        tuple([int(num) for num in pattern[:match.end()].split('-')[:2]][:2])
-                    if num_steps_start >= num_steps_end:
-                        raise AssertionError(f'For number of steps range in {self.name}, {num_steps_start} is larger than or equal to {num_steps_end}.')
-                    pattern = pattern[match.end():]
-                elif match := re.match(r'[0-9]+', pattern):
-                    num_steps_start = num_steps_end = int(pattern[:match.end()])
-                    pattern = pattern[match.end():]
-            else:
-                num_steps_start = num_steps_end = 1
+                            # Must capture enemy
+                            case 'c':
+                                if not invert_captures:
+                                    must_capture = True
+                                else:
+                                    must_not_capture = True
+                                pattern_temp = pattern_temp[1:]
 
-            # Parse parentheses
-            if match := re.match(r'\(.*\)', pattern):
-                pattern = pattern[1:match.end()-1] + pattern[match.end():]
+                            # No more conditions
+                            case _:
+                                break
 
-            # Parse direction
-            if match := re.match(r'X>|X<|<>|>=|<=|>|<|=|\+|X|\*|[0-9]+/[0-9]+', pattern):
-                move_type: str = pattern[:match.end()]
-                pattern = pattern[match.end():]
+                    # Parse move type
+                    match pattern_temp[0]:
+                        case '~':
+                            leaps = True
+                            pattern_temp = pattern_temp[1:]
+                        case '^':
+                            hops = True
+                            pattern_temp = pattern_temp[1:]
 
-                # For each number of steps
-                for num_steps in range(num_steps_start, num_steps_end+1):
-                    match move_type:
+                    # Parse number of steps
+                    if not re.match(r'\(?[0-9]+/', pattern_temp):
+                        if pattern_temp[0] == 'n':
+                            num_steps_start = num_steps_end = -1
+                            pattern_temp = pattern_temp[1:]
+                        elif match := re.match(r'[0-9]+\-[0-9]+', pattern_temp):
+                            num_steps_start, num_steps_end = \
+                                tuple([int(num) for num in pattern_temp[:match.end()].split('-')[:2]][:2])
+                            if num_steps_start >= num_steps_end:
+                                raise AssertionError(f'For number of steps range in {self.name}, {num_steps_start} is larger than or equal to {num_steps_end}.')
+                            pattern_temp = pattern_temp[match.end():]
+                        elif match := re.match(r'[0-9]+', pattern_temp):
+                            num_steps_start = num_steps_end = int(pattern_temp[:match.end()])
+                            pattern_temp = pattern_temp[match.end():]
+                    else:
+                        num_steps_start = num_steps_end = 1
 
-                        # Orthogonally forwards
-                        case '>':
-                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
+                    # Parse parentheses
+                    if match := re.match(r'\(.*\)', pattern_temp):
+                        pattern_temp = pattern_temp[1:match.end()-1] + pattern_temp[match.end():]
 
-                        # Orthogonally backwards
-                        case '<':
-                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, -self._forwards(), num_steps, leaps, hops)
+                    # Parse direction
+                    if match := re.match(r'X>|X<|<>|>=|<=|>|<|=|\+|X|\*|[0-9]+/[0-9]+', pattern_temp):
+                        move_type: str = pattern_temp[:match.end()]
+                        pattern_temp = pattern_temp[match.end():]
 
-                        # Orthogonally forwards and backwards
-                        case '<>':
-                            for direction in (-1, 1):
-                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, direction, num_steps, leaps, hops)
+                        # For each number of steps
+                        for num_steps in range(num_steps_start, num_steps_end+1):
+                            match move_type:
 
-                        # Orthogonally sideways
-                        case '=':
-                            for direction in (-1, 1):
-                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
+                                # Orthogonally forwards
+                                case '>':
+                                    moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, self._forwards(), num_steps, leaps, hops)
 
-                        # Orthogonally forwards and sideways
-                        case '>=':
-                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, self._forwards(), num_steps, leaps, hops)
-                            for direction in (-1, 1):
-                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, direction, 0, num_steps, leaps, hops)
+                                # Orthogonally backwards
+                                case '<':
+                                    moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, -self._forwards(), num_steps, leaps, hops)
 
-                        # Orthogonally backwards and sideways
-                        case '<=':
-                            moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, 0, -num_steps, 1, leaps, hops)
-                            for direction in (-1, 1):
-                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, direction*self._forwards(), 0, num_steps, leaps, hops)
+                                # Orthogonally forwards and backwards
+                                case '<>':
+                                    for direction in (-1, 1):
+                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, direction, num_steps, leaps, hops)
 
-                        # Diagonally forwards
-                        case 'X>':
-                            y = self._forwards()
-                            for x in -1, 1:
-                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                                # Orthogonally sideways
+                                case '=':
+                                    for direction in (-1, 1):
+                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, direction, 0, num_steps, leaps, hops)
 
-                        # Diagonally backwards
-                        case 'X<':
-                            y = -self._forwards()
-                            for x in -1, 1:
-                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                                # Orthogonally forwards and sideways
+                                case '>=':
+                                    moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, self._forwards(), num_steps, leaps, hops)
+                                    for direction in (-1, 1):
+                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, direction, 0, num_steps, leaps, hops)
 
-                        # Orthogonally
-                        case '+':
-                            for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
-                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                                # Orthogonally backwards and sideways
+                                case '<=':
+                                    moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, -num_steps, 1, leaps, hops)
+                                    for direction in (-1, 1):
+                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, direction*self._forwards(), 0, num_steps, leaps, hops)
 
-                        # Diagonally
-                        case 'X':
-                            for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
-                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                                # Diagonally forwards
+                                case 'X>':
+                                    y = self._forwards()
+                                    for x in -1, 1:
+                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
 
-                        # Any direction
-                        case '*':
-                            for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
-                                moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                                # Diagonally backwards
+                                case 'X<':
+                                    y = -self._forwards()
+                                    for x in -1, 1:
+                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
 
-                        # Hippogonally
-                        case _ if '/' in move_type:
-                            a: int
-                            b: int
-                            a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
-                            for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
-                                for x, y in [(c, d), (d, c)]:
-                                    moves_temp |= self._legal_moves_in_direction(self.pos_x, self.pos_y, x, y, num_steps, leaps, hops)
+                                # Orthogonally
+                                case '+':
+                                    for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
+                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+
+                                # Diagonally
+                                case 'X':
+                                    for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
+                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+
+                                # Any direction
+                                case '*':
+                                    for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
+                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+
+                                # Hippogonally
+                                case _ if '/' in move_type:
+                                    a: int
+                                    b: int
+                                    a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
+                                    for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
+                                        for x, y in [(c, d), (d, c)]:
+                                            moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+
+            # Include compound moves in move alternatives
+            moves_alt |= moves_comp
 
             # Filter captures if 'c' was specified
             if must_capture:
-                moves_temp = set(filter(lambda pos: self._is_capture_move(pos[0], pos[1]), moves_temp))
+                moves_alt = set(filter(lambda pos: self._is_capture_move(pos[0], pos[1]), moves_alt))
 
             # Filter non-captures if 'o' was specified
             if must_not_capture:
-                moves_temp = set(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), moves_temp))
+                moves_alt = set(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), moves_alt))
 
             # Restore owner if needed
             if captures_friends:
                 self.owner = self.owner.other()
 
-            # Append temporary moves to main moves
-            moves |= moves_temp
+            # Include move alteratives in main moves
+            moves |= moves_alt
 
         # Apply special rules
         moves = self._legal_moves_special(moves, check_safe = check_safe)
+
+        # Filter starting position
+        moves -= {(self.pos_x, self.pos_y)}
 
         return moves
 
