@@ -259,13 +259,15 @@ class Piece:
 
     def legal_moves(
             self,
-            check_safe: bool = True,
+            check_safe:      bool = True,
+            invert_captures: bool = False,
         ) -> set[tuple[int, int]]:
         """
         Returns a set of legal moves for a piece.
 
         Args:
-            check_safe: Whether to exclude moves that are unsafe
+            check_safe:      Whether to exclude moves that are unsafe
+            invert_captures: Whether to invert capturing and non-capturing moves
 
         Returns:
             Set of legal moves
@@ -302,12 +304,18 @@ class Piece:
 
                     # Must not capture
                     case 'o':
-                        must_not_capture = True
+                        if not invert_captures:
+                            must_not_capture = True
+                        else:
+                            must_capture = True
                         pattern = pattern[1:]
 
                     # Must capture enemy
                     case 'c':
-                        must_capture = True
+                        if not invert_captures:
+                            must_capture = True
+                        else:
+                            must_not_capture = True
                         pattern = pattern[1:]
 
                     # No more conditions
@@ -460,9 +468,11 @@ class Piece:
 
             case 'King':
                 # Castling
-                attacked: set[tuple[int, int]] = self.game_state.attacked_squares(self.owner) if check_safe else set()
+                attacked:     set[tuple[int, int]] = self.game_state.attacked_squares(self.owner, invert_captures = False) if check_safe else set()
+                attacked_inv: set[tuple[int, int]] = self.game_state.attacked_squares(self.owner, invert_captures = True) if check_safe else set()
                 for diff_x in (-1, 1):
-                    if {(self.pos_x, self.pos_y), (self.pos_x + diff_x, self.pos_y)} & attacked == set():
+                    if  (self.pos_x,          self.pos_y) not in attacked \
+                    and (self.pos_x + diff_x, self.pos_y) not in attacked_inv:
                         cur_x: int = self.pos_x + diff_x
                         while self.game_state.is_pos_within_board(cur_x, self.pos_y):
                             other = self.game_state.board[cur_x][self.pos_y]
@@ -693,16 +703,18 @@ class GameState:
             x < self.size_x and \
             y < self.size_y
 
-    def attacked_squares(self, player: Player, require_cooldown = False) -> set[tuple[int, int]]:
+    def attacked_squares(
+            self,
+            player:          Player,
+            invert_captures: bool = False
+        ) -> set[tuple[int, int]]:
         squares: set[tuple[int, int]] = set()
 
         for pieces in self.board:
             for piece in pieces:
                 if piece is not None:
                     if piece.owner == player.other():
-                        if not require_cooldown \
-                        or piece.get_cooldown() == 0.0:
-                            squares |= piece.legal_moves(check_safe = False)
+                        squares |= piece.legal_moves(check_safe = False, invert_captures = invert_captures)
 
         return squares
 

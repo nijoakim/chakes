@@ -219,13 +219,41 @@ class TestPieces(ut.TestCase):
             {'c1', 'd1', 'f1'},
         )
 
-        # Stop attacking
+        # Stop attack
         game_state.move_piece_str('h3', 'g5')
 
         self.assertEqual(
             poses_to_str(king.legal_moves()),
             {'c1', 'd1', 'f1', 'g1'},
         )
+
+        # Attack with pawn
+        game_state.move_piece_str('d7', 'd5')
+        game_state.move_piece_str('d5', 'd4')
+        game_state.move_piece_str('d4', 'd3')
+        game_state.move_piece_str('d3', 'e2')
+
+        self.assertEqual(
+            poses_to_str(king.legal_moves()),
+            {'e2'},
+        )
+
+        # Stop attack
+        game_state.move_piece_str('f3', 'e2')
+
+        # Attack with pawn
+        game_state.move_piece_str('c7', 'c5')
+        game_state.move_piece_str('c5', 'c4')
+        game_state.move_piece_str('c4', 'c3')
+        game_state.move_piece_str('c3', 'd2')
+
+        self.assertEqual(
+            poses_to_str(king.legal_moves()),
+            {'d1', 'f1'},
+        )
+
+        # Stop attack
+        game_state.move_piece_str('e2', 'd2')
 
         # Castle
         game_state.move_piece_str('e1', 'c1')
