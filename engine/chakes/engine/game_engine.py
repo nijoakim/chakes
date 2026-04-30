@@ -67,13 +67,15 @@ piece_defs: dict[str, tuple[int, str]] = {
     # Fairy
     'Amazon':        (3, 'n*,1/2'),
     'Anti-King':     (3, 'f1*'),
+    'Archbishop':    (3, 'nX,1/2'),
     'Berolina Pawn': (3, 'o1X>,io2X>,c1>'),
     'Camel':         (3, '1/3'),
     'Chameleon':     (3, '1/2'),
+    'Chancellor':    (3, 'n+,1/2'),
+    'Commoner':      (3, '1*'),
     'Ferz':          (3, '1X'),
     'Grasshopper':   (3, '^n*'),
     'Gryphon':       (3, '1X.n+'),
-    'Man':           (3, '1*'),
     'Nightrider':    (3, 'n(1/2)'),
     'Wazir':         (3, '1+'),
 }
@@ -555,7 +557,7 @@ class GameState:
 
         # Define empty size_x*size_y board
         self.board: list[list[Optional[Piece]]] = [
-            [None for _ in range(size_x)] for _ in range(size_y)
+            [None for _ in range(size_y)] for _ in range(size_x)
         ]
 
     @staticmethod
@@ -635,6 +637,26 @@ class GameState:
         # Add first row
         for i, piece in enumerate(pieces):
             state.add_piece(piece, Player.WHITE, i, 0)
+
+        state.symmetry()
+
+        return state
+
+    def knighted_chess() -> GameState:
+        state = GameState(10, 8)
+
+        state.add_piece_row('Pawn', Player.WHITE, '2')
+
+        state.add_piece_str('Rook',       Player.WHITE, 'a1')
+        state.add_piece_str('Knight',     Player.WHITE, 'b1')
+        state.add_piece_str('Archbishop', Player.WHITE, 'c1')
+        state.add_piece_str('Bishop',     Player.WHITE, 'd1')
+        state.add_piece_str('Queen',      Player.WHITE, 'e1')
+        state.add_piece_str('King',       Player.WHITE, 'f1')
+        state.add_piece_str('Bishop',     Player.WHITE, 'g1')
+        state.add_piece_str('Chancellor', Player.WHITE, 'h1')
+        state.add_piece_str('Knight',     Player.WHITE, 'i1')
+        state.add_piece_str('Rook',       Player.WHITE, 'j1')
 
         state.symmetry()
 

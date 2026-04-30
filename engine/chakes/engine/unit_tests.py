@@ -472,6 +472,29 @@ class TestPieces(ut.TestCase):
             {'a3', 'a4', 'a5', 'a6', 'a7', 'c3', 'c4', 'c5', 'c6', 'c7', 'd4', 'e4', 'f4', 'g4', 'h4'},
         )
 
+    def test_knighted_chess(self) -> None:
+        game_state = GameState.knighted_chess()
+
+        game_state.move_piece_str('c1', 'd3')
+
+        archbishop: Optional[Piece] = game_state.piece_at('d3')
+        assert archbishop is not None
+
+        self.assertEqual(
+            poses_to_str(archbishop.legal_moves()),
+            {'c4', 'b5', 'a6', 'e4', 'f5', 'g6', 'h7', 'b4', 'c5', 'e5', 'f4', 'c1'},
+        )
+
+        game_state.move_piece_str('h1', 'g3')
+
+        chancellor: Optional[Piece] = game_state.piece_at('g3')
+        assert chancellor is not None
+
+        self.assertEqual(
+            poses_to_str(chancellor.legal_moves()),
+            {'e3', 'f3', 'h3', 'i3', 'j3', 'g4', 'g5', 'g6', 'g7', 'e4', 'f5', 'h5', 'i4', 'h1'},
+        )
+
 
 if __name__ == '__main__':
     ut.main()
