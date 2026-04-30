@@ -24,23 +24,44 @@ from enum import auto, Enum
 from time import monotonic
 from typing import Optional
 from copy import deepcopy
+from dataclasses import dataclass
 
 
 print('Hello Chakes!')
 
 
-def pos_to_str(x: int, y: int) -> str:
-    return chr(ord('a')+x) + str(y+1)
+@dataclass(frozen = True)
+class Pos:
+    x: int
+    y: int
 
+    def __init__(self, str_or_x: str|int, y: Optional[int] = None) -> None:
+        if isinstance(str_or_x, str):
+            x = ord(str_or_x[0]) - ord('a')
+            y = int(str_or_x[1:]) - 1
+        else:
+            if y is None:
+                raise TypeError("'x' is int, so 'y' must be int.")
+            else:
+                x = str_or_x
 
-def poses_to_str(lst: set[tuple[int, int]]) -> set[str]:
-    return set(map(lambda pos: pos_to_str(pos[0], pos[1]), lst))
+        object.__setattr__(self, 'x', x)
+        object.__setattr__(self, 'y', y)
 
+    def __str__(self) -> str:
+        return chr(ord('a')+self.x) + str(self.y+1)
 
-def str_to_pos(pos: str) -> tuple[int, int]:
-    x: int = ord(pos[0]) - ord('a')
-    y: int = int(pos[1:]) - 1
-    return x, y
+    def __repr__(self) -> str:
+        return str(self)
+
+    def __add__(self, other: Pos) -> Pos:
+        return Pos(self.x+other.x, self.y+other.y)
+
+    def __sub__(self, other: Pos) -> Pos:
+        return Pos(self.x-other.x, self.y-other.y)
+
+    def __neg__(self) -> Pos:
+        return Pos(-self.x, -self.y)
 
 
 class Player(Enum):
@@ -83,12 +104,11 @@ piece_defs: dict[str, tuple[int, str]] = {
 
 class Piece:
     def __init__(
-        self, name: str, owner: Player, pos_x: int, pos_y: int, game_state: GameState
+        self, name: str, owner: Player, pos: Pos, game_state: GameState
     ) -> None:
         self.name:       str       = name
         self.owner:      Player    = owner
-        self.pos_x:      int       = pos_x
-        self.pos_y:      int       = pos_y
+        self.pos:        Pos       = pos
         self.game_state: GameState = game_state
 
         self.has_moved:      bool  = False
@@ -118,8 +138,8 @@ class Piece:
             case Player.BLACK:
                 return -1
 
-    def _is_capture_move(self, pos_x: int, pos_y: int) -> bool:
-        piece: Optional[Piece] = self.game_state.board[pos_x][pos_y]
+    def _is_capture_move(self, pos: Pos) -> bool:
+        piece: Optional[Piece] = self.game_state.board[pos.x][pos.y]
         if piece is None:
             return False
         else:
@@ -127,109 +147,103 @@ class Piece:
 
     def _legal_moves_in_direction(
         self,
-        start_x:   int,
-        start_y:   int,
-        diff_x:    int,
-        diff_y:    int,
+        start_pos: Pos,
+        diff_pos:  Pos,
         num_steps: int,
         leaps:     bool,
         hops:      bool,
-    ) -> set[tuple[int, int]]:
+    ) -> set[Pos]:
         if num_steps == 0:
             return set()
 
-        new_x: int = start_x + diff_x
-        new_y: int = start_y + diff_y
+        new_pos: Pos = start_pos + diff_pos
 
-        if not self.game_state.is_pos_within_board(new_x, new_y):
+        if not self.game_state.is_pos_within_board(new_pos.x, new_pos.y):
             return set()
 
-        new_piece: Optional[Piece] = self.game_state.board[new_x][new_y]
+        new_piece: Optional[Piece] = self.game_state.board[new_pos.x][new_pos.y]
 
         if hops:
             if new_piece is not None:
-                return self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, 1, leaps, False)
+                return self._legal_moves_in_direction(new_pos, diff_pos, 1, leaps, False)
             else:
-                return self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, True)
+                return self._legal_moves_in_direction(new_pos, diff_pos, num_steps-1, leaps, True)
 
         # If square occupied
         if new_piece is not None:
-            ret: set[tuple[int, int]] = set()
+            ret: set[Pos] = set()
 
             if new_piece.owner != self.owner:
-                ret |= {(new_x, new_y)}
+                ret |= {new_pos}
 
             if leaps:
-                ret |= self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
+                ret |= self._legal_moves_in_direction(new_pos, diff_pos, num_steps-1, leaps, hops)
 
             return ret
 
         # If square unoccupied
         else:
             if num_steps > 1:
-                return self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
+                return self._legal_moves_in_direction(new_pos, diff_pos, num_steps-1, leaps, hops)
             else:
-                return {(new_x, new_y)} | self._legal_moves_in_direction(new_x, new_y, diff_x, diff_y, num_steps-1, leaps, hops)
+                return {new_pos} | self._legal_moves_in_direction(new_pos, diff_pos, num_steps-1, leaps, hops)
 
     def move(
             self,
-            new_pos_x:   int,
-            new_pos_y:   int,
-            info:        str = '',
-            check_safe:  bool = True
+            new_pos:    Pos,
+            info:       str = '',
+            check_safe: bool = True
         ) -> None:
-        if (new_pos_x, new_pos_y) not in self.legal_moves(check_safe = check_safe):
-            raise ValueError(f'{self.name} can not move from {pos_to_str(self.pos_x, self.pos_y)} to {pos_to_str(new_pos_x, new_pos_y)}.')
+        if new_pos not in self.legal_moves(check_safe = check_safe):
+            raise ValueError(f'{self.name} can not move from {self.pos} to {new_pos}.')
 
         if check_safe and (cooldown := self.get_cooldown()) != 0.0:
-            raise ValueError(f'Cooldown for {self.name} at {pos_to_str(self.pos_x, self.pos_y)} is {cooldown}')
+            raise ValueError(f'Cooldown for {self.name} at {self.pos} is {cooldown}')
 
-        self._move_special(new_pos_x, new_pos_y, info = info)
+        self._move_special(new_pos, info = info)
 
-        self.game_state.board[new_pos_x][new_pos_y]   = self
-        self.game_state.board[self.pos_x][self.pos_y] = None
+        self.game_state.board[new_pos.x][new_pos.y]   = self
+        self.game_state.board[self.pos.x][self.pos.y] = None
 
-        self.pos_x = new_pos_x
-        self.pos_y = new_pos_y
+        self.pos = new_pos
 
         self.has_moved      = True
         self.last_move_time = monotonic()
 
     def _move_special(
             self,
-            new_pos_x: int,
-            new_pos_y: int,
-            info:      str = ''
+            new_pos: Pos,
+            info:    str = ''
         ) -> None:
         other: Optional[Piece]
 
         match self.name:
             case 'Pawn':
                 # Mark en passantable
-                if abs(self.pos_y - new_pos_y) == 2:
+                if abs(self.pos.y - new_pos.y) == 2:
                     self._en_passantable = True
                 else:
                     self._en_passantable = False
 
                 # Perform en passant
-                if self.pos_x != new_pos_x:
-                    other = self.game_state.board[new_pos_x][self.pos_y]
+                if self.pos.x != new_pos.x:
+                    other = self.game_state.board[new_pos.x][self.pos.y]
                     if other is not None:
                         if getattr(other, '_en_passantable', False):
-                            self.game_state.board[new_pos_x][self.pos_y] = None
+                            self.game_state.board[new_pos.x][self.pos.y] = None
 
             case 'King':
                 # Castling
-                if abs(new_pos_x - self.pos_x) == 2:
-                    diff_x: int = (new_pos_x - self.pos_x) // abs(new_pos_x - self.pos_x)
-                    cur_x:  int = self.pos_x + diff_x
-                    while self.game_state.is_pos_within_board(cur_x, self.pos_y):
-                        other = self.game_state.board[cur_x][self.pos_y]
+                if abs(new_pos.x - self.pos.x) == 2:
+                    diff_x: int = (new_pos.x - self.pos.x) // abs(new_pos.x - self.pos.x)
+                    cur_x:  int = self.pos.x + diff_x
+                    while self.game_state.is_pos_within_board(cur_x, self.pos.y):
+                        other = self.game_state.board[cur_x][self.pos.y]
                         if other is not None:
                             if other.name == "Rook":
-                                self.game_state.board[cur_x][self.pos_y] = None
-                                self.game_state.board[self.pos_x+diff_x][self.pos_y] = other
-                                other.pos_x = self.pos_x+diff_x
+                                self.game_state.board[cur_x][self.pos.y] = None
+                                self.game_state.board[self.pos.x+diff_x][self.pos.y] = other
+                                other.pos = Pos(self.pos.x+diff_x, other.pos.y)
                                 other.last_move_time = monotonic()
                                 return
                         cur_x += diff_x
@@ -247,7 +261,7 @@ class Piece:
 
         # Promote
         if 'Pawn' in self.name:
-            if new_pos_y == 0 or new_pos_y == self.game_state.size_y-1:
+            if new_pos.y == 0 or new_pos.y == self.game_state.size_y-1:
                 if info == '':
                     info = 'Queen'
 
@@ -264,7 +278,7 @@ class Piece:
             self,
             check_safe:      bool = True,
             invert_captures: bool = False,
-        ) -> set[tuple[int, int]]:
+        ) -> set[Pos]:
         """
         Returns a set of legal moves for a piece.
 
@@ -276,18 +290,18 @@ class Piece:
             Set of legal moves
         """
 
-        moves: set[tuple[int, int]] = set()
+        moves: set[Pos] = set()
 
         # Parse alternatives
         for pattern in self.moveset.split(','):
-            moves_alt:  set[tuple[int, int]] = set()
-            moves_comp: set[tuple[int, int]] = {(self.pos_x, self.pos_y)}
+            moves_alt:  set[Pos] = set()
+            moves_comp: set[Pos] = {self.pos}
 
             # Parse compounds
             for pattern in pattern.split('.'):
-                moves_comp_temp: set[tuple[int, int]] = moves_comp
-                moves_comp:      set[tuple[int, int]] = set()
-                for pos_x, pos_y in moves_comp_temp:
+                moves_comp_temp: set[Pos] = moves_comp
+                moves_comp = set()
+                for pos in moves_comp_temp:
                     pattern_temp = pattern
 
                     match: Optional[re.Match] = None
@@ -377,60 +391,60 @@ class Piece:
 
                                 # Orthogonally forwards
                                 case '>':
-                                    moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, self._forwards(), num_steps, leaps, hops)
+                                    moves_comp |= self._legal_moves_in_direction(pos, Pos(0, self._forwards()), num_steps, leaps, hops)
 
                                 # Orthogonally backwards
                                 case '<':
-                                    moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, -self._forwards(), num_steps, leaps, hops)
+                                    moves_comp |= self._legal_moves_in_direction(pos, Pos(0, -self._forwards()), num_steps, leaps, hops)
 
                                 # Orthogonally forwards and backwards
                                 case '<>':
                                     for direction in (-1, 1):
-                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, direction, num_steps, leaps, hops)
+                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(0, direction), num_steps, leaps, hops)
 
                                 # Orthogonally sideways
                                 case '=':
                                     for direction in (-1, 1):
-                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, direction, 0, num_steps, leaps, hops)
+                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(direction, 0), num_steps, leaps, hops)
 
                                 # Orthogonally forwards and sideways
                                 case '>=':
-                                    moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, self._forwards(), num_steps, leaps, hops)
+                                    moves_comp |= self._legal_moves_in_direction(pos, Pos(0, self._forwards()), num_steps, leaps, hops)
                                     for direction in (-1, 1):
-                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, direction, 0, num_steps, leaps, hops)
+                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(direction, 0), num_steps, leaps, hops)
 
                                 # Orthogonally backwards and sideways
                                 case '<=':
-                                    moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, 0, -num_steps, 1, leaps, hops)
+                                    moves_comp |= self._legal_moves_in_direction(pos, Pos(0, -num_steps), 1, leaps, hops)
                                     for direction in (-1, 1):
-                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, direction*self._forwards(), 0, num_steps, leaps, hops)
+                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(direction*self._forwards(), 0), num_steps, leaps, hops)
 
                                 # Diagonally forwards
                                 case 'X>':
                                     y = self._forwards()
                                     for x in -1, 1:
-                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
 
                                 # Diagonally backwards
                                 case 'X<':
                                     y = -self._forwards()
                                     for x in -1, 1:
-                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
 
                                 # Orthogonally
                                 case '+':
                                     for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
-                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
 
                                 # Diagonally
                                 case 'X':
                                     for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
-                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
 
                                 # Any direction
                                 case '*':
                                     for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
-                                        moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
 
                                 # Hippogonally
                                 case _ if '/' in move_type:
@@ -439,18 +453,18 @@ class Piece:
                                     a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
                                     for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
                                         for x, y in [(c, d), (d, c)]:
-                                            moves_comp |= self._legal_moves_in_direction(pos_x, pos_y, x, y, num_steps, leaps, hops)
+                                            moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
 
                 # Include compound moves in move alternatives
                 moves_alt |= moves_comp
 
             # Filter captures if 'c' was specified
             if must_capture:
-                moves_alt = set(filter(lambda pos: self._is_capture_move(pos[0], pos[1]), moves_alt))
+                moves_alt = set(filter(lambda pos: self._is_capture_move(pos), moves_alt))
 
             # Filter non-captures if 'o' was specified
             if must_not_capture:
-                moves_alt = set(filter(lambda pos: not self._is_capture_move(pos[0], pos[1]), moves_alt))
+                moves_alt = set(filter(lambda pos: not self._is_capture_move(pos), moves_alt))
 
             # Restore owner if needed
             if captures_friends:
@@ -463,55 +477,55 @@ class Piece:
         moves = self._legal_moves_special(moves, check_safe = check_safe)
 
         # Filter starting position
-        moves -= {(self.pos_x, self.pos_y)}
+        moves -= {self.pos}
 
         return moves
 
     def _legal_moves_special(
             self,
-            moves:      set[tuple[int, int]],
+            moves:      set[Pos],
             check_safe: bool = True,
-        ) -> set[tuple[int, int]]:
+        ) -> set[Pos]:
         other: Optional[Piece]
 
         match self.name:
             case 'Pawn':
                 # En passant
-                for x, y in (self.pos_x-1, self.pos_y), (self.pos_x+1, self.pos_y):
+                for x, y in (self.pos.x-1, self.pos.y), (self.pos.x+1, self.pos.y):
                     if self.game_state.is_pos_within_board(x, y):
                         other = self.game_state.board[x][y]
                         if other is not None:
                             if getattr(other, '_en_passantable', False) \
                             and other.owner != self.owner \
                             and other.get_cooldown() > 0:
-                                moves |= {(x, y+self._forwards())}
+                                moves |= {Pos(x, y+self._forwards())}
 
             case 'King':
                 # Castling
-                attacked:     set[tuple[int, int]] = self.game_state.attacked_squares(self.owner, invert_captures = False) if check_safe else set()
-                attacked_inv: set[tuple[int, int]] = self.game_state.attacked_squares(self.owner, invert_captures = True) if check_safe else set()
+                attacked:     set[Pos] = self.game_state.attacked_squares(self.owner, invert_captures = False) if check_safe else set()
+                attacked_inv: set[Pos] = self.game_state.attacked_squares(self.owner, invert_captures = True) if check_safe else set()
                 for diff_x in (-1, 1):
-                    if  (self.pos_x,          self.pos_y) not in attacked \
-                    and (self.pos_x + diff_x, self.pos_y) not in attacked_inv:
-                        cur_x: int = self.pos_x + diff_x
-                        while self.game_state.is_pos_within_board(cur_x, self.pos_y):
-                            other = self.game_state.board[cur_x][self.pos_y]
+                    if  self.pos not in attacked \
+                    and self.pos + Pos(diff_x, 0) not in attacked_inv:
+                        cur_x: int = self.pos.x + diff_x
+                        while self.game_state.is_pos_within_board(cur_x, self.pos.y):
+                            other = self.game_state.board[cur_x][self.pos.y]
                             if other is not None:
                                 if other.name == 'Rook' \
                                 and other.owner == self.owner \
                                 and not self.has_moved \
                                 and not other.has_moved \
-                                and self.game_state.is_pos_within_board(self.pos_x+2*diff_x, self.pos_y) \
-                                and self.game_state.board[self.pos_x+2*diff_x][self.pos_y] is None:
-                                    moves |= {(self.pos_x+2*diff_x, self.pos_y)}
+                                and self.game_state.is_pos_within_board(self.pos.x+2*diff_x, self.pos.y) \
+                                and self.game_state.board[self.pos.x+2*diff_x][self.pos.y] is None:
+                                    moves |= {self.pos + Pos(2*diff_x, 0)}
                                 break
                             cur_x += diff_x
 
         # Filter unsafe moves
         if check_safe:
-            for new_x, new_y in set(moves):
+            for new_pos in set(moves):
                 test_state: GameState = deepcopy(self.game_state)
-                test_state.move_piece(self.pos_x, self.pos_y, new_x, new_y, check_safe = False)
+                test_state.move_piece(self.pos, new_pos, check_safe = False)
                 attacked_anti_kings: set[Piece] = set()
                 all_anti_kings:      set[Piece] = set([
                     piece
@@ -521,35 +535,35 @@ class Piece:
                         and piece.owner == self.owner
                         and piece.name == 'Anti-King'
                 ])
-                for att_x, att_y in test_state.attacked_squares(self.owner):
-                    piece: Optional[Piece] = test_state.board[att_x][att_y]
+                for att in test_state.attacked_squares(self.owner):
+                    piece: Optional[Piece] = test_state.board[att.x][att.y]
                     if piece is not None:
                         if piece.owner == self.owner:
                             match piece.name:
                                 case 'King':
-                                    moves -= {(new_x, new_y)}
+                                    moves -= {new_pos}
                                 case 'Anti-King':
                                     attacked_anti_kings |= {piece}
 
                 # Remove move if any Anti-King is unattacked
                 if all_anti_kings != attacked_anti_kings:
-                    moves -= {(new_x, new_y)}
+                    moves -= {new_pos}
 
         # Filter moves that capture invinsible pieces
         if check_safe:
-            for pos_x, pos_y in set(moves):
-                other = self.game_state.board[pos_x][pos_y]
+            for pos in set(moves):
+                other = self.game_state.board[pos.x][pos.y]
                 if other is not None:
                     if other.name == 'King' \
                     or other.name == 'Anti-King':
-                        moves -= {(pos_x, pos_y)}
+                        moves -= {pos}
 
         return moves
 
 
 class GameState:
-    pieces:   list[Piece]                                   = []
-    move_log: list[tuple[tuple[int, int], tuple[int, int]]] = []
+    pieces:   list[Piece]           = []
+    move_log: list[tuple[Pos, Pos]] = []
 
     def __init__(self, size_x: int = 8, size_y: int = 8) -> None:
         self.size_x: int = size_x
@@ -566,14 +580,14 @@ class GameState:
 
         state.add_piece_row('Pawn', Player.WHITE, '2')
 
-        state.add_piece_str('Rook',   Player.WHITE, 'a1')
-        state.add_piece_str('Knight', Player.WHITE, 'b1')
-        state.add_piece_str('Bishop', Player.WHITE, 'c1')
-        state.add_piece_str('Queen',  Player.WHITE, 'd1')
-        state.add_piece_str('King',   Player.WHITE, 'e1')
-        state.add_piece_str('Bishop', Player.WHITE, 'f1')
-        state.add_piece_str('Knight', Player.WHITE, 'g1')
-        state.add_piece_str('Rook',   Player.WHITE, 'h1')
+        state.add_piece('Rook',   Player.WHITE, Pos('a1'))
+        state.add_piece('Knight', Player.WHITE, Pos('b1'))
+        state.add_piece('Bishop', Player.WHITE, Pos('c1'))
+        state.add_piece('Queen',  Player.WHITE, Pos('d1'))
+        state.add_piece('King',   Player.WHITE, Pos('e1'))
+        state.add_piece('Bishop', Player.WHITE, Pos('f1'))
+        state.add_piece('Knight', Player.WHITE, Pos('g1'))
+        state.add_piece('Rook',   Player.WHITE, Pos('h1'))
 
         state.symmetry()
 
@@ -585,14 +599,14 @@ class GameState:
 
         state.add_piece_row('Berolina Pawn', Player.WHITE, '2')
 
-        state.add_piece_str('Rook',   Player.WHITE, 'a1')
-        state.add_piece_str('Knight', Player.WHITE, 'b1')
-        state.add_piece_str('Bishop', Player.WHITE, 'c1')
-        state.add_piece_str('Queen',  Player.WHITE, 'd1')
-        state.add_piece_str('King',   Player.WHITE, 'e1')
-        state.add_piece_str('Bishop', Player.WHITE, 'f1')
-        state.add_piece_str('Knight', Player.WHITE, 'g1')
-        state.add_piece_str('Rook',   Player.WHITE, 'h1')
+        state.add_piece('Rook',   Player.WHITE, Pos('a1'))
+        state.add_piece('Knight', Player.WHITE, Pos('b1'))
+        state.add_piece('Bishop', Player.WHITE, Pos('c1'))
+        state.add_piece('Queen',  Player.WHITE, Pos('d1'))
+        state.add_piece('King',   Player.WHITE, Pos('e1'))
+        state.add_piece('Bishop', Player.WHITE, Pos('f1'))
+        state.add_piece('Knight', Player.WHITE, Pos('g1'))
+        state.add_piece('Rook',   Player.WHITE, Pos('h1'))
 
         state.symmetry()
 
@@ -603,8 +617,8 @@ class GameState:
     def anti_king_chess() -> GameState:
         state = GameState.default()
 
-        state.add_piece_str('Anti-King', Player.WHITE, 'd6')
-        state.add_piece_str('Anti-King', Player.BLACK, 'd3')
+        state.add_piece('Anti-King', Player.WHITE, Pos('d6'))
+        state.add_piece('Anti-King', Player.BLACK, Pos('d3'))
 
         return state
 
@@ -636,57 +650,49 @@ class GameState:
 
         # Add first row
         for i, piece in enumerate(pieces):
-            state.add_piece(piece, Player.WHITE, i, 0)
+            state.add_piece(piece, Player.WHITE, Pos(i, 0))
 
         state.symmetry()
 
         return state
 
+    @staticmethod
     def knighted_chess() -> GameState:
         state = GameState(10, 8)
 
         state.add_piece_row('Pawn', Player.WHITE, '2')
 
-        state.add_piece_str('Rook',       Player.WHITE, 'a1')
-        state.add_piece_str('Knight',     Player.WHITE, 'b1')
-        state.add_piece_str('Archbishop', Player.WHITE, 'c1')
-        state.add_piece_str('Bishop',     Player.WHITE, 'd1')
-        state.add_piece_str('Queen',      Player.WHITE, 'e1')
-        state.add_piece_str('King',       Player.WHITE, 'f1')
-        state.add_piece_str('Bishop',     Player.WHITE, 'g1')
-        state.add_piece_str('Chancellor', Player.WHITE, 'h1')
-        state.add_piece_str('Knight',     Player.WHITE, 'i1')
-        state.add_piece_str('Rook',       Player.WHITE, 'j1')
+        state.add_piece('Rook',       Player.WHITE, Pos('a1'))
+        state.add_piece('Knight',     Player.WHITE, Pos('b1'))
+        state.add_piece('Archbishop', Player.WHITE, Pos('c1'))
+        state.add_piece('Bishop',     Player.WHITE, Pos('d1'))
+        state.add_piece('Queen',      Player.WHITE, Pos('e1'))
+        state.add_piece('King',       Player.WHITE, Pos('f1'))
+        state.add_piece('Bishop',     Player.WHITE, Pos('g1'))
+        state.add_piece('Chancellor', Player.WHITE, Pos('h1'))
+        state.add_piece('Knight',     Player.WHITE, Pos('i1'))
+        state.add_piece('Rook',       Player.WHITE, Pos('j1'))
 
         state.symmetry()
 
         return state
 
-    def piece_at(self, pos: str) -> Optional[Piece]:
-        x, y = str_to_pos(pos)
-        return self.board[x][y]
+    def piece_at(self, pos: Pos) -> Optional[Piece]:
+        return self.board[pos.x][pos.y]
 
-    def add_piece(self, name: str, owner: Player, pos_x: int, pos_y: int) -> None:
-        new_piece: Piece = Piece(name, owner, pos_x, pos_y, self)
+    def add_piece(self, name: str, owner: Player, pos: Pos) -> None:
+        new_piece: Piece = Piece(name, owner, pos, self)
         self.pieces.append(new_piece)
-        self.board[pos_x][pos_y] = new_piece
-
-    def add_piece_str(self, name: str, owner: Player, pos: str) -> None:
-        x, y = str_to_pos(pos)
-        self.add_piece(name, owner, x, y)
+        self.board[pos.x][pos.y] = new_piece
 
     def add_piece_row(self, name: str, owner: Player, row: int|str) -> None:
         y: int = row if isinstance(row, int) else int(row)-1
 
         for x in range(self.size_x):
-            self.add_piece(name, owner, x, y)
+            self.add_piece(name, owner, Pos(x, y))
 
-    def remove_piece(self, pos_x: int, pos_y: int):
-        self.board[pos_x][pos_y] = None
-
-    def remove_piece_str(self, pos: str) -> None:
-        x, y = str_to_pos(pos)
-        self.remove_piece(x, y)
+    def remove_piece(self, pos: Pos):
+        self.board[pos.x][pos.y] = None
 
     def upside_down(self) -> None:
         for y1 in range(self.size_y // 2):
@@ -696,45 +702,35 @@ class GameState:
                 piece2: Optional[Piece] = self.board[x][y2]
                 self.board[x][y1], self.board[x][y2] = self.board[x][y2], self.board[x][y1]
                 if piece1 is not None:
-                    piece1.pos_y = y2
+                    piece1.pos = Pos(y2, piece1.pos.x)
                 if piece2 is not None:
-                    piece2.pos_y = y1
+                    piece2.pos = Pos(y1, piece2.pos.x)
 
     def symmetry(self) -> None:
         for piece in [piece for pieces in self.board for piece in pieces]:
             if piece is not None:
-                x: int = piece.pos_x
-                y: int = self.size_y-1 - piece.pos_y
+                x: int = piece.pos.x
+                y: int = self.size_y-1 - piece.pos.y
                 new_piece: Optional[Piece] = self.board[x][y]
                 if new_piece is not None:
-                    raise RuntimeError(f'Impossible to make symmetry due to {piece.name} at {pos_to_str(piece.pos_x, piece.pos_y)} and {new_piece.name} at {pos_to_str(x, y)}.')
-                self.add_piece(piece.name, piece.owner.other(), x, y)
+                    raise RuntimeError(f'Impossible to make symmetry due to {piece.name} at {piece.pos} and {new_piece.name} at {Pos(x, y)}.')
+                self.add_piece(piece.name, piece.owner.other(), Pos(x, y))
 
     def move_piece(
             self,
-            pos_x1:     int,
-            pos_y1:     int,
-            pos_x2:     int,
-            pos_y2:     int,
+            pos1:      Pos,
+            pos2:      Pos,
             info:       str  = '',
             check_safe: bool = True,
         ) -> None:
-        piece: Optional[Piece] = self.board[pos_x1][pos_y1]
+        piece: Optional[Piece] = self.board[pos1.x][pos1.y]
 
         if piece is None:
-            raise ValueError(f'There is no piece at {pos_to_str(pos_x1, pos_y1)}.')
+            raise ValueError(f'There is no piece at {pos1}.')
         else:
-            piece.move(pos_x2, pos_y2, info = info, check_safe = check_safe)
+            piece.move(pos2, info = info, check_safe = check_safe)
 
-        self.move_log.append(((pos_x1, pos_y1), (pos_x2, pos_y2)))
-
-    def move_piece_str(self, pos1: str, pos2: str, info: str = '') -> None:
-        x1, y1 = str_to_pos(pos1)
-        x2, y2 = str_to_pos(pos2)
-        self.move_piece(x1, y1, x2, y2, info = info)
-
-    def move_log_str(self):
-        return list(map(lambda move: (pos_to_str(move[0][0], move[0][1]), pos_to_str(move[1][0], move[1][1])), self.move_log))
+        self.move_log.append((pos1, pos2))
 
     def is_pos_within_board(self, x: int, y: int):
         return \
@@ -747,8 +743,8 @@ class GameState:
             self,
             player:          Player,
             invert_captures: bool = False
-        ) -> set[tuple[int, int]]:
-        squares: set[tuple[int, int]] = set()
+        ) -> set[Pos]:
+        squares: set[Pos] = set()
 
         for pieces in self.board:
             for piece in pieces:
@@ -775,11 +771,10 @@ class GameState:
 
         return None
 
-
     def __str__(self) -> str:
         ret: str = ''
         for y in reversed(range(self.size_y)):
-            ret += f'\033[33m{pos_to_str(0, y)[1:]} \033[0m'
+            ret += f'\033[33m{str(Pos(0, y))[1:]} \033[0m'
             for x in range(self.size_x):
                 piece = self.board[x][y]
                 ret += '.' if piece is None else str(piece)
@@ -787,6 +782,6 @@ class GameState:
             ret += '\n'
         ret = ret[:-1]
         ret += '\n  '
-        ret += ' '.join([f'\033[33m{pos_to_str(x, 0)[0]}' for x in range(self.size_x)])
+        ret += ' '.join([f'\033[33m{str(Pos(x, 0))[0]}' for x in range(self.size_x)])
         ret += '\033[0m'
         return ret
