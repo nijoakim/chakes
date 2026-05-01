@@ -139,7 +139,7 @@ class Piece:
                 return -1
 
     def _is_capture_move(self, pos: Pos) -> bool:
-        piece: Optional[Piece] = self.game_state.board[pos.x][pos.y]
+        piece: Optional[Piece] = self.game_state.piece_at(pos)
         if piece is None:
             return False
         else:
@@ -161,7 +161,7 @@ class Piece:
         if not self.game_state.is_pos_within_board(new_pos.x, new_pos.y):
             return set()
 
-        new_piece: Optional[Piece] = self.game_state.board[new_pos.x][new_pos.y]
+        new_piece: Optional[Piece] = self.game_state.piece_at(new_pos)
 
         if hops:
             if new_piece is not None:
@@ -202,8 +202,8 @@ class Piece:
 
         self._move_special(new_pos, info = info)
 
-        self.game_state.board[new_pos.x][new_pos.y]   = self
-        self.game_state.board[self.pos.x][self.pos.y] = None
+        self.game_state.set_piece(self, new_pos)
+        self.game_state.remove_piece(self.pos)
 
         self.pos = new_pos
 
@@ -227,10 +227,10 @@ class Piece:
 
                 # Perform en passant
                 if self.pos.x != new_pos.x:
-                    other = self.game_state.board[new_pos.x][self.pos.y]
+                    other = self.game_state.piece_at(Pos(new_pos.x, self.pos.y))
                     if other is not None:
                         if getattr(other, '_en_passantable', False):
-                            self.game_state.board[new_pos.x][self.pos.y] = None
+                            self.game_state.remove_piece(Pos(new_pos.x, self.pos.y))
 
             case 'King':
                 # Castling
@@ -238,11 +238,11 @@ class Piece:
                     diff_x: int = (new_pos.x - self.pos.x) // abs(new_pos.x - self.pos.x)
                     cur_x:  int = self.pos.x + diff_x
                     while self.game_state.is_pos_within_board(cur_x, self.pos.y):
-                        other = self.game_state.board[cur_x][self.pos.y]
+                        other = self.game_state.piece_at(Pos(cur_x, self.pos.y))
                         if other is not None:
                             if other.name == "Rook":
-                                self.game_state.board[cur_x][self.pos.y] = None
-                                self.game_state.board[self.pos.x+diff_x][self.pos.y] = other
+                                self.game_state.remove_piece(Pos(cur_x, self.pos.y))
+                                self.game_state.set_piece(other, Pos(self.pos.x+diff_x, self.pos.y))
                                 other.pos = Pos(self.pos.x+diff_x, other.pos.y)
                                 other.last_move_time = monotonic()
                                 return
@@ -493,7 +493,7 @@ class Piece:
                 # En passant
                 for x, y in (self.pos.x-1, self.pos.y), (self.pos.x+1, self.pos.y):
                     if self.game_state.is_pos_within_board(x, y):
-                        other = self.game_state.board[x][y]
+                        other = self.game_state.piece_at(Pos(x, y))
                         if other is not None:
                             if getattr(other, '_en_passantable', False) \
                             and other.owner != self.owner \
@@ -509,14 +509,14 @@ class Piece:
                     and self.pos + Pos(diff_x, 0) not in attacked_inv:
                         cur_x: int = self.pos.x + diff_x
                         while self.game_state.is_pos_within_board(cur_x, self.pos.y):
-                            other = self.game_state.board[cur_x][self.pos.y]
+                            other = self.game_state.piece_at(Pos(cur_x, self.pos.y))
                             if other is not None:
                                 if other.name == 'Rook' \
                                 and other.owner == self.owner \
                                 and not self.has_moved \
                                 and not other.has_moved \
                                 and self.game_state.is_pos_within_board(self.pos.x+2*diff_x, self.pos.y) \
-                                and self.game_state.board[self.pos.x+2*diff_x][self.pos.y] is None:
+                                and self.game_state.piece_at(Pos(self.pos.x+2*diff_x, self.pos.y)) is None:
                                     moves |= {self.pos + Pos(2*diff_x, 0)}
                                 break
                             cur_x += diff_x
@@ -536,7 +536,7 @@ class Piece:
                         and piece.name == 'Anti-King'
                 ])
                 for att in test_state.attacked_squares(self.owner):
-                    piece: Optional[Piece] = test_state.board[att.x][att.y]
+                    piece: Optional[Piece] = test_state.piece_at(att)
                     if piece is not None:
                         if piece.owner == self.owner:
                             match piece.name:
@@ -552,7 +552,7 @@ class Piece:
         # Filter moves that capture invinsible pieces
         if check_safe:
             for pos in set(moves):
-                other = self.game_state.board[pos.x][pos.y]
+                other = self.game_state.piece_at(pos)
                 if other is not None:
                     if other.name == 'King' \
                     or other.name == 'Anti-King':
@@ -680,6 +680,11 @@ class GameState:
     def piece_at(self, pos: Pos) -> Optional[Piece]:
         return self.board[pos.x][pos.y]
 
+    # TODO: Having both set_piece and add_piece seems redundant.
+
+    def set_piece(self, piece: Piece, pos: Pos):
+        self.board[pos.x][pos.y] = piece
+
     def add_piece(self, name: str, owner: Player, pos: Pos) -> None:
         new_piece: Piece = Piece(name, owner, pos, self)
         self.pieces.append(new_piece)
@@ -759,6 +764,7 @@ class GameState:
             Player.WHITE: False,
             Player.BLACK: False,
         }
+
         for pieces in self.board:
             for piece in pieces:
                 if piece is not None:
