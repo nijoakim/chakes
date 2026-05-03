@@ -1,7 +1,6 @@
 # High priority:
 
 # Medium priority:
-+ engine: Add function to fill game state with all legal moves for all pieces
 + engine: winner() should be able to return a draw
 
 # Low priority:

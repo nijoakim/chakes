@@ -771,6 +771,12 @@ class Board:
 
         return None
 
+    def all_legal_moves(self) -> dict[Pos, set[Pos]]:
+        moves: dict[Pos, set[Pos]] = {}
+        for piece in self.all_pieces():
+            moves[piece.pos] = piece.legal_moves()
+        return moves
+
     def __str__(self) -> str:
         ret: str = ''
         for y in reversed(range(self.size_y)):
@@ -785,5 +791,3 @@ class Board:
         ret += ' '.join([f'\033[33m{str(Pos(x, 0))[0]}' for x in range(self.size_x)])
         ret += '\033[0m'
         return ret
-
-# game = Game.orthodox()
