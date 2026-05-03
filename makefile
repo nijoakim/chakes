@@ -2,7 +2,7 @@ include .env
 export
 
 .PHONY: all
-all: run-game-engine
+all: run-engine
 
 # === Lint ===
 
@@ -69,7 +69,7 @@ fix: format
 
 .PHONY: run-engine
 run-engine: check-engine
-	uv run python -m engine.chakes.engine.game_engine
+	uv run python -m engine.chakes.engine.engine
 
 .PHONY: run-backend
 run-backend: check-engine check-backend
