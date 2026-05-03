@@ -103,12 +103,12 @@ piece_defs: dict[str, tuple[int, str]] = {
 
 class Piece:
     def __init__(
-        self, name: str, owner: Player, pos: Pos, game_state: GameState
+        self, name: str, owner: Player, pos: Pos, board: Board
     ) -> None:
-        self.name:       str       = name
-        self.owner:      Player    = owner
-        self.pos:        Pos       = pos
-        self.game_state: GameState = game_state
+        self.name:  str    = name
+        self.owner: Player = owner
+        self.pos:   Pos    = pos
+        self.board: Board  = board
 
         self.has_moved:      bool  = False
         self.last_move_time: float = -float('inf')
@@ -138,7 +138,7 @@ class Piece:
                 return -1
 
     def _is_capture_move(self, pos: Pos) -> bool:
-        piece: Optional[Piece] = self.game_state.piece_at(pos)
+        piece: Optional[Piece] = self.board.piece_at(pos)
         if piece is None:
             return False
         else:
@@ -157,10 +157,10 @@ class Piece:
 
         new_pos: Pos = start_pos + diff_pos
 
-        if not self.game_state.is_pos_within_board(new_pos):
+        if not self.board.is_pos_within_board(new_pos):
             return set()
 
-        new_piece: Optional[Piece] = self.game_state.piece_at(new_pos)
+        new_piece: Optional[Piece] = self.board.piece_at(new_pos)
 
         if hops:
             if new_piece is not None:
@@ -201,7 +201,7 @@ class Piece:
 
         self._move_special(new_pos, info = info)
 
-        self.game_state.relocate_piece(self, new_pos)
+        self.board.relocate_piece(self, new_pos)
 
         self.has_moved      = True
         self.last_move_time = monotonic()
@@ -223,21 +223,21 @@ class Piece:
 
                 # Perform en passant
                 if self.pos.x != new_pos.x:
-                    other = self.game_state.piece_at(Pos(new_pos.x, self.pos.y))
+                    other = self.board.piece_at(Pos(new_pos.x, self.pos.y))
                     if other is not None:
                         if getattr(other, '_en_passantable', False):
-                            self.game_state.remove_piece(other)
+                            self.board.remove_piece(other)
 
             case 'King':
                 # Castling
                 if abs(new_pos.x - self.pos.x) == 2:
                     diff_x: int = (new_pos.x - self.pos.x) // abs(new_pos.x - self.pos.x)
                     cur_x:  int = self.pos.x + diff_x
-                    while self.game_state.is_pos_within_board(Pos(cur_x, self.pos.y)):
-                        other = self.game_state.piece_at(Pos(cur_x, self.pos.y))
+                    while self.board.is_pos_within_board(Pos(cur_x, self.pos.y)):
+                        other = self.board.piece_at(Pos(cur_x, self.pos.y))
                         if other is not None:
                             if other.name == "Rook":
-                                self.game_state.relocate_piece(other, Pos(self.pos.x+diff_x, self.pos.y))
+                                self.board.relocate_piece(other, Pos(self.pos.x+diff_x, self.pos.y))
                                 other.last_move_time = monotonic()
                                 return
                         cur_x += diff_x
@@ -255,7 +255,7 @@ class Piece:
 
         # Promote
         if 'Pawn' in self.name:
-            if new_pos.y == 0 or new_pos.y == self.game_state.size_y-1:
+            if new_pos.y == 0 or new_pos.y == self.board.size_y-1:
                 if info == '':
                     info = 'Queen'
 
@@ -486,8 +486,8 @@ class Piece:
             case 'Pawn':
                 # En passant
                 for x, y in (self.pos.x-1, self.pos.y), (self.pos.x+1, self.pos.y):
-                    if self.game_state.is_pos_within_board(Pos(x, y)):
-                        other = self.game_state.piece_at(Pos(x, y))
+                    if self.board.is_pos_within_board(Pos(x, y)):
+                        other = self.board.piece_at(Pos(x, y))
                         if other is not None:
                             if getattr(other, '_en_passantable', False) \
                             and other.owner != self.owner \
@@ -496,21 +496,21 @@ class Piece:
 
             case 'King':
                 # Castling
-                attacked:     set[Pos] = self.game_state.attacked_squares(self.owner, invert_captures = False) if check_safe else set()
-                attacked_inv: set[Pos] = self.game_state.attacked_squares(self.owner, invert_captures = True) if check_safe else set()
+                attacked:     set[Pos] = self.board.attacked_squares(self.owner, invert_captures = False) if check_safe else set()
+                attacked_inv: set[Pos] = self.board.attacked_squares(self.owner, invert_captures = True) if check_safe else set()
                 for diff_x in (-1, 1):
                     if  self.pos not in attacked \
                     and self.pos + Pos(diff_x, 0) not in attacked_inv:
                         cur_x: int = self.pos.x + diff_x
-                        while self.game_state.is_pos_within_board(Pos(cur_x, self.pos.y)):
-                            other = self.game_state.piece_at(Pos(cur_x, self.pos.y))
+                        while self.board.is_pos_within_board(Pos(cur_x, self.pos.y)):
+                            other = self.board.piece_at(Pos(cur_x, self.pos.y))
                             if other is not None:
                                 if other.name == 'Rook' \
                                 and other.owner == self.owner \
                                 and not self.has_moved \
                                 and not other.has_moved \
-                                and self.game_state.is_pos_within_board(self.pos + Pos(2*diff_x, 0)) \
-                                and self.game_state.piece_at(Pos(self.pos.x+2*diff_x, self.pos.y)) is None:
+                                and self.board.is_pos_within_board(self.pos + Pos(2*diff_x, 0)) \
+                                and self.board.piece_at(Pos(self.pos.x+2*diff_x, self.pos.y)) is None:
                                     moves |= {self.pos + Pos(2*diff_x, 0)}
                                 break
                             cur_x += diff_x
@@ -518,7 +518,7 @@ class Piece:
         # Filter unsafe moves
         if check_safe:
             for new_pos in set(moves):
-                test_state: GameState = deepcopy(self.game_state)
+                test_state: Board = deepcopy(self.board)
                 test_state.move_piece(self.pos, new_pos, check_safe = False)
                 attacked_anti_kings: set[Piece] = set()
                 all_anti_kings:      set[Piece] = set([
@@ -545,7 +545,7 @@ class Piece:
         # Filter moves that capture invinsible pieces
         if check_safe:
             for pos in set(moves):
-                other = self.game_state.piece_at(pos)
+                other = self.board.piece_at(pos)
                 if other is not None:
                     if other.name == 'King' \
                     or other.name == 'Anti-King':
@@ -554,7 +554,7 @@ class Piece:
         return moves
 
 
-class GameState:
+class Board:
     pieces:   dict[Pos, Piece]
     move_log: list[tuple[Pos, Pos]]
 
@@ -566,58 +566,58 @@ class GameState:
         self.move_log = []
 
     @staticmethod
-    def default() -> GameState:
-        state = GameState(8, 8)
+    def default() -> Board:
+        board = Board(8, 8)
 
-        state.add_new_piece_row('Pawn', Player.WHITE, '2')
+        board.add_new_piece_row('Pawn', Player.WHITE, '2')
 
-        state.add_new_piece('Rook',   Player.WHITE, Pos('a1'))
-        state.add_new_piece('Knight', Player.WHITE, Pos('b1'))
-        state.add_new_piece('Bishop', Player.WHITE, Pos('c1'))
-        state.add_new_piece('Queen',  Player.WHITE, Pos('d1'))
-        state.add_new_piece('King',   Player.WHITE, Pos('e1'))
-        state.add_new_piece('Bishop', Player.WHITE, Pos('f1'))
-        state.add_new_piece('Knight', Player.WHITE, Pos('g1'))
-        state.add_new_piece('Rook',   Player.WHITE, Pos('h1'))
+        board.add_new_piece('Rook',   Player.WHITE, Pos('a1'))
+        board.add_new_piece('Knight', Player.WHITE, Pos('b1'))
+        board.add_new_piece('Bishop', Player.WHITE, Pos('c1'))
+        board.add_new_piece('Queen',  Player.WHITE, Pos('d1'))
+        board.add_new_piece('King',   Player.WHITE, Pos('e1'))
+        board.add_new_piece('Bishop', Player.WHITE, Pos('f1'))
+        board.add_new_piece('Knight', Player.WHITE, Pos('g1'))
+        board.add_new_piece('Rook',   Player.WHITE, Pos('h1'))
 
-        state.symmetry()
+        board.symmetry()
 
-        return state
-
-    @staticmethod
-    def berolina_chess() -> GameState:
-        state = GameState(8, 8)
-
-        state.add_new_piece_row('Berolina Pawn', Player.WHITE, '2')
-
-        state.add_new_piece('Rook',   Player.WHITE, Pos('a1'))
-        state.add_new_piece('Knight', Player.WHITE, Pos('b1'))
-        state.add_new_piece('Bishop', Player.WHITE, Pos('c1'))
-        state.add_new_piece('Queen',  Player.WHITE, Pos('d1'))
-        state.add_new_piece('King',   Player.WHITE, Pos('e1'))
-        state.add_new_piece('Bishop', Player.WHITE, Pos('f1'))
-        state.add_new_piece('Knight', Player.WHITE, Pos('g1'))
-        state.add_new_piece('Rook',   Player.WHITE, Pos('h1'))
-
-        state.symmetry()
-
-        return state
-
+        return board
 
     @staticmethod
-    def anti_king_chess() -> GameState:
-        state = GameState.default()
+    def berolina_chess() -> Board:
+        board = Board(8, 8)
 
-        state.add_new_piece('Anti-King', Player.WHITE, Pos('d6'))
-        state.add_new_piece('Anti-King', Player.BLACK, Pos('d3'))
+        board.add_new_piece_row('Berolina Pawn', Player.WHITE, '2')
 
-        return state
+        board.add_new_piece('Rook',   Player.WHITE, Pos('a1'))
+        board.add_new_piece('Knight', Player.WHITE, Pos('b1'))
+        board.add_new_piece('Bishop', Player.WHITE, Pos('c1'))
+        board.add_new_piece('Queen',  Player.WHITE, Pos('d1'))
+        board.add_new_piece('King',   Player.WHITE, Pos('e1'))
+        board.add_new_piece('Bishop', Player.WHITE, Pos('f1'))
+        board.add_new_piece('Knight', Player.WHITE, Pos('g1'))
+        board.add_new_piece('Rook',   Player.WHITE, Pos('h1'))
+
+        board.symmetry()
+
+        return board
+
 
     @staticmethod
-    def chess960() -> GameState:
-        state = GameState(8, 8)
+    def anti_king_chess() -> Board:
+        board = Board.default()
 
-        state.add_new_piece_row('Pawn', Player.WHITE, '2')
+        board.add_new_piece('Anti-King', Player.WHITE, Pos('d6'))
+        board.add_new_piece('Anti-King', Player.BLACK, Pos('d3'))
+
+        return board
+
+    @staticmethod
+    def chess960() -> Board:
+        board = Board(8, 8)
+
+        board.add_new_piece_row('Pawn', Player.WHITE, '2')
 
         pieces: list[str] = \
             2*['Rook'] + \
@@ -641,32 +641,32 @@ class GameState:
 
         # Add first row
         for i, piece in enumerate(pieces):
-            state.add_new_piece(piece, Player.WHITE, Pos(i, 0))
+            board.add_new_piece(piece, Player.WHITE, Pos(i, 0))
 
-        state.symmetry()
+        board.symmetry()
 
-        return state
+        return board
 
     @staticmethod
-    def knighted_chess() -> GameState:
-        state = GameState(10, 8)
+    def knighted_chess() -> Board:
+        board = Board(10, 8)
 
-        state.add_new_piece_row('Pawn', Player.WHITE, '2')
+        board.add_new_piece_row('Pawn', Player.WHITE, '2')
 
-        state.add_new_piece('Rook',       Player.WHITE, Pos('a1'))
-        state.add_new_piece('Knight',     Player.WHITE, Pos('b1'))
-        state.add_new_piece('Archbishop', Player.WHITE, Pos('c1'))
-        state.add_new_piece('Bishop',     Player.WHITE, Pos('d1'))
-        state.add_new_piece('Queen',      Player.WHITE, Pos('e1'))
-        state.add_new_piece('King',       Player.WHITE, Pos('f1'))
-        state.add_new_piece('Bishop',     Player.WHITE, Pos('g1'))
-        state.add_new_piece('Chancellor', Player.WHITE, Pos('h1'))
-        state.add_new_piece('Knight',     Player.WHITE, Pos('i1'))
-        state.add_new_piece('Rook',       Player.WHITE, Pos('j1'))
+        board.add_new_piece('Rook',       Player.WHITE, Pos('a1'))
+        board.add_new_piece('Knight',     Player.WHITE, Pos('b1'))
+        board.add_new_piece('Archbishop', Player.WHITE, Pos('c1'))
+        board.add_new_piece('Bishop',     Player.WHITE, Pos('d1'))
+        board.add_new_piece('Queen',      Player.WHITE, Pos('e1'))
+        board.add_new_piece('King',       Player.WHITE, Pos('f1'))
+        board.add_new_piece('Bishop',     Player.WHITE, Pos('g1'))
+        board.add_new_piece('Chancellor', Player.WHITE, Pos('h1'))
+        board.add_new_piece('Knight',     Player.WHITE, Pos('i1'))
+        board.add_new_piece('Rook',       Player.WHITE, Pos('j1'))
 
-        state.symmetry()
+        board.symmetry()
 
-        return state
+        return board
 
     def all_pieces(self) -> set[Piece]:
         return set(self.pieces.values())

@@ -25,13 +25,13 @@ Piece.get_cooldown = lambda self: 0.0 if not getattr(self, '_enable_cooldown', F
 
 class TestPieces(ut.TestCase):
     def test_rook(self) -> None:
-        game_state = GameState.default()
+        board = Board.default()
 
-        game_state.move_piece(Pos('a2'), Pos('a4'))
-        game_state.move_piece(Pos('a1'), Pos('a3'))
-        game_state.move_piece(Pos('a3'), Pos('b3'))
+        board.move_piece(Pos('a2'), Pos('a4'))
+        board.move_piece(Pos('a1'), Pos('a3'))
+        board.move_piece(Pos('a3'), Pos('b3'))
 
-        rook: Optional[Piece] = game_state.piece_at(Pos('b3'))
+        rook: Optional[Piece] = board.piece_at(Pos('b3'))
         assert rook is not None
 
         self.assertEqual(
@@ -40,12 +40,12 @@ class TestPieces(ut.TestCase):
         )
 
     def test_pawn(self) -> None:
-        game_state = GameState.default()
-        game_state.move_piece(Pos('b2'), Pos('b4'))
-        game_state.move_piece(Pos('b4'), Pos('b5'))
-        game_state.move_piece(Pos('b5'), Pos('b6'))
+        board = Board.default()
+        board.move_piece(Pos('b2'), Pos('b4'))
+        board.move_piece(Pos('b4'), Pos('b5'))
+        board.move_piece(Pos('b5'), Pos('b6'))
 
-        pawn: Optional[Piece] = game_state.piece_at(Pos('b6'))
+        pawn: Optional[Piece] = board.piece_at(Pos('b6'))
         assert pawn is not None
 
         self.assertEqual(
@@ -54,29 +54,29 @@ class TestPieces(ut.TestCase):
         )
 
     def test_en_passant(self) -> None:
-        game_state = GameState.default()
-        game_state.move_piece(Pos('b2'), Pos('b4'))
-        game_state.move_piece(Pos('b4'), Pos('b5'))
-        game_state.move_piece(Pos('c7'), Pos('c5'))
+        board = Board.default()
+        board.move_piece(Pos('b2'), Pos('b4'))
+        board.move_piece(Pos('b4'), Pos('b5'))
+        board.move_piece(Pos('c7'), Pos('c5'))
 
-        enemy_pawn: Optional[Piece] = game_state.piece_at(Pos('c5'))
+        enemy_pawn: Optional[Piece] = board.piece_at(Pos('c5'))
         assert enemy_pawn is not None
 
         enemy_pawn._enable_cooldown = True # type: ignore
-        game_state.move_piece(Pos('b5'), Pos('c6'))
+        board.move_piece(Pos('b5'), Pos('c6'))
 
-        captured_pawn: Optional[Piece] = game_state.piece_at(Pos('c5'))
+        captured_pawn: Optional[Piece] = board.piece_at(Pos('c5'))
         self.assertIsNone(captured_pawn)
 
     def test_promotion(self) -> None:
-        game_state = GameState.default()
-        game_state.move_piece(Pos('a2'), Pos('a4'))
-        game_state.move_piece(Pos('a4'), Pos('a5'))
-        game_state.move_piece(Pos('a5'), Pos('a6'))
-        game_state.move_piece(Pos('a6'), Pos('b7'))
-        game_state.move_piece(Pos('b7'), Pos('a8'), info = 'Knight')
+        board = Board.default()
+        board.move_piece(Pos('a2'), Pos('a4'))
+        board.move_piece(Pos('a4'), Pos('a5'))
+        board.move_piece(Pos('a5'), Pos('a6'))
+        board.move_piece(Pos('a6'), Pos('b7'))
+        board.move_piece(Pos('b7'), Pos('a8'), info = 'Knight')
 
-        knight: Optional[Piece] = game_state.piece_at(Pos('a8'))
+        knight: Optional[Piece] = board.piece_at(Pos('a8'))
         assert knight is not None
 
         self.assertEqual(
@@ -85,10 +85,10 @@ class TestPieces(ut.TestCase):
         )
 
     def test_knight(self) -> None:
-        game_state = GameState.default()
-        game_state.move_piece(Pos('b1'), Pos('c3'))
+        board = Board.default()
+        board.move_piece(Pos('b1'), Pos('c3'))
 
-        knight: Optional[Piece] = game_state.piece_at(Pos('c3'))
+        knight: Optional[Piece] = board.piece_at(Pos('c3'))
         assert knight is not None
 
         self.assertEqual(
@@ -97,11 +97,11 @@ class TestPieces(ut.TestCase):
         )
 
     def test_bishop(self) -> None:
-        game_state = GameState.default()
-        game_state.move_piece(Pos('d2'), Pos('d3'))
-        game_state.move_piece(Pos('c1'), Pos('e3'))
+        board = Board.default()
+        board.move_piece(Pos('d2'), Pos('d3'))
+        board.move_piece(Pos('c1'), Pos('e3'))
 
-        bishop: Optional[Piece] = game_state.piece_at(Pos('e3'))
+        bishop: Optional[Piece] = board.piece_at(Pos('e3'))
         assert bishop is not None
 
         self.assertEqual(
@@ -110,11 +110,11 @@ class TestPieces(ut.TestCase):
         )
 
     def test_queen(self) -> None:
-        game_state = GameState.default()
-        game_state.move_piece(Pos('e2'), Pos('e3'))
-        game_state.move_piece(Pos('d1'), Pos('f3'))
+        board = Board.default()
+        board.move_piece(Pos('e2'), Pos('e3'))
+        board.move_piece(Pos('d1'), Pos('f3'))
 
-        queen: Optional[Piece] = game_state.piece_at(Pos('f3'))
+        queen: Optional[Piece] = board.piece_at(Pos('f3'))
         assert queen is not None
 
         self.assertEqual(
@@ -123,17 +123,17 @@ class TestPieces(ut.TestCase):
         )
 
     def test_king(self) -> None:
-        game_state = GameState.default()
-        game_state.move_piece(Pos('e2'), Pos('e3'))
-        game_state.move_piece(Pos('d7'), Pos('d5'))
-        game_state.move_piece(Pos('d5'), Pos('d4'))
-        game_state.move_piece(Pos('f7'), Pos('f5'))
-        game_state.move_piece(Pos('f5'), Pos('f4'))
-        game_state.move_piece(Pos('d8'), Pos('d7'))
-        game_state.move_piece(Pos('d7'), Pos('e6'))
-        game_state.move_piece(Pos('e1'), Pos('e2'))
+        board = Board.default()
+        board.move_piece(Pos('e2'), Pos('e3'))
+        board.move_piece(Pos('d7'), Pos('d5'))
+        board.move_piece(Pos('d5'), Pos('d4'))
+        board.move_piece(Pos('f7'), Pos('f5'))
+        board.move_piece(Pos('f5'), Pos('f4'))
+        board.move_piece(Pos('d8'), Pos('d7'))
+        board.move_piece(Pos('d7'), Pos('e6'))
+        board.move_piece(Pos('e1'), Pos('e2'))
 
-        pawn: Optional[Piece] = game_state.piece_at(Pos('e3'))
+        pawn: Optional[Piece] = board.piece_at(Pos('e3'))
         assert pawn is not None
 
         self.assertEqual(
@@ -141,9 +141,9 @@ class TestPieces(ut.TestCase):
             set(map(Pos, {'e4'})),
         )
 
-        game_state.move_piece(Pos('f4'), Pos('e3'))
+        board.move_piece(Pos('f4'), Pos('e3'))
 
-        king: Optional[Piece] = game_state.piece_at(Pos('e2'))
+        king: Optional[Piece] = board.piece_at(Pos('e2'))
         assert king is not None
 
         self.assertEqual(
@@ -152,15 +152,15 @@ class TestPieces(ut.TestCase):
         )
 
     def test_castling(self) -> None:
-        game_state = GameState.default()
-        game_state.move_piece(Pos('b1'), Pos('a3'))
-        game_state.move_piece(Pos('b2'), Pos('b3'))
-        game_state.move_piece(Pos('c1'), Pos('b2'))
-        game_state.move_piece(Pos('e2'), Pos('e3'))
-        game_state.move_piece(Pos('d1'), Pos('f3'))
-        game_state.move_piece(Pos('f1'), Pos('e2'))
+        board = Board.default()
+        board.move_piece(Pos('b1'), Pos('a3'))
+        board.move_piece(Pos('b2'), Pos('b3'))
+        board.move_piece(Pos('c1'), Pos('b2'))
+        board.move_piece(Pos('e2'), Pos('e3'))
+        board.move_piece(Pos('d1'), Pos('f3'))
+        board.move_piece(Pos('f1'), Pos('e2'))
 
-        king: Optional[Piece] = game_state.piece_at(Pos('e1'))
+        king: Optional[Piece] = board.piece_at(Pos('e1'))
         assert isinstance(king, Piece)
 
         self.assertEqual(
@@ -168,12 +168,12 @@ class TestPieces(ut.TestCase):
             set(map(Pos, {'c1', 'd1', 'f1'})),
         )
 
-        game_state.move_piece(Pos('g1'), Pos('h3'))
+        board.move_piece(Pos('g1'), Pos('h3'))
 
         # Attack E1
-        game_state.move_piece(Pos('b8'), Pos('c6'))
-        game_state.move_piece(Pos('c6'), Pos('b4'))
-        game_state.move_piece(Pos('b4'), Pos('d3'))
+        board.move_piece(Pos('b8'), Pos('c6'))
+        board.move_piece(Pos('c6'), Pos('b4'))
+        board.move_piece(Pos('b4'), Pos('d3'))
 
         self.assertEqual(
             king.legal_moves(),
@@ -181,9 +181,9 @@ class TestPieces(ut.TestCase):
         )
 
         # Attack D1
-        game_state.move_piece(Pos('d3'), Pos('c5'))
-        game_state.move_piece(Pos('c5'), Pos('a4'))
-        game_state.move_piece(Pos('a4'), Pos('c3'))
+        board.move_piece(Pos('d3'), Pos('c5'))
+        board.move_piece(Pos('c5'), Pos('a4'))
+        board.move_piece(Pos('a4'), Pos('c3'))
 
         self.assertEqual(
             king.legal_moves(),
@@ -191,9 +191,9 @@ class TestPieces(ut.TestCase):
         )
 
         # Attack C1
-        game_state.move_piece(Pos('c3'), Pos('a4'))
-        game_state.move_piece(Pos('a4'), Pos('c5'))
-        game_state.move_piece(Pos('c5'), Pos('b3'))
+        board.move_piece(Pos('c3'), Pos('a4'))
+        board.move_piece(Pos('a4'), Pos('c5'))
+        board.move_piece(Pos('c5'), Pos('b3'))
 
         self.assertEqual(
             king.legal_moves(),
@@ -201,9 +201,9 @@ class TestPieces(ut.TestCase):
         )
 
         # Attack F1
-        game_state.move_piece(Pos('b3'), Pos('c5'))
-        game_state.move_piece(Pos('c5'), Pos('e4'))
-        game_state.move_piece(Pos('e4'), Pos('g3'))
+        board.move_piece(Pos('b3'), Pos('c5'))
+        board.move_piece(Pos('c5'), Pos('e4'))
+        board.move_piece(Pos('e4'), Pos('g3'))
 
         self.assertEqual(
             king.legal_moves(),
@@ -211,9 +211,9 @@ class TestPieces(ut.TestCase):
         )
 
         # Attack G1
-        game_state.move_piece(Pos('g3'), Pos('h5'))
-        game_state.move_piece(Pos('h5'), Pos('f4'))
-        game_state.move_piece(Pos('f4'), Pos('h3'))
+        board.move_piece(Pos('g3'), Pos('h5'))
+        board.move_piece(Pos('h5'), Pos('f4'))
+        board.move_piece(Pos('f4'), Pos('h3'))
 
         self.assertEqual(
             king.legal_moves(),
@@ -221,7 +221,7 @@ class TestPieces(ut.TestCase):
         )
 
         # Stop attack
-        game_state.move_piece(Pos('h3'), Pos('g5'))
+        board.move_piece(Pos('h3'), Pos('g5'))
 
         self.assertEqual(
             king.legal_moves(),
@@ -229,10 +229,10 @@ class TestPieces(ut.TestCase):
         )
 
         # Attack with pawn
-        game_state.move_piece(Pos('d7'), Pos('d5'))
-        game_state.move_piece(Pos('d5'), Pos('d4'))
-        game_state.move_piece(Pos('d4'), Pos('d3'))
-        game_state.move_piece(Pos('d3'), Pos('e2'))
+        board.move_piece(Pos('d7'), Pos('d5'))
+        board.move_piece(Pos('d5'), Pos('d4'))
+        board.move_piece(Pos('d4'), Pos('d3'))
+        board.move_piece(Pos('d3'), Pos('e2'))
 
         self.assertEqual(
             king.legal_moves(),
@@ -240,13 +240,13 @@ class TestPieces(ut.TestCase):
         )
 
         # Stop attack
-        game_state.move_piece(Pos('f3'), Pos('e2'))
+        board.move_piece(Pos('f3'), Pos('e2'))
 
         # Attack with pawn
-        game_state.move_piece(Pos('c7'), Pos('c5'))
-        game_state.move_piece(Pos('c5'), Pos('c4'))
-        game_state.move_piece(Pos('c4'), Pos('c3'))
-        game_state.move_piece(Pos('c3'), Pos('d2'))
+        board.move_piece(Pos('c7'), Pos('c5'))
+        board.move_piece(Pos('c5'), Pos('c4'))
+        board.move_piece(Pos('c4'), Pos('c3'))
+        board.move_piece(Pos('c3'), Pos('d2'))
 
         self.assertEqual(
             king.legal_moves(),
@@ -254,54 +254,54 @@ class TestPieces(ut.TestCase):
         )
 
         # Stop attack
-        game_state.move_piece(Pos('e2'), Pos('d2'))
+        board.move_piece(Pos('e2'), Pos('d2'))
 
         # Castle
-        game_state.move_piece(Pos('e1'), Pos('c1'))
+        board.move_piece(Pos('e1'), Pos('c1'))
 
-        rook: Optional[Piece] = game_state.piece_at(Pos('d1'))
+        rook: Optional[Piece] = board.piece_at(Pos('d1'))
         assert isinstance(rook, Piece)
 
         self.assertEqual(rook.name, 'Rook')
 
     def test_checkmate(self) -> None:
-        game_state = GameState.default()
-        game_state.move_piece(Pos('e7'), Pos('e6'))
-        game_state.move_piece(Pos('d8'), Pos('e7'))
-        game_state.move_piece(Pos('e7'), Pos('b4'))
-        game_state.move_piece(Pos('b4'), Pos('d2'))
+        board = Board.default()
+        board.move_piece(Pos('e7'), Pos('e6'))
+        board.move_piece(Pos('d8'), Pos('e7'))
+        board.move_piece(Pos('e7'), Pos('b4'))
+        board.move_piece(Pos('b4'), Pos('d2'))
 
-        self.assertIsNone(game_state.winner())
+        self.assertIsNone(board.winner())
 
-        game_state.move_piece(Pos('d2'), Pos('a5'))
+        board.move_piece(Pos('d2'), Pos('a5'))
 
-        self.assertIsNone(game_state.winner())
+        self.assertIsNone(board.winner())
 
-        queen: Optional[Piece] = game_state.piece_at(Pos('a5'))
+        queen: Optional[Piece] = board.piece_at(Pos('a5'))
         assert queen is not None
 
         # Assert King can not be captured
         self.assertTrue('e1' not in queen.legal_moves())
 
-        game_state.move_piece(Pos('b1'), Pos('d2'))
-        game_state.move_piece(Pos('h2'), Pos('h3'))
-        game_state.move_piece(Pos('a5'), Pos('f5'))
-        game_state.move_piece(Pos('f5'), Pos('f2'))
+        board.move_piece(Pos('b1'), Pos('d2'))
+        board.move_piece(Pos('h2'), Pos('h3'))
+        board.move_piece(Pos('a5'), Pos('f5'))
+        board.move_piece(Pos('f5'), Pos('f2'))
 
-        self.assertIsNone(game_state.winner())
+        self.assertIsNone(board.winner())
 
-        game_state.move_piece(Pos('f2'), Pos('g3'))
+        board.move_piece(Pos('f2'), Pos('g3'))
 
         self.assertEqual(
-            game_state.winner(),
+            board.winner(),
             Player.BLACK,
         )
 
     def test_nightrider(self) -> None:
-        game_state = GameState.default()
-        game_state.add_new_piece('Nightrider', Player.WHITE, Pos('b1'))
+        board = Board.default()
+        board.add_new_piece('Nightrider', Player.WHITE, Pos('b1'))
 
-        nightrider: Optional[Piece] = game_state.piece_at(Pos('b1'))
+        nightrider: Optional[Piece] = board.piece_at(Pos('b1'))
         assert nightrider is not None
 
         self.assertEqual(
@@ -310,14 +310,14 @@ class TestPieces(ut.TestCase):
         )
 
     def test_anti_king(self) -> None:
-        game_state = GameState.anti_king_chess()
+        board = Board.anti_king_chess()
 
-        game_state.move_piece(Pos('d3'), Pos('c3'))
-        game_state.move_piece(Pos('d2'), Pos('d4'))
-        game_state.move_piece(Pos('d4'), Pos('d5'))
-        game_state.move_piece(Pos('e7'), Pos('e6'))
+        board.move_piece(Pos('d3'), Pos('c3'))
+        board.move_piece(Pos('d2'), Pos('d4'))
+        board.move_piece(Pos('d4'), Pos('d5'))
+        board.move_piece(Pos('e7'), Pos('e6'))
 
-        anti_king: Optional[Piece] = game_state.piece_at(Pos('d6'))
+        anti_king: Optional[Piece] = board.piece_at(Pos('d6'))
         assert anti_king is not None
 
         self.assertEqual(
@@ -326,50 +326,50 @@ class TestPieces(ut.TestCase):
         )
 
     def test_anti_checkmate(self) -> None:
-        game_state = GameState.anti_king_chess()
+        board = Board.anti_king_chess()
 
-        anti_king: Optional[Piece] = game_state.piece_at(Pos('d6'))
+        anti_king: Optional[Piece] = board.piece_at(Pos('d6'))
         assert anti_king is not None
 
         # Move pawns
-        game_state.move_piece(Pos('a7'), Pos('a5'))
-        game_state.move_piece(Pos('b7'), Pos('b5'))
+        board.move_piece(Pos('a7'), Pos('a5'))
+        board.move_piece(Pos('b7'), Pos('b5'))
 
         # Set-up knight for blocking
-        game_state.move_piece(Pos('b8'), Pos('a6'))
-        game_state.move_piece(Pos('a6'), Pos('c5'))
+        board.move_piece(Pos('b8'), Pos('a6'))
+        board.move_piece(Pos('a6'), Pos('c5'))
 
         # Move anti-king to edge
-        game_state.move_piece(Pos('d6'), Pos('c6'))
-        game_state.move_piece(Pos('c6'), Pos('b6'))
-        game_state.move_piece(Pos('b6'), Pos('a6'))
+        board.move_piece(Pos('d6'), Pos('c6'))
+        board.move_piece(Pos('c6'), Pos('b6'))
+        board.move_piece(Pos('b6'), Pos('a6'))
 
         # Move pawns
-        game_state.move_piece(Pos('c7'), Pos('c6'))
-        game_state.move_piece(Pos('e7'), Pos('e6'))
+        board.move_piece(Pos('c7'), Pos('c6'))
+        board.move_piece(Pos('e7'), Pos('e6'))
 
         # Move queen
-        game_state.move_piece(Pos('d8'), Pos('e7'))
+        board.move_piece(Pos('d8'), Pos('e7'))
 
         # Block bishop with knight
-        game_state.move_piece(Pos('c5'), Pos('b7'))
+        board.move_piece(Pos('c5'), Pos('b7'))
 
-        self.assertIsNone(game_state.winner())
+        self.assertIsNone(board.winner())
 
         # Move rook
-        game_state.move_piece(Pos('a8'), Pos('b8'))
+        board.move_piece(Pos('a8'), Pos('b8'))
 
         self.assertEqual(
-            game_state.winner(),
+            board.winner(),
             Player.BLACK,
         )
 
     def test_grasshopper(self) -> None:
-        game_state = GameState.default()
-        game_state.add_new_piece('Grasshopper', Player.WHITE, Pos('a5'))
-        game_state.move_piece(Pos('e7'), Pos('e5'))
+        board = Board.default()
+        board.add_new_piece('Grasshopper', Player.WHITE, Pos('a5'))
+        board.move_piece(Pos('e7'), Pos('e5'))
 
-        grasshopper: Optional[Piece] = game_state.piece_at(Pos('a5'))
+        grasshopper: Optional[Piece] = board.piece_at(Pos('a5'))
         assert grasshopper is not None
 
         self.assertEqual(
@@ -378,12 +378,12 @@ class TestPieces(ut.TestCase):
         )
 
     def test_camel(self) -> None:
-        game_state = GameState.default()
-        game_state.remove_piece_at(Pos('b1'))
-        game_state.add_new_piece('Camel', Player.WHITE, Pos('b1'))
-        game_state.move_piece(Pos('b1'), Pos('c4'))
+        board = Board.default()
+        board.remove_piece_at(Pos('b1'))
+        board.add_new_piece('Camel', Player.WHITE, Pos('b1'))
+        board.move_piece(Pos('b1'), Pos('c4'))
 
-        camel: Optional[Piece] = game_state.piece_at(Pos('c4'))
+        camel: Optional[Piece] = board.piece_at(Pos('c4'))
         assert camel is not None
 
         self.assertEqual(
@@ -392,12 +392,12 @@ class TestPieces(ut.TestCase):
         )
 
     def test_berolina_pawn(self) -> None:
-        game_state = GameState.berolina_chess()
-        game_state.move_piece(Pos('a2'), Pos('c4'))
-        game_state.move_piece(Pos('c4'), Pos('b5'))
-        game_state.move_piece(Pos('b5'), Pos('c6'))
+        board = Board.berolina_chess()
+        board.move_piece(Pos('a2'), Pos('c4'))
+        board.move_piece(Pos('c4'), Pos('b5'))
+        board.move_piece(Pos('b5'), Pos('c6'))
 
-        berolina_pawn: Optional[Piece] = game_state.piece_at(Pos('c6'))
+        berolina_pawn: Optional[Piece] = board.piece_at(Pos('c6'))
         assert berolina_pawn is not None
 
         self.assertEqual(
@@ -405,10 +405,10 @@ class TestPieces(ut.TestCase):
             set(map(Pos, {'c7'})),
         )
 
-        game_state.move_piece(Pos('c6'), Pos('c7'))
-        game_state.move_piece(Pos('c7'), Pos('c8'), info = 'Knight')
+        board.move_piece(Pos('c6'), Pos('c7'))
+        board.move_piece(Pos('c7'), Pos('c8'), info = 'Knight')
 
-        knight: Optional[Piece] = game_state.piece_at(Pos('c8'))
+        knight: Optional[Piece] = board.piece_at(Pos('c8'))
         assert knight is not None
 
         self.assertEqual(
@@ -417,11 +417,11 @@ class TestPieces(ut.TestCase):
         )
 
     def test_chameleon(self) -> None:
-        game_state = GameState.default()
-        game_state.remove_piece_at(Pos('b1'))
-        game_state.add_new_piece('Chameleon', Player.WHITE, Pos('b1'))
+        board = Board.default()
+        board.remove_piece_at(Pos('b1'))
+        board.add_new_piece('Chameleon', Player.WHITE, Pos('b1'))
 
-        chameleon: Optional[Piece] = game_state.piece_at(Pos('b1'))
+        chameleon: Optional[Piece] = board.piece_at(Pos('b1'))
         assert chameleon is not None
 
         # Is knight
@@ -431,40 +431,40 @@ class TestPieces(ut.TestCase):
         )
 
         # Shift into bishop
-        game_state.move_piece(Pos('b1'), Pos('c3'))
+        board.move_piece(Pos('b1'), Pos('c3'))
         self.assertEqual(
             chameleon.legal_moves(),
             set(map(Pos, {'b4', 'a5', 'd4', 'e5', 'f6', 'g7'})),
         )
 
         # Shift into rook
-        game_state.move_piece(Pos('c3'), Pos('e5'))
+        board.move_piece(Pos('c3'), Pos('e5'))
         self.assertEqual(
             chameleon.legal_moves(),
             set(map(Pos, {'a5', 'b5', 'c5', 'd5', 'f5', 'g5', 'h5', 'e3', 'e4', 'e6', 'e7'})),
         )
 
         # Shift into queen
-        game_state.move_piece(Pos('e5'), Pos('c5'))
+        board.move_piece(Pos('e5'), Pos('c5'))
         self.assertEqual(
             chameleon.legal_moves(),
             set(map(Pos, {'a5', 'b5', 'd5', 'e5', 'f5', 'g5', 'h5', 'c3', 'c4', 'c6', 'c7', 'a7', 'b6', 'd4', 'e3', 'a3', 'b4', 'd6', 'e7'})),
         )
 
         # Shift back into knight
-        game_state.move_piece(Pos('c5'), Pos('e3'))
+        board.move_piece(Pos('c5'), Pos('e3'))
         self.assertEqual(
             chameleon.legal_moves(),
             set(map(Pos, {'c4', 'd5', 'f5', 'g4'})),
         )
 
     def test_gryphon(self) -> None:
-        game_state = GameState.default()
-        game_state.add_new_piece('Gryphon', Player.WHITE, Pos('a1'))
-        game_state.move_piece(Pos('b2'), Pos('b4'))
-        game_state.move_piece(Pos('a1'), Pos('b3'))
+        board = Board.default()
+        board.add_new_piece('Gryphon', Player.WHITE, Pos('a1'))
+        board.move_piece(Pos('b2'), Pos('b4'))
+        board.move_piece(Pos('a1'), Pos('b3'))
 
-        gryphon: Optional[Piece] = game_state.piece_at(Pos('b3'))
+        gryphon: Optional[Piece] = board.piece_at(Pos('b3'))
         assert gryphon is not None
 
         self.assertEqual(
@@ -473,11 +473,11 @@ class TestPieces(ut.TestCase):
         )
 
     def test_knighted_chess(self) -> None:
-        game_state = GameState.knighted_chess()
+        board = Board.knighted_chess()
 
-        game_state.move_piece(Pos('c1'), Pos('d3'))
+        board.move_piece(Pos('c1'), Pos('d3'))
 
-        archbishop: Optional[Piece] = game_state.piece_at(Pos('d3'))
+        archbishop: Optional[Piece] = board.piece_at(Pos('d3'))
         assert archbishop is not None
 
         self.assertEqual(
@@ -485,9 +485,9 @@ class TestPieces(ut.TestCase):
             set(map(Pos, {'c4', 'b5', 'a6', 'e4', 'f5', 'g6', 'h7', 'b4', 'c5', 'e5', 'f4', 'c1'})),
         )
 
-        game_state.move_piece(Pos('h1'), Pos('g3'))
+        board.move_piece(Pos('h1'), Pos('g3'))
 
-        chancellor: Optional[Piece] = game_state.piece_at(Pos('g3'))
+        chancellor: Optional[Piece] = board.piece_at(Pos('g3'))
         assert chancellor is not None
 
         self.assertEqual(
