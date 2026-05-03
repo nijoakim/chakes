@@ -566,7 +566,7 @@ class Board:
         self.move_log = []
 
     @staticmethod
-    def default() -> Board:
+    def orthodox() -> Board:
         board = Board(8, 8)
 
         board.add_new_piece_row('Pawn', Player.WHITE, '2')
@@ -606,7 +606,7 @@ class Board:
 
     @staticmethod
     def anti_king_chess() -> Board:
-        board = Board.default()
+        board = Board.orthodox()
 
         board.add_new_piece('Anti-King', Player.WHITE, Pos('d6'))
         board.add_new_piece('Anti-King', Player.BLACK, Pos('d3'))

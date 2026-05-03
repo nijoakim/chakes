@@ -25,7 +25,7 @@ Piece.get_cooldown = lambda self: 0.0 if not getattr(self, '_enable_cooldown', F
 
 class TestPieces(ut.TestCase):
     def test_rook(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
 
         board.move_piece(Pos('a2'), Pos('a4'))
         board.move_piece(Pos('a1'), Pos('a3'))
@@ -40,7 +40,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_pawn(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.move_piece(Pos('b2'), Pos('b4'))
         board.move_piece(Pos('b4'), Pos('b5'))
         board.move_piece(Pos('b5'), Pos('b6'))
@@ -54,7 +54,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_en_passant(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.move_piece(Pos('b2'), Pos('b4'))
         board.move_piece(Pos('b4'), Pos('b5'))
         board.move_piece(Pos('c7'), Pos('c5'))
@@ -69,7 +69,7 @@ class TestPieces(ut.TestCase):
         self.assertIsNone(captured_pawn)
 
     def test_promotion(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.move_piece(Pos('a2'), Pos('a4'))
         board.move_piece(Pos('a4'), Pos('a5'))
         board.move_piece(Pos('a5'), Pos('a6'))
@@ -85,7 +85,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_knight(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.move_piece(Pos('b1'), Pos('c3'))
 
         knight: Optional[Piece] = board.piece_at(Pos('c3'))
@@ -97,7 +97,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_bishop(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.move_piece(Pos('d2'), Pos('d3'))
         board.move_piece(Pos('c1'), Pos('e3'))
 
@@ -110,7 +110,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_queen(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.move_piece(Pos('e2'), Pos('e3'))
         board.move_piece(Pos('d1'), Pos('f3'))
 
@@ -123,7 +123,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_king(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.move_piece(Pos('e2'), Pos('e3'))
         board.move_piece(Pos('d7'), Pos('d5'))
         board.move_piece(Pos('d5'), Pos('d4'))
@@ -152,7 +152,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_castling(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.move_piece(Pos('b1'), Pos('a3'))
         board.move_piece(Pos('b2'), Pos('b3'))
         board.move_piece(Pos('c1'), Pos('b2'))
@@ -265,7 +265,7 @@ class TestPieces(ut.TestCase):
         self.assertEqual(rook.name, 'Rook')
 
     def test_checkmate(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.move_piece(Pos('e7'), Pos('e6'))
         board.move_piece(Pos('d8'), Pos('e7'))
         board.move_piece(Pos('e7'), Pos('b4'))
@@ -298,7 +298,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_nightrider(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.add_new_piece('Nightrider', Player.WHITE, Pos('b1'))
 
         nightrider: Optional[Piece] = board.piece_at(Pos('b1'))
@@ -365,7 +365,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_grasshopper(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.add_new_piece('Grasshopper', Player.WHITE, Pos('a5'))
         board.move_piece(Pos('e7'), Pos('e5'))
 
@@ -378,7 +378,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_camel(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.remove_piece_at(Pos('b1'))
         board.add_new_piece('Camel', Player.WHITE, Pos('b1'))
         board.move_piece(Pos('b1'), Pos('c4'))
@@ -417,7 +417,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_chameleon(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.remove_piece_at(Pos('b1'))
         board.add_new_piece('Chameleon', Player.WHITE, Pos('b1'))
 
@@ -459,7 +459,7 @@ class TestPieces(ut.TestCase):
         )
 
     def test_gryphon(self) -> None:
-        board = Board.default()
+        board = Board.orthodox()
         board.add_new_piece('Gryphon', Player.WHITE, Pos('a1'))
         board.move_piece(Pos('b2'), Pos('b4'))
         board.move_piece(Pos('a1'), Pos('b3'))
