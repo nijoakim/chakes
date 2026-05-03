@@ -299,7 +299,7 @@ class TestPieces(ut.TestCase):
 
     def test_nightrider(self) -> None:
         game_state = GameState.default()
-        game_state.add_piece('Nightrider', Player.WHITE, Pos('b1'))
+        game_state.add_new_piece('Nightrider', Player.WHITE, Pos('b1'))
 
         nightrider: Optional[Piece] = game_state.piece_at(Pos('b1'))
         assert nightrider is not None
@@ -366,7 +366,7 @@ class TestPieces(ut.TestCase):
 
     def test_grasshopper(self) -> None:
         game_state = GameState.default()
-        game_state.add_piece('Grasshopper', Player.WHITE, Pos('a5'))
+        game_state.add_new_piece('Grasshopper', Player.WHITE, Pos('a5'))
         game_state.move_piece(Pos('e7'), Pos('e5'))
 
         grasshopper: Optional[Piece] = game_state.piece_at(Pos('a5'))
@@ -379,8 +379,8 @@ class TestPieces(ut.TestCase):
 
     def test_camel(self) -> None:
         game_state = GameState.default()
-        game_state.remove_piece(Pos('b1'))
-        game_state.add_piece('Camel', Player.WHITE, Pos('b1'))
+        game_state.remove_piece_at(Pos('b1'))
+        game_state.add_new_piece('Camel', Player.WHITE, Pos('b1'))
         game_state.move_piece(Pos('b1'), Pos('c4'))
 
         camel: Optional[Piece] = game_state.piece_at(Pos('c4'))
@@ -418,8 +418,8 @@ class TestPieces(ut.TestCase):
 
     def test_chameleon(self) -> None:
         game_state = GameState.default()
-        game_state.remove_piece(Pos('b1'))
-        game_state.add_piece('Chameleon', Player.WHITE, Pos('b1'))
+        game_state.remove_piece_at(Pos('b1'))
+        game_state.add_new_piece('Chameleon', Player.WHITE, Pos('b1'))
 
         chameleon: Optional[Piece] = game_state.piece_at(Pos('b1'))
         assert chameleon is not None
@@ -460,7 +460,7 @@ class TestPieces(ut.TestCase):
 
     def test_gryphon(self) -> None:
         game_state = GameState.default()
-        game_state.add_piece('Gryphon', Player.WHITE, Pos('a1'))
+        game_state.add_new_piece('Gryphon', Player.WHITE, Pos('a1'))
         game_state.move_piece(Pos('b2'), Pos('b4'))
         game_state.move_piece(Pos('a1'), Pos('b3'))
 

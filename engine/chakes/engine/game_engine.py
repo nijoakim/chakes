@@ -201,8 +201,7 @@ class Piece:
 
         self._move_special(new_pos, info = info)
 
-        self.game_state.remove_piece(self.pos)
-        self.game_state.set_piece(self, new_pos)
+        self.game_state.relocate_piece(self, new_pos)
 
         self.has_moved      = True
         self.last_move_time = monotonic()
@@ -227,7 +226,7 @@ class Piece:
                     other = self.game_state.piece_at(Pos(new_pos.x, self.pos.y))
                     if other is not None:
                         if getattr(other, '_en_passantable', False):
-                            self.game_state.remove_piece(Pos(new_pos.x, self.pos.y))
+                            self.game_state.remove_piece(other)
 
             case 'King':
                 # Castling
@@ -238,9 +237,7 @@ class Piece:
                         other = self.game_state.piece_at(Pos(cur_x, self.pos.y))
                         if other is not None:
                             if other.name == "Rook":
-                                self.game_state.remove_piece(Pos(cur_x, self.pos.y))
-                                self.game_state.set_piece(other, Pos(self.pos.x+diff_x, self.pos.y))
-                                other.pos = Pos(self.pos.x+diff_x, other.pos.y)
+                                self.game_state.relocate_piece(other, Pos(self.pos.x+diff_x, self.pos.y))
                                 other.last_move_time = monotonic()
                                 return
                         cur_x += diff_x
@@ -572,16 +569,16 @@ class GameState:
     def default() -> GameState:
         state = GameState(8, 8)
 
-        state.add_piece_row('Pawn', Player.WHITE, '2')
+        state.add_new_piece_row('Pawn', Player.WHITE, '2')
 
-        state.add_piece('Rook',   Player.WHITE, Pos('a1'))
-        state.add_piece('Knight', Player.WHITE, Pos('b1'))
-        state.add_piece('Bishop', Player.WHITE, Pos('c1'))
-        state.add_piece('Queen',  Player.WHITE, Pos('d1'))
-        state.add_piece('King',   Player.WHITE, Pos('e1'))
-        state.add_piece('Bishop', Player.WHITE, Pos('f1'))
-        state.add_piece('Knight', Player.WHITE, Pos('g1'))
-        state.add_piece('Rook',   Player.WHITE, Pos('h1'))
+        state.add_new_piece('Rook',   Player.WHITE, Pos('a1'))
+        state.add_new_piece('Knight', Player.WHITE, Pos('b1'))
+        state.add_new_piece('Bishop', Player.WHITE, Pos('c1'))
+        state.add_new_piece('Queen',  Player.WHITE, Pos('d1'))
+        state.add_new_piece('King',   Player.WHITE, Pos('e1'))
+        state.add_new_piece('Bishop', Player.WHITE, Pos('f1'))
+        state.add_new_piece('Knight', Player.WHITE, Pos('g1'))
+        state.add_new_piece('Rook',   Player.WHITE, Pos('h1'))
 
         state.symmetry()
 
@@ -591,16 +588,16 @@ class GameState:
     def berolina_chess() -> GameState:
         state = GameState(8, 8)
 
-        state.add_piece_row('Berolina Pawn', Player.WHITE, '2')
+        state.add_new_piece_row('Berolina Pawn', Player.WHITE, '2')
 
-        state.add_piece('Rook',   Player.WHITE, Pos('a1'))
-        state.add_piece('Knight', Player.WHITE, Pos('b1'))
-        state.add_piece('Bishop', Player.WHITE, Pos('c1'))
-        state.add_piece('Queen',  Player.WHITE, Pos('d1'))
-        state.add_piece('King',   Player.WHITE, Pos('e1'))
-        state.add_piece('Bishop', Player.WHITE, Pos('f1'))
-        state.add_piece('Knight', Player.WHITE, Pos('g1'))
-        state.add_piece('Rook',   Player.WHITE, Pos('h1'))
+        state.add_new_piece('Rook',   Player.WHITE, Pos('a1'))
+        state.add_new_piece('Knight', Player.WHITE, Pos('b1'))
+        state.add_new_piece('Bishop', Player.WHITE, Pos('c1'))
+        state.add_new_piece('Queen',  Player.WHITE, Pos('d1'))
+        state.add_new_piece('King',   Player.WHITE, Pos('e1'))
+        state.add_new_piece('Bishop', Player.WHITE, Pos('f1'))
+        state.add_new_piece('Knight', Player.WHITE, Pos('g1'))
+        state.add_new_piece('Rook',   Player.WHITE, Pos('h1'))
 
         state.symmetry()
 
@@ -611,8 +608,8 @@ class GameState:
     def anti_king_chess() -> GameState:
         state = GameState.default()
 
-        state.add_piece('Anti-King', Player.WHITE, Pos('d6'))
-        state.add_piece('Anti-King', Player.BLACK, Pos('d3'))
+        state.add_new_piece('Anti-King', Player.WHITE, Pos('d6'))
+        state.add_new_piece('Anti-King', Player.BLACK, Pos('d3'))
 
         return state
 
@@ -620,7 +617,7 @@ class GameState:
     def chess960() -> GameState:
         state = GameState(8, 8)
 
-        state.add_piece_row('Pawn', Player.WHITE, '2')
+        state.add_new_piece_row('Pawn', Player.WHITE, '2')
 
         pieces: list[str] = \
             2*['Rook'] + \
@@ -644,7 +641,7 @@ class GameState:
 
         # Add first row
         for i, piece in enumerate(pieces):
-            state.add_piece(piece, Player.WHITE, Pos(i, 0))
+            state.add_new_piece(piece, Player.WHITE, Pos(i, 0))
 
         state.symmetry()
 
@@ -654,18 +651,18 @@ class GameState:
     def knighted_chess() -> GameState:
         state = GameState(10, 8)
 
-        state.add_piece_row('Pawn', Player.WHITE, '2')
+        state.add_new_piece_row('Pawn', Player.WHITE, '2')
 
-        state.add_piece('Rook',       Player.WHITE, Pos('a1'))
-        state.add_piece('Knight',     Player.WHITE, Pos('b1'))
-        state.add_piece('Archbishop', Player.WHITE, Pos('c1'))
-        state.add_piece('Bishop',     Player.WHITE, Pos('d1'))
-        state.add_piece('Queen',      Player.WHITE, Pos('e1'))
-        state.add_piece('King',       Player.WHITE, Pos('f1'))
-        state.add_piece('Bishop',     Player.WHITE, Pos('g1'))
-        state.add_piece('Chancellor', Player.WHITE, Pos('h1'))
-        state.add_piece('Knight',     Player.WHITE, Pos('i1'))
-        state.add_piece('Rook',       Player.WHITE, Pos('j1'))
+        state.add_new_piece('Rook',       Player.WHITE, Pos('a1'))
+        state.add_new_piece('Knight',     Player.WHITE, Pos('b1'))
+        state.add_new_piece('Archbishop', Player.WHITE, Pos('c1'))
+        state.add_new_piece('Bishop',     Player.WHITE, Pos('d1'))
+        state.add_new_piece('Queen',      Player.WHITE, Pos('e1'))
+        state.add_new_piece('King',       Player.WHITE, Pos('f1'))
+        state.add_new_piece('Bishop',     Player.WHITE, Pos('g1'))
+        state.add_new_piece('Chancellor', Player.WHITE, Pos('h1'))
+        state.add_new_piece('Knight',     Player.WHITE, Pos('i1'))
+        state.add_new_piece('Rook',       Player.WHITE, Pos('j1'))
 
         state.symmetry()
 
@@ -677,24 +674,25 @@ class GameState:
     def piece_at(self, pos: Pos) -> Optional[Piece]:
         return self.pieces.get(pos, None)
 
-    # TODO: Having both set_piece and add_piece seems redundant.
-
-    def set_piece(self, piece: Piece, pos: Optional[Pos]):
-        if pos is not None:
-            piece.pos = pos
+    def relocate_piece(self, piece: Piece, pos: Pos):
+        self.remove_piece(piece)
+        piece.pos = pos
         self.pieces[piece.pos] = piece
 
-    def add_piece(self, name: str, owner: Player, pos: Pos) -> None:
+    def add_new_piece(self, name: str, owner: Player, pos: Pos) -> None:
         new_piece: Piece = Piece(name, owner, pos, self)
         self.pieces[pos] = new_piece
 
-    def add_piece_row(self, name: str, owner: Player, row: int|str) -> None:
+    def add_new_piece_row(self, name: str, owner: Player, row: int|str) -> None:
         y: int = row if isinstance(row, int) else int(row)-1
 
         for x in range(self.size_x):
-            self.add_piece(name, owner, Pos(x, y))
+            self.add_new_piece(name, owner, Pos(x, y))
 
-    def remove_piece(self, pos: Pos):
+    def remove_piece(self, piece: Piece):
+        del self.pieces[piece.pos]
+
+    def remove_piece_at(self, pos: Pos):
         del self.pieces[pos]
 
     def upside_down(self) -> None:
@@ -704,13 +702,13 @@ class GameState:
             piece2: Optional[Piece] = self.piece_at(pos2)
 
             if piece2 is None:
-                self.remove_piece(pos1)
-                self.set_piece(piece1, pos2)
+                self.remove_piece(piece1)
+                self.relocate_piece(piece1, pos2)
             else:
-                self.remove_piece(pos1)
-                self.remove_piece(pos2)
-                self.set_piece(piece1, pos2)
-                self.set_piece(piece2, pos1)
+                self.remove_piece(piece1)
+                self.remove_piece(piece2)
+                self.relocate_piece(piece1, pos2)
+                self.relocate_piece(piece2, pos1)
 
     def symmetry(self) -> None:
         for piece in self.all_pieces():
@@ -718,7 +716,7 @@ class GameState:
             new_piece: Optional[Piece] = self.piece_at(pos)
             if new_piece is not None:
                 raise RuntimeError(f'Impossible to make symmetry due to {piece.name} at {piece.pos} and {new_piece.name} at {pos}.')
-            self.add_piece(piece.name, piece.owner.other(), pos)
+            self.add_new_piece(piece.name, piece.owner.other(), pos)
 
     def move_piece(
             self,
