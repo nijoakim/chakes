@@ -614,37 +614,61 @@ class Board:
         return board
 
     @staticmethod
-    def chess960() -> Board:
+    def chess960(n: int = -1) -> Board:
+        b: int
+
+        if n < 0:
+            n = random.randrange(960)
+
         board = Board(8, 8)
 
         board.add_new_piece_row('Pawn', Player.WHITE, '2')
 
-        pieces: list[str] = \
-            2*['Rook'] + \
-            2*["Knight"] + \
-            2*["Bishop"] + \
-            ["Queen"] + \
-            ["King"]
+        pieces: list[Optional[str]] = 8*[None]
 
-        # Randomize until order is valid
-        while True:
-            order: list[str] = ['Rook', 'King', 'Rook']
-            random.shuffle(pieces)
-            for piece in pieces:
-                if piece == order[0]:
-                    del order[0]
-                if len(order) == 0:
+        n, b = divmod(n, 4)
+        pieces[b*2+1] = 'Bishop'
+
+        n, b = divmod(n, 4)
+        pieces[b*2] = 'Bishop'
+
+        n, b = divmod(n, 6)
+        for i, piece in enumerate(pieces):
+            if piece is None:
+                b -= 1
+                if b == -1:
+                    pieces[i] = 'Queen'
+
+        if n <= 3:
+            b = 0
+        elif n <= 6:
+            b = 1
+        elif n <= 8:
+            b = 2
+        else:
+            b = 3
+        n //= b+1
+
+        for i, piece in enumerate(pieces):
+            if piece is None:
+                b -= 1
+                if b == -1:
+                    pieces[i] = 'Knight'
+
+        for i, piece in enumerate(pieces):
+            if piece is None:
+                n -= 1
+                if n == -1:
+                    pieces[i] = 'Knight'
+
+        for piece in ['Rook', 'King', 'Rook']:
+            for i, _ in enumerate(pieces):
+                if pieces[i] is None:
+                    pieces[i] = piece
                     break
 
-            if len(order) == 0:
-                break
-
-        # Add first row
-        for i, piece in enumerate(pieces):
-            board.add_new_piece(piece, Player.WHITE, Pos(i, 0))
-
+        board.add_new_piece_row(pieces, Player.WHITE, '1')
         board.symmetry()
-
         return board
 
     @staticmethod
@@ -683,11 +707,16 @@ class Board:
         new_piece: Piece = Piece(name, owner, pos, self)
         self.pieces[pos] = new_piece
 
-    def add_new_piece_row(self, name: str, owner: Player, row: int|str) -> None:
+    def add_new_piece_row(self, names: str | list[Optional[str]], owner: Player, row: int|str) -> None:
         y: int = row if isinstance(row, int) else int(row)-1
 
         for x in range(self.size_x):
-            self.add_new_piece(name, owner, Pos(x, y))
+            if isinstance(names, str):
+                self.add_new_piece(names, owner, Pos(x, y))
+            elif isinstance(names, list):
+                name: Optional[str] = names[x]
+                if name is not None:
+                    self.add_new_piece(name, owner, Pos(x, y))
 
     def remove_piece(self, piece: Piece):
         del self.pieces[piece.pos]
