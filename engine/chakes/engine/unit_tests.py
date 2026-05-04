@@ -70,11 +70,15 @@ class TestPieces(ut.TestCase):
 
     def test_promotion(self) -> None:
         board = Board.orthodox()
-        board.move_piece(Pos('a2'), Pos('a4'))
-        board.move_piece(Pos('a4'), Pos('a5'))
-        board.move_piece(Pos('a5'), Pos('a6'))
-        board.move_piece(Pos('a6'), Pos('b7'))
-        board.move_piece(Pos('b7'), Pos('a8'), info = 'Knight')
+
+        pawn: Optional[Piece] = board.piece_at(Pos('a2'))
+        assert pawn is not None
+
+        pawn.move(Pos('a4'))
+        pawn.move(Pos('a5'))
+        pawn.move(Pos('a6'))
+        pawn.move(Pos('b7'))
+        pawn.move(Pos('a8'), info = 'Knight')
 
         knight: Optional[Piece] = board.piece_at(Pos('a8'))
         assert knight is not None
@@ -153,15 +157,19 @@ class TestPieces(ut.TestCase):
 
     def test_castling(self) -> None:
         board = Board.orthodox()
+
+        queen: Optional[Piece] = board.piece_at(Pos('d1'))
+        assert queen is not None
+
         board.move_piece(Pos('b1'), Pos('a3'))
         board.move_piece(Pos('b2'), Pos('b3'))
         board.move_piece(Pos('c1'), Pos('b2'))
         board.move_piece(Pos('e2'), Pos('e3'))
-        board.move_piece(Pos('d1'), Pos('f3'))
+        queen.move(Pos('f3'))
         board.move_piece(Pos('f1'), Pos('e2'))
 
         king: Optional[Piece] = board.piece_at(Pos('e1'))
-        assert isinstance(king, Piece)
+        assert king is not None
 
         self.assertEqual(
             king.legal_moves(),
@@ -170,50 +178,53 @@ class TestPieces(ut.TestCase):
 
         board.move_piece(Pos('g1'), Pos('h3'))
 
-        # Attack E1
-        board.move_piece(Pos('b8'), Pos('c6'))
-        board.move_piece(Pos('c6'), Pos('b4'))
-        board.move_piece(Pos('b4'), Pos('d3'))
+        knight: Optional[Piece] = board.piece_at(Pos('b8'))
+        assert knight is not None
+
+        # Attack e1
+        knight.move(Pos('c6'))
+        knight.move(Pos('b4'))
+        knight.move(Pos('d3'))
 
         self.assertEqual(
             king.legal_moves(),
             set(map(Pos, {'d1', 'f1'})),
         )
 
-        # Attack D1
-        board.move_piece(Pos('d3'), Pos('c5'))
-        board.move_piece(Pos('c5'), Pos('a4'))
-        board.move_piece(Pos('a4'), Pos('c3'))
+        # Attack d1
+        knight.move(Pos('c5'))
+        knight.move(Pos('a4'))
+        knight.move(Pos('c3'))
 
         self.assertEqual(
             king.legal_moves(),
             set(map(Pos, {'f1', 'g1'})),
         )
 
-        # Attack C1
-        board.move_piece(Pos('c3'), Pos('a4'))
-        board.move_piece(Pos('a4'), Pos('c5'))
-        board.move_piece(Pos('c5'), Pos('b3'))
+        # Attack c1
+        knight.move(Pos('a4'))
+        knight.move(Pos('c5'))
+        knight.move(Pos('b3'))
 
         self.assertEqual(
             king.legal_moves(),
             set(map(Pos, {'d1', 'f1', 'g1'})),
         )
 
-        # Attack F1
-        board.move_piece(Pos('b3'), Pos('c5'))
-        board.move_piece(Pos('c5'), Pos('e4'))
-        board.move_piece(Pos('e4'), Pos('g3'))
+        # Attack f1
+        knight.move(Pos('c5'))
+        knight.move(Pos('e4'))
+        knight.move(Pos('g3'))
 
         self.assertEqual(
             king.legal_moves(),
             set(map(Pos, {'c1', 'd1'})),
         )
 
-        # Attack G1
-        board.move_piece(Pos('g3'), Pos('h5'))
-        board.move_piece(Pos('h5'), Pos('f4'))
-        board.move_piece(Pos('f4'), Pos('h3'))
+        # Attack g1
+        knight.move(Pos('h5'))
+        knight.move(Pos('f4'))
+        knight.move(Pos('h3'))
 
         self.assertEqual(
             king.legal_moves(),
@@ -221,26 +232,29 @@ class TestPieces(ut.TestCase):
         )
 
         # Stop attack
-        board.move_piece(Pos('h3'), Pos('g5'))
+        knight.move(Pos('g5'))
 
         self.assertEqual(
             king.legal_moves(),
             set(map(Pos, {'c1', 'd1', 'f1', 'g1'})),
         )
 
+        pawn: Optional[Piece] = board.piece_at(Pos('d7'))
+        assert pawn is not None
+
         # Attack with pawn
-        board.move_piece(Pos('d7'), Pos('d5'))
-        board.move_piece(Pos('d5'), Pos('d4'))
-        board.move_piece(Pos('d4'), Pos('d3'))
-        board.move_piece(Pos('d3'), Pos('e2'))
+        pawn.move(Pos('d5'))
+        pawn.move(Pos('d4'))
+        pawn.move(Pos('d3'))
+        pawn.move(Pos('e2'))
 
         self.assertEqual(
             king.legal_moves(),
             set(map(Pos, {'e2'})),
         )
 
-        # Stop attack
-        board.move_piece(Pos('f3'), Pos('e2'))
+        # Stop pawn
+        queen.move(Pos('e2'))
 
         # Attack with pawn
         board.move_piece(Pos('c7'), Pos('c5'))
@@ -254,13 +268,13 @@ class TestPieces(ut.TestCase):
         )
 
         # Stop attack
-        board.move_piece(Pos('e2'), Pos('d2'))
+        queen.move(Pos('d2'))
 
         # Castle
-        board.move_piece(Pos('e1'), Pos('c1'))
+        king.move(Pos('c1'))
 
         rook: Optional[Piece] = board.piece_at(Pos('d1'))
-        assert isinstance(rook, Piece)
+        assert rook is not None
 
         self.assertEqual(rook.name, 'Rook')
 
@@ -340,9 +354,9 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('a6'), Pos('c5'))
 
         # Move anti-king to edge
-        board.move_piece(Pos('d6'), Pos('c6'))
-        board.move_piece(Pos('c6'), Pos('b6'))
-        board.move_piece(Pos('b6'), Pos('a6'))
+        anti_king.move(Pos('c6'))
+        anti_king.move(Pos('b6'))
+        anti_king.move(Pos('a6'))
 
         # Move pawns
         board.move_piece(Pos('c7'), Pos('c6'))
@@ -393,20 +407,21 @@ class TestPieces(ut.TestCase):
 
     def test_berolina_pawn(self) -> None:
         board = Board.berolina_chess()
-        board.move_piece(Pos('a2'), Pos('c4'))
-        board.move_piece(Pos('c4'), Pos('b5'))
-        board.move_piece(Pos('b5'), Pos('c6'))
 
-        berolina_pawn: Optional[Piece] = board.piece_at(Pos('c6'))
+        berolina_pawn: Optional[Piece] = board.piece_at(Pos('a2'))
         assert berolina_pawn is not None
+
+        berolina_pawn.move(Pos('c4'))
+        berolina_pawn.move(Pos('b5'))
+        berolina_pawn.move(Pos('c6'))
 
         self.assertEqual(
             berolina_pawn.legal_moves(),
             set(map(Pos, {'c7'})),
         )
 
-        board.move_piece(Pos('c6'), Pos('c7'))
-        board.move_piece(Pos('c7'), Pos('c8'), info = 'Knight')
+        berolina_pawn.move(Pos('c7'))
+        berolina_pawn.move(Pos('c8'), info = 'Knight')
 
         knight: Optional[Piece] = board.piece_at(Pos('c8'))
         assert knight is not None
@@ -431,28 +446,28 @@ class TestPieces(ut.TestCase):
         )
 
         # Shift into bishop
-        board.move_piece(Pos('b1'), Pos('c3'))
+        chameleon.move(Pos('c3'))
         self.assertEqual(
             chameleon.legal_moves(),
             set(map(Pos, {'b4', 'a5', 'd4', 'e5', 'f6', 'g7'})),
         )
 
         # Shift into rook
-        board.move_piece(Pos('c3'), Pos('e5'))
+        chameleon.move(Pos('e5'))
         self.assertEqual(
             chameleon.legal_moves(),
             set(map(Pos, {'a5', 'b5', 'c5', 'd5', 'f5', 'g5', 'h5', 'e3', 'e4', 'e6', 'e7'})),
         )
 
         # Shift into queen
-        board.move_piece(Pos('e5'), Pos('c5'))
+        chameleon.move(Pos('c5'))
         self.assertEqual(
             chameleon.legal_moves(),
             set(map(Pos, {'a5', 'b5', 'd5', 'e5', 'f5', 'g5', 'h5', 'c3', 'c4', 'c6', 'c7', 'a7', 'b6', 'd4', 'e3', 'a3', 'b4', 'd6', 'e7'})),
         )
 
         # Shift back into knight
-        board.move_piece(Pos('c5'), Pos('e3'))
+        chameleon.move(Pos('e3'))
         self.assertEqual(
             chameleon.legal_moves(),
             set(map(Pos, {'c4', 'd5', 'f5', 'g4'})),
@@ -475,20 +490,20 @@ class TestPieces(ut.TestCase):
     def test_knighted_chess(self) -> None:
         board = Board.knighted_chess()
 
-        board.move_piece(Pos('c1'), Pos('d3'))
-
-        archbishop: Optional[Piece] = board.piece_at(Pos('d3'))
+        archbishop: Optional[Piece] = board.piece_at(Pos('c1'))
         assert archbishop is not None
+
+        archbishop.move(Pos('d3'))
 
         self.assertEqual(
             archbishop.legal_moves(),
             set(map(Pos, {'c4', 'b5', 'a6', 'e4', 'f5', 'g6', 'h7', 'b4', 'c5', 'e5', 'f4', 'c1'})),
         )
 
-        board.move_piece(Pos('h1'), Pos('g3'))
-
-        chancellor: Optional[Piece] = board.piece_at(Pos('g3'))
+        chancellor: Optional[Piece] = board.piece_at(Pos('h1'))
         assert chancellor is not None
+
+        chancellor.move(Pos('g3'))
 
         self.assertEqual(
             chancellor.legal_moves(),
