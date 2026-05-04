@@ -534,28 +534,12 @@ class Piece:
                 test_state: Board = deepcopy(self.board)
                 test_state.move_piece(self.pos, new_pos, check_safe = False)
 
-                # Remove move if any Anti-King is unattacked
-                anti_kings: set[Piece] = {
-                    piece for piece in test_state.all_pieces()
-                    if  piece.owner == self.owner
-                    and piece.name == 'Anti-King'
-                }
-                attacked_anti_kings: set[Piece] = {
-                    anti_king for anti_king in anti_kings
-                    if anti_king.pos in test_state.attacked_squares(self.owner)
-                }
-                if anti_kings != attacked_anti_kings:
+                # Remove move if in check or anti-check
+                if test_state.is_in_anti_check(self.owner) \
+                or test_state.is_in_check(self.owner):
                     moves -= {new_pos}
 
-                # Remove moves which makes a king attacked
-                moves -= {
-                    new_pos for piece in test_state.all_pieces()
-                    if  piece.owner == self.owner
-                    and piece.name == 'King'
-                    and piece.pos in test_state.attacked_squares(self.owner)
-                }
-
-        # Filter moves that capture invinsible pieces
+        # Filter moves that capture invincible pieces
         if check_safe:
             for pos in set(moves):
                 other = self.board.piece_at(pos)
@@ -786,32 +770,36 @@ class Board:
             if piece.owner == player.other()
         ])
 
+    def is_in_check(self, player: Player) -> bool:
+        kings: set[Piece] = {
+            piece for piece in self.all_pieces()
+            if  piece.owner == player
+            and piece.name == 'King'
+        }
+        attacked_kings: set[Piece] = {
+            king for king in kings
+            if king.pos in self.attacked_squares(player)
+        }
+        return attacked_kings & kings != set()
+
+    def is_in_anti_check(self, player: Player) -> bool:
+        anti_kings: set[Piece] = {
+            piece for piece in self.all_pieces()
+            if  piece.owner == player
+            and piece.name == 'Anti-King'
+        }
+        attacked_anti_kings: set[Piece] = {
+            anti_king for anti_king in anti_kings
+            if anti_king.pos in self.attacked_squares(player)
+        }
+        return attacked_anti_kings != anti_kings
+
     def winner(self) -> Optional[Player]:
         for player in (Player.WHITE, Player.BLACK):
             if set.union(*self.all_legal_moves(filter_player = player).values()) == set():
-                kings: set[Piece] = {
-                    piece for piece in self.all_pieces()
-                    if  piece.owner == player
-                    and piece.name == 'King'
-                }
-                attacked_kings: set[Piece] = {
-                    king for king in kings
-                    if king.pos in self.attacked_squares(player)
-                }
-
-                anti_kings: set[Piece] = {
-                    piece for piece in self.all_pieces()
-                    if  piece.owner == player
-                    and piece.name == 'Anti-King'
-                }
-                attacked_anti_kings: set[Piece] = {
-                    anti_king for anti_king in anti_kings
-                    if anti_king.pos in self.attacked_squares(player)
-                }
-
                 # Draw if no kings under attack and all anti kings under attack
-                if  attacked_kings.isdisjoint(kings) \
-                and attacked_anti_kings == anti_kings:
+                if  not self.is_in_check(player) \
+                and not self.is_in_anti_check(player):
                     return Player.NEUTRAL
 
                 # Otherwise other player wins

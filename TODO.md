@@ -1,7 +1,6 @@
 # High priority:
 
 # Medium priority:
-+ engine: Add methods to tell whether a player is in check or anti-check
 
 # Low priority:
 + engine: Generalize en passant moves
