@@ -1,6 +1,7 @@
 # High priority:
 
 # Medium priority:
+- frontend: display check and anti-check messages
 
 # Low priority:
 + engine: Generalize en passant moves
