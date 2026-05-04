@@ -801,10 +801,7 @@ class Board:
         return None
 
     def all_legal_moves(self) -> dict[Pos, set[Pos]]:
-        moves: dict[Pos, set[Pos]] = {}
-        for piece in self.all_pieces():
-            moves[piece.pos] = piece.legal_moves()
-        return moves
+        return {piece.pos: piece.legal_moves() for piece in self.all_pieces()}
 
     def __str__(self) -> str:
         ret: str = ''
