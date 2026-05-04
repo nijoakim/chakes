@@ -285,30 +285,69 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('e7'), Pos('b4'))
         board.move_piece(Pos('b4'), Pos('d2'))
 
-        self.assertIsNone(board.winner())
-
-        board.move_piece(Pos('d2'), Pos('a5'))
-
-        self.assertIsNone(board.winner())
-
-        queen: Optional[Piece] = board.piece_at(Pos('a5'))
+        queen: Optional[Piece] = board.piece_at(Pos('d2'))
         assert queen is not None
+
+        self.assertIsNone(board.winner())
+
+        queen.move(Pos('a5'))
+
+        self.assertIsNone(board.winner())
 
         # Assert King can not be captured
         self.assertTrue('e1' not in queen.legal_moves())
 
         board.move_piece(Pos('b1'), Pos('d2'))
         board.move_piece(Pos('h2'), Pos('h3'))
-        board.move_piece(Pos('a5'), Pos('f5'))
-        board.move_piece(Pos('f5'), Pos('f2'))
+
+        queen.move(Pos('f5'))
+        queen.move(Pos('f2'))
 
         self.assertIsNone(board.winner())
 
-        board.move_piece(Pos('f2'), Pos('g3'))
+        queen.move(Pos('g3'))
+
+        self.assertEqual(board.winner(), Player.BLACK)
+
+    def test_draw(self) -> None:
+        board = Board.orthodox()
+        board.move_piece(Pos('e7'), Pos('e6'))
+
+        queen: Optional[Piece] = board.piece_at(Pos('d8'))
+        assert queen is not None
+
+        # Capture all pieces
+        queen.move(Pos('h4'))
+        queen.move(Pos('h2'))
+        queen.move(Pos('h1'))
+        queen.move(Pos('g1'))
+        queen.move(Pos('g2'))
+        queen.move(Pos('f2'))
+        queen.move(Pos('f1'))
+        queen.move(Pos('e2'))
+        queen.move(Pos('d2'))
+        queen.move(Pos('d1'))
+        queen.move(Pos('c1'))
+        queen.move(Pos('c2'))
+        queen.move(Pos('b2'))
+        queen.move(Pos('b1'))
+        queen.move(Pos('a1'))
+        queen.move(Pos('a2'))
+
+        king: Optional[Piece] = board.piece_at(Pos('e1'))
+        assert king is not None
+
+        # Move King to corner
+        king.move(Pos('f1'))
+        king.move(Pos('g1'))
+        king.move(Pos('h1'))
+
+        # Stalemate
+        queen.move(Pos('f2'))
 
         self.assertEqual(
             board.winner(),
-            Player.BLACK,
+            Player.NEUTRAL,
         )
 
     def test_nightrider(self) -> None:
@@ -373,10 +412,7 @@ class TestPieces(ut.TestCase):
         # Move rook
         board.move_piece(Pos('a8'), Pos('b8'))
 
-        self.assertEqual(
-            board.winner(),
-            Player.BLACK,
-        )
+        self.assertEqual(board.winner(), Player.BLACK)
 
     def test_grasshopper(self) -> None:
         board = Board.orthodox()

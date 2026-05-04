@@ -64,14 +64,18 @@ class Pos:
         return Pos(-self.x, -self.y)
 
 class Player(Enum):
-    WHITE = auto()
-    BLACK = auto()
+    WHITE   = auto()
+    BLACK   = auto()
+    NEUTRAL = auto()
 
     def other(self) -> Player:
-        if self == Player.WHITE:
-            return Player.BLACK
-        elif self == Player.BLACK:
-            return Player.WHITE
+        match self:
+            case Player.WHITE:
+                return Player.BLACK
+            case Player.BLACK:
+                return Player.WHITE
+            case Player.NEUTRAL:
+                return Player.NEUTRAL
 
 
 # Format: name: (value, movement)
@@ -136,6 +140,8 @@ class Piece:
                 return 1
             case Player.BLACK:
                 return -1
+            case _:
+                return 0
 
     def _is_capture_move(self, pos: Pos) -> bool:
         piece: Optional[Piece] = self.board.piece_at(pos)
@@ -454,11 +460,17 @@ class Piece:
 
             # Filter captures if 'c' was specified
             if must_capture:
-                moves_alt = set(filter(lambda pos: self._is_capture_move(pos), moves_alt))
+                moves_alt = {
+                    move for move in moves_alt
+                    if self._is_capture_move(move)
+                }
 
             # Filter non-captures if 'o' was specified
             if must_not_capture:
-                moves_alt = set(filter(lambda pos: not self._is_capture_move(pos), moves_alt))
+                moves_alt = {
+                    move for move in moves_alt
+                    if not self._is_capture_move(move)
+                }
 
             # Restore owner if needed
             if captures_friends:
@@ -518,28 +530,30 @@ class Piece:
         # Filter unsafe moves
         if check_safe:
             for new_pos in set(moves):
+                # Test move
                 test_state: Board = deepcopy(self.board)
                 test_state.move_piece(self.pos, new_pos, check_safe = False)
-                attacked_anti_kings: set[Piece] = set()
-                all_anti_kings:      set[Piece] = set([
-                    piece
-                    for piece in test_state.all_pieces()
-                        if  piece.owner == self.owner
-                        and piece.name == 'Anti-King'
-                ])
-                for att in test_state.attacked_squares(self.owner):
-                    piece: Optional[Piece] = test_state.piece_at(att)
-                    if piece is not None:
-                        if piece.owner == self.owner:
-                            match piece.name:
-                                case 'King':
-                                    moves -= {new_pos}
-                                case 'Anti-King':
-                                    attacked_anti_kings |= {piece}
 
                 # Remove move if any Anti-King is unattacked
-                if all_anti_kings != attacked_anti_kings:
+                anti_kings: set[Piece] = {
+                    piece for piece in test_state.all_pieces()
+                    if  piece.owner == self.owner
+                    and piece.name == 'Anti-King'
+                }
+                attacked_anti_kings: set[Piece] = {
+                    anti_king for anti_king in anti_kings
+                    if anti_king.pos in test_state.attacked_squares(self.owner)
+                }
+                if anti_kings != attacked_anti_kings:
                     moves -= {new_pos}
+
+                # Remove moves which makes a king attacked
+                moves -= {
+                    new_pos for piece in test_state.all_pieces()
+                    if  piece.owner == self.owner
+                    and piece.name == 'King'
+                    and piece.pos in test_state.attacked_squares(self.owner)
+                }
 
         # Filter moves that capture invinsible pieces
         if check_safe:
@@ -766,24 +780,51 @@ class Board:
             player:          Player,
             invert_captures: bool = False
         ) -> set[Pos]:
-        return set.union(*[ \
-            piece.legal_moves(check_safe = False, invert_captures = invert_captures) \
-            for piece in self.all_pieces() \
-            if piece.owner == player.other() \
+        return set.union(*[
+            piece.legal_moves(check_safe = False, invert_captures = invert_captures)
+            for piece in self.all_pieces()
+            if piece.owner == player.other()
         ])
 
     def winner(self) -> Optional[Player]:
         for player in (Player.WHITE, Player.BLACK):
             if set.union(*self.all_legal_moves(filter_player = player).values()) == set():
-                return player.other()
+                kings: set[Piece] = {
+                    piece for piece in self.all_pieces()
+                    if  piece.owner == player
+                    and piece.name == 'King'
+                }
+                attacked_kings: set[Piece] = {
+                    king for king in kings
+                    if king.pos in self.attacked_squares(player)
+                }
+
+                anti_kings: set[Piece] = {
+                    piece for piece in self.all_pieces()
+                    if  piece.owner == player
+                    and piece.name == 'Anti-King'
+                }
+                attacked_anti_kings: set[Piece] = {
+                    anti_king for anti_king in anti_kings
+                    if anti_king.pos in self.attacked_squares(player)
+                }
+
+                # Draw if no kings under attack and all anti kings under attack
+                if  attacked_kings.isdisjoint(kings) \
+                and attacked_anti_kings == anti_kings:
+                    return Player.NEUTRAL
+
+                # Otherwise other player wins
+                else:
+                    return player.other()
 
         return None
 
     def all_legal_moves(self, filter_player: Optional[Player] = None) -> dict[Pos, set[Pos]]:
-        return { \
-            piece.pos: piece.legal_moves() \
-            for piece in self.all_pieces() \
-            if filter_player is None or piece.owner == filter_player \
+        return {
+            piece.pos: piece.legal_moves()
+            for piece in self.all_pieces()
+            if filter_player is None or piece.owner == filter_player
         }
 
     def __str__(self) -> str:

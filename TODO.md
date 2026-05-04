@@ -1,7 +1,6 @@
 # High priority:
 
 # Medium priority:
-+ engine: winner() should be able to return a draw
 + engine: Add methods to tell whether a player is in check or anti-check
 
 # Low priority:
