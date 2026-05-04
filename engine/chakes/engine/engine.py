@@ -724,19 +724,12 @@ class Board:
         del self.pieces[pos]
 
     def upside_down(self) -> None:
-        for piece1 in self.all_pieces():
-            pos1:   Pos             = piece1.pos
-            pos2:   Pos             = Pos(pos1.x, self.size_y-1 - pos1.y)
-            piece2: Optional[Piece] = self.piece_at(pos2)
+        # Rearrange position keys for pieces dictionary
+        self.pieces = {Pos(piece.pos.x, self.size_y-1 - piece.pos.y): piece for piece in self.all_pieces()}
 
-            if piece2 is None:
-                self.remove_piece(piece1)
-                self.relocate_piece(piece1, pos2)
-            else:
-                self.remove_piece(piece1)
-                self.remove_piece(piece2)
-                self.relocate_piece(piece1, pos2)
-                self.relocate_piece(piece2, pos1)
+        # Update pieces' internal position
+        for pos, piece in self.pieces.items():
+            piece.pos = pos
 
     def symmetry(self) -> None:
         for piece in self.all_pieces():
