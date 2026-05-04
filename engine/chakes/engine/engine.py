@@ -524,8 +524,7 @@ class Piece:
                 all_anti_kings:      set[Piece] = set([
                     piece
                     for piece in test_state.all_pieces()
-                        if  piece is not None
-                        and piece.owner == self.owner
+                        if  piece.owner == self.owner
                         and piece.name == 'Anti-King'
                 ])
                 for att in test_state.attacked_squares(self.owner):
@@ -777,9 +776,8 @@ class Board:
         squares: set[Pos] = set()
 
         for piece in self.all_pieces():
-            if piece is not None:
-                if piece.owner == player.other():
-                    squares |= piece.legal_moves(check_safe = False, invert_captures = invert_captures)
+            if piece.owner == player.other():
+                squares |= piece.legal_moves(check_safe = False, invert_captures = invert_captures)
 
         return squares
 
@@ -790,9 +788,8 @@ class Board:
         }
 
         for piece in self.all_pieces():
-            if piece is not None:
-                if piece.legal_moves() != set():
-                    can_move_by_player[piece.owner] = True
+            if piece.legal_moves() != set():
+                can_move_by_player[piece.owner] = True
 
         for player, can_move in can_move_by_player.items():
             if not can_move:
