@@ -445,8 +445,8 @@ class Piece:
                                     a: int
                                     b: int
                                     a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
-                                    for c, d in [(a, b), (-a, b), (a, -b), (-a, -b)]:
-                                        for x, y in [(c, d), (d, c)]:
+                                    for c, d in ((a, b), (-a, b), (a, -b), (-a, -b)):
+                                        for x, y in ((c, d), (d, c)):
                                             moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
 
                 # Include compound moves in move alternatives
@@ -660,7 +660,7 @@ class Board:
                 if n == -1:
                     pieces[i] = 'Knight'
 
-        for piece in ['Rook', 'King', 'Rook']:
+        for piece in ('Rook', 'King', 'Rook'):
             for i, _ in enumerate(pieces):
                 if pieces[i] is None:
                     pieces[i] = piece
@@ -773,32 +773,25 @@ class Board:
             player:          Player,
             invert_captures: bool = False
         ) -> set[Pos]:
-        squares: set[Pos] = set()
-
-        for piece in self.all_pieces():
-            if piece.owner == player.other():
-                squares |= piece.legal_moves(check_safe = False, invert_captures = invert_captures)
-
-        return squares
+        return set.union(*[ \
+            piece.legal_moves(check_safe = False, invert_captures = invert_captures) \
+            for piece in self.all_pieces() \
+            if piece.owner == player.other() \
+        ])
 
     def winner(self) -> Optional[Player]:
-        can_move_by_player: dict[Player, bool] = {
-            Player.WHITE: False,
-            Player.BLACK: False,
-        }
-
-        for piece in self.all_pieces():
-            if piece.legal_moves() != set():
-                can_move_by_player[piece.owner] = True
-
-        for player, can_move in can_move_by_player.items():
-            if not can_move:
+        for player in (Player.WHITE, Player.BLACK):
+            if set.union(*self.all_legal_moves(filter_player = player).values()) == set():
                 return player.other()
 
         return None
 
-    def all_legal_moves(self) -> dict[Pos, set[Pos]]:
-        return {piece.pos: piece.legal_moves() for piece in self.all_pieces()}
+    def all_legal_moves(self, filter_player: Optional[Player] = None) -> dict[Pos, set[Pos]]:
+        return { \
+            piece.pos: piece.legal_moves() \
+            for piece in self.all_pieces() \
+            if filter_player is None or piece.owner == filter_player \
+        }
 
     def __str__(self) -> str:
         ret: str = ''
