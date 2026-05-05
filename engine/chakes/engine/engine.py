@@ -89,6 +89,8 @@ piece_defs: dict[str, tuple[int, str]] = {
     'King':   (3, '1*'),
 
     # Fairy
+    'Alibaba':       (3, '~2*'),
+    'Alfil':         (3, '~2X'),
     'Amazon':        (3, 'n*,1/2'),
     'Anti-King':     (3, 'f1*'),
     'Archbishop':    (3, 'nX,1/2'),
@@ -97,6 +99,7 @@ piece_defs: dict[str, tuple[int, str]] = {
     'Chameleon':     (3, '1/2'),
     'Chancellor':    (3, 'n+,1/2'),
     'Commoner':      (3, '1*'),
+    'Dabbaba':       (3, '~2+'),
     'Ferz':          (3, '1X'),
     'Ghost Bishop':  (3, '~nX'),
     'Ghost Queen':   (3, '~n*'),

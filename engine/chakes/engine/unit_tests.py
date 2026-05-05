@@ -590,6 +590,48 @@ class TestPieces(ut.TestCase):
             set(map(Pos, {'b3', 'a4', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8', 'f3', 'g4', 'h5'})),
         )
 
+    def test_alibaba(self) -> None:
+        board = Board.orthodox()
+
+        board.remove_piece_at(Pos('d1'))
+        board.add_new_piece('Alibaba', Player.WHITE, Pos('d1'))
+
+        alibaba: Optional[Piece] = board.piece_at(Pos('d1'))
+        assert alibaba is not None
+
+        self.assertEqual(
+            alibaba.legal_moves(),
+            set(map(Pos, {'b3', 'd3', 'f3'})),
+        )
+
+    def test_alfil(self) -> None:
+        board = Board.orthodox()
+
+        board.remove_piece_at(Pos('c1'))
+        board.add_new_piece('Alfil', Player.WHITE, Pos('c1'))
+
+        alfil: Optional[Piece] = board.piece_at(Pos('c1'))
+        assert alfil is not None
+
+        self.assertEqual(
+            alfil.legal_moves(),
+            set(map(Pos, {'a3', 'e3'})),
+        )
+
+    def test_dabbaba(self) -> None:
+        board = Board.orthodox()
+
+        board.remove_piece_at(Pos('a1'))
+        board.add_new_piece('Dabbaba', Player.WHITE, Pos('a1'))
+
+        dabbaba: Optional[Piece] = board.piece_at(Pos('a1'))
+        assert dabbaba is not None
+
+        self.assertEqual(
+            dabbaba.legal_moves(),
+            set(map(Pos, {'a3'})),
+        )
+
 
 if __name__ == '__main__':
     ut.main()
