@@ -632,6 +632,36 @@ class TestPieces(ut.TestCase):
             set(map(Pos, {'a3'})),
         )
 
+    def test_skip_pieces(self) -> None:
+        board = Board.orthodox()
+
+        board.remove_piece_at(Pos('a1'))
+        board.remove_piece_at(Pos('c1'))
+        board.remove_piece_at(Pos('d1'))
+        board.add_new_piece('Skip Rook',   Player.WHITE, Pos('a1'))
+        board.add_new_piece('Skip Bishop', Player.WHITE, Pos('c1'))
+        board.add_new_piece('Skip Queen',  Player.WHITE, Pos('d1'))
+
+        skip_rook:   Optional[Piece] = board.piece_at(Pos('a1'))
+        skip_bishop: Optional[Piece] = board.piece_at(Pos('c1'))
+        skip_queen:  Optional[Piece] = board.piece_at(Pos('d1'))
+        assert skip_rook   is not None
+        assert skip_bishop is not None
+        assert skip_queen  is not None
+
+        self.assertEqual(
+            skip_rook.legal_moves(),
+            set(map(Pos, {'a3', 'a5', 'a7'})),
+        )
+        self.assertEqual(
+            skip_bishop.legal_moves(),
+            set(map(Pos, {'a3', 'e3', 'g5'})),
+        )
+        self.assertEqual(
+            skip_queen.legal_moves(),
+            set(map(Pos, {'b3', 'd3', 'd5', 'd7', 'f3', 'h5'})),
+        )
+
 
 if __name__ == '__main__':
     ut.main()

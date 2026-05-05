@@ -107,6 +107,9 @@ piece_defs: dict[str, tuple[int, str]] = {
     'Grasshopper':   (3, '^n*'),
     'Gryphon':       (3, '1X.n+'),
     'Nightrider':    (3, 'n(1/2)'),
+    'Skip Bishop':   (3, 'n(2/2)'),
+    'Skip Queen':    (3, 'n(2/0),n(2/2)'),
+    'Skip Rook':     (3, 'n(2/0)'),
     'Wazir':         (3, '1+'),
 }
 
