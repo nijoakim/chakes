@@ -306,8 +306,7 @@ class Piece:
 
                     match: Optional[re.Match] = None
 
-                    num_steps_start: int
-                    num_steps_end:   int
+                    num_steps_range: range
 
                     must_capture:     bool = False
                     must_not_capture: bool = False
@@ -316,7 +315,7 @@ class Piece:
                     hops:             bool = False
                     unsafe:           bool = False
 
-                    # Parse condtions
+                    # Parse conditions
                     while True:
                         match pattern_temp[0]:
                             # Must capture friend
@@ -361,20 +360,26 @@ class Piece:
 
                     # Parse number of steps
                     if not re.match(r'\(?[0-9]+/', pattern_temp):
+                        # n
                         if pattern_temp[0] == 'n':
-                            num_steps_start = num_steps_end = -1
+                            num_steps_range = range(-1, 0)
                             pattern_temp = pattern_temp[1:]
+
+                        # x-y
                         elif match := re.match(r'[0-9]+\-[0-9]+', pattern_temp):
-                            num_steps_start, num_steps_end = \
-                                tuple([int(num) for num in pattern_temp[:match.end()].split('-')[:2]][:2])
-                            if num_steps_start >= num_steps_end:
-                                raise AssertionError(f'For number of steps range in {self.name}, {num_steps_start} is larger than or equal to {num_steps_end}.')
+                            start, end = tuple([int(num) for num in pattern_temp[:match.end()].split('-')])
+                            if start >= end:
+                                raise AssertionError(f'For number of steps range in {self.name}, {start} is larger than or equal to {end}.')
+                            num_steps_range = range(start, end+1)
                             pattern_temp = pattern_temp[match.end():]
+
+                        # x
                         elif match := re.match(r'[0-9]+', pattern_temp):
-                            num_steps_start = num_steps_end = int(pattern_temp[:match.end()])
+                            num: int = int(pattern_temp[:match.end()])
+                            num_steps_range = range(num, num+1)
                             pattern_temp = pattern_temp[match.end():]
                     else:
-                        num_steps_start = num_steps_end = 1
+                        num_steps_range = range(1, 2)
 
                     # Parse parentheses
                     if match := re.match(r'\(.*\)', pattern_temp):
@@ -386,7 +391,7 @@ class Piece:
                         pattern_temp = pattern_temp[match.end():]
 
                         # For each number of steps
-                        for num_steps in range(num_steps_start, num_steps_end+1):
+                        for num_steps in num_steps_range:
                             match move_type:
 
                                 # Orthogonally forwards
