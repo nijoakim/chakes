@@ -546,6 +546,50 @@ class TestPieces(ut.TestCase):
             set(map(Pos, {'e3', 'f3', 'h3', 'i3', 'j3', 'g4', 'g5', 'g6', 'g7', 'e4', 'f5', 'h5', 'i4', 'h1'})),
         )
 
+    def test_ghost_rook(self) -> None:
+        board = Board.orthodox()
+
+        board.remove_piece_at(Pos('a1'))
+        board.add_new_piece('Ghost Rook', Player.WHITE, Pos('a1'))
+
+        ghost_rook: Optional[Piece] = board.piece_at(Pos('a1'))
+        assert ghost_rook is not None
+
+        self.assertEqual(
+            ghost_rook.legal_moves(),
+            set(map(Pos, {'a3', 'a4', 'a5', 'a6', 'a7', 'a8'}))
+        )
+
+    def test_ghost_bishop(self) -> None:
+        board = Board.orthodox()
+
+        board.remove_piece_at(Pos('c1'))
+        board.add_new_piece('Ghost Bishop', Player.WHITE, Pos('c1'))
+
+        ghost_bishop: Optional[Piece] = board.piece_at(Pos('c1'))
+        assert ghost_bishop is not None
+
+        ghost_bishop.move(Pos('a3'))
+
+        self.assertEqual(
+            ghost_bishop.legal_moves(),
+            set(map(Pos, {'c1', 'b4', 'c5', 'd6', 'e7', 'f8'})),
+        )
+
+    def test_ghost_queen(self) -> None:
+        board = Board.orthodox()
+
+        board.remove_piece_at(Pos('d1'))
+        board.add_new_piece('Ghost Queen', Player.WHITE, Pos('d1'))
+
+        ghost_queen: Optional[Piece] = board.piece_at(Pos('d1'))
+        assert ghost_queen is not None
+
+        self.assertEqual(
+            ghost_queen.legal_moves(),
+            set(map(Pos, {'b3', 'a4', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8', 'f3', 'g4', 'h5'})),
+        )
+
 
 if __name__ == '__main__':
     ut.main()
