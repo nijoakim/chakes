@@ -92,7 +92,7 @@ piece_defs: dict[str, tuple[int, str]] = {
     'Alibaba':       (3, '~2*'),
     'Alfil':         (3, '~2X'),
     'Amazon':        (3, 'n*,1/2'),
-    'Anti-King':     (3, 'f1*'),
+    'Anti-King':     (3, 'of1*'),
     'Archbishop':    (3, 'nX,1/2'),
     'Berolina Pawn': (3, 'o1X>,io2X>,c1>'),
     'Camel':         (3, '1/3'),
@@ -187,8 +187,7 @@ class Piece:
         if new_piece is not None:
             ret: set[Pos] = set()
 
-            if new_piece.owner != self.owner:
-                ret |= {new_pos}
+            ret |= {new_pos}
 
             if leaps:
                 ret |= self._legal_moves_in_direction(new_pos, diff_pos, num_steps-1, leaps, hops)
@@ -317,46 +316,26 @@ class Piece:
 
                     num_steps_range: range
 
-                    must_capture:     bool = False
-                    must_not_capture: bool = False
-                    captures_friends: bool = False
-                    leaps:            bool = False
-                    hops:             bool = False
-                    unsafe:           bool = False
+                    capture_friend: bool = False
+                    capture_enemy:  bool = True
+                    capture_none:   bool = True
+
+                    leaps:          bool = False
+                    hops:           bool = False
+                    unsafe:         bool = False
 
                     # Parse conditions
-                    while True:
-                        match pattern_temp[0]:
-                            # Must capture friend
-                            case 'f':
-                                self.owner = self.owner.other()
-                                captures_friends = True
+                    if match := re.match(r'[f|c|o|i|]+', pattern_temp):
+                        pattern_temp = '_' if 'i' in pattern_temp and self.has_moved else pattern_temp.replace('i', '')
+                    if match := re.match(r'[f|c|o|i|]+', pattern_temp):
+                        capture_friend = 'f' in pattern_temp
+                        capture_enemy  = 'c' in pattern_temp
+                        capture_none   = 'o' in pattern_temp
+                        pattern_temp = pattern_temp[match.end():]
 
-                                pattern_temp = pattern_temp[1:]
-
-                            # Must be initial move
-                            case 'i':
-                                pattern_temp = pattern_temp[1:] if not self.has_moved else '_'
-
-                            # Must not capture
-                            case 'o':
-                                if not invert_captures:
-                                    must_not_capture = True
-                                else:
-                                    must_capture = True
-                                pattern_temp = pattern_temp[1:]
-
-                            # Must capture enemy
-                            case 'c':
-                                if not invert_captures:
-                                    must_capture = True
-                                else:
-                                    must_not_capture = True
-                                pattern_temp = pattern_temp[1:]
-
-                            # No more conditions
-                            case _:
-                                break
+                    # Invert captures
+                    if invert_captures:
+                        capture_enemy, capture_none = capture_none, capture_enemy
 
                     # Parse move type
                     match pattern_temp[0]:
@@ -402,7 +381,6 @@ class Piece:
                         # For each number of steps
                         for num_steps in num_steps_range:
                             match move_type:
-
                                 # Orthogonally forwards
                                 case '>':
                                     moves_comp |= self._legal_moves_in_direction(pos, Pos(0, self._forwards()), num_steps, leaps, hops)
@@ -469,26 +447,16 @@ class Piece:
                                         for x, y in ((c, d), (d, c)):
                                             moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
 
+                # Filter out moves based on what/whether they capture
+                moves_comp = {
+                    move for move in moves_comp for piece in (self.board.piece_at(move),)
+                    if (capture_friend and piece is not None and piece.owner == self.owner)
+                    or (capture_enemy  and piece is not None and piece.owner != self.owner)
+                    or (capture_none   and piece is None)
+                }
+
                 # Include compound moves in move alternatives
                 moves_alt |= moves_comp
-
-            # Filter captures if 'c' was specified
-            if must_capture:
-                moves_alt = {
-                    move for move in moves_alt
-                    if self._is_capture_move(move)
-                }
-
-            # Filter non-captures if 'o' was specified
-            if must_not_capture:
-                moves_alt = {
-                    move for move in moves_alt
-                    if not self._is_capture_move(move)
-                }
-
-            # Restore owner if needed
-            if captures_friends:
-                self.owner = self.owner.other()
 
             # Include move alteratives in main moves
             moves |= moves_alt
