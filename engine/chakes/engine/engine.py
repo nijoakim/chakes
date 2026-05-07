@@ -335,6 +335,7 @@ class Piece:
 
                     # Invert captures
                     if invert_captures:
+                        capture_friend = capture_enemy
                         capture_enemy, capture_none = capture_none, capture_enemy
 
                     # Parse move type
