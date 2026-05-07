@@ -619,15 +619,11 @@ class Board:
                 if b == -1:
                     pieces[i] = 'Queen'
 
-        if n <= 3:
-            b = 0
-        elif n <= 6:
-            b = 1
-        elif n <= 8:
-            b = 2
-        else:
-            b = 3
-        n //= b+1
+        b = \
+            0 if n <= 3 else \
+            1 if n <= 6 else \
+            2 if n <= 8 else \
+            3
 
         for i, piece in enumerate(pieces):
             if piece is None:
@@ -812,3 +808,6 @@ class Board:
         ret += ' '.join([f'\033[33m{str(Pos(x, 0))[0]}' for x in range(self.size_x)])
         ret += '\033[0m'
         return ret
+
+board = Board.chess960(123)
+print(board)
