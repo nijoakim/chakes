@@ -22,7 +22,6 @@ import re
 import random
 from enum import auto, Enum
 from time import monotonic
-from typing import Optional
 from copy import deepcopy
 from dataclasses import dataclass
 
@@ -35,7 +34,7 @@ class Pos:
     x: int
     y: int
 
-    def __init__(self, str_or_x: str|int, y: Optional[int] = None) -> None:
+    def __init__(self, str_or_x: str|int, y: int | None = None) -> None:
         if isinstance(str_or_x, str):
             x = ord(str_or_x[0]) - ord('a')
             y = int(str_or_x[1:]) - 1
@@ -153,7 +152,7 @@ class Piece:
                 return 0
 
     def _is_capture_move(self, pos: Pos) -> bool:
-        piece: Optional[Piece] = self.board.piece_at(pos)
+        piece: Piece | None = self.board.piece_at(pos)
         if piece is None:
             return False
         else:
@@ -175,7 +174,7 @@ class Piece:
         if not self.board.is_pos_within_board(new_pos):
             return set()
 
-        new_piece: Optional[Piece] = self.board.piece_at(new_pos)
+        new_piece: Piece | None = self.board.piece_at(new_pos)
 
         if hops:
             if new_piece is not None:
@@ -225,7 +224,7 @@ class Piece:
             new_pos: Pos,
             info:    str = ''
         ) -> None:
-        other: Optional[Piece]
+        other: Piece | None
 
         match self.name:
             case 'Pawn':
@@ -312,7 +311,7 @@ class Piece:
                 for pos in moves_comp_temp:
                     pattern_temp = pattern
 
-                    match: Optional[re.Match] = None
+                    match: re.Match | None = None
 
                     num_steps_range: range
 
@@ -475,7 +474,7 @@ class Piece:
             moves:      set[Pos],
             check_safe: bool = True,
         ) -> set[Pos]:
-        other: Optional[Piece]
+        other: Piece | None
 
         match self.name:
             case 'Pawn':
@@ -604,7 +603,7 @@ class Board:
 
         board.add_new_piece_row('Pawn', Player.WHITE, '2')
 
-        pieces: list[Optional[str]] = 8*[None]
+        pieces: list[str | None] = 8*[None]
 
         n, b = divmod(n, 4)
         pieces[b*2+1] = 'Bishop'
@@ -671,7 +670,7 @@ class Board:
     def all_pieces(self) -> set[Piece]:
         return set(self.pieces.values())
 
-    def piece_at(self, pos: Pos) -> Optional[Piece]:
+    def piece_at(self, pos: Pos) -> Piece | None:
         return self.pieces.get(pos, None)
 
     def relocate_piece(self, piece: Piece, pos: Pos):
@@ -683,14 +682,14 @@ class Board:
         new_piece: Piece = Piece(name, owner, pos, self)
         self.pieces[pos] = new_piece
 
-    def add_new_piece_row(self, names: str | list[Optional[str]], owner: Player, row: int|str) -> None:
+    def add_new_piece_row(self, names: str | list[str | None], owner: Player, row: int|str) -> None:
         y: int = row if isinstance(row, int) else int(row)-1
 
         for x in range(self.size_x):
             if isinstance(names, str):
                 self.add_new_piece(names, owner, Pos(x, y))
             elif isinstance(names, list):
-                name: Optional[str] = names[x]
+                name: str | None = names[x]
                 if name is not None:
                     self.add_new_piece(name, owner, Pos(x, y))
 
@@ -711,7 +710,7 @@ class Board:
     def symmetry(self) -> None:
         for piece in self.all_pieces():
             pos: Pos = Pos(piece.pos.x, self.size_y-1 - piece.pos.y)
-            new_piece: Optional[Piece] = self.piece_at(pos)
+            new_piece: Piece | None = self.piece_at(pos)
             if new_piece is not None:
                 raise RuntimeError(f'Impossible to make symmetry due to {piece.name} at {piece.pos} and {new_piece.name} at {pos}.')
             self.add_new_piece(piece.name, piece.owner.other(), pos)
@@ -723,7 +722,7 @@ class Board:
             info:       str  = '',
             check_safe: bool = True,
         ) -> None:
-        piece: Optional[Piece] = self.piece_at(pos1)
+        piece: Piece | None = self.piece_at(pos1)
         if piece is None:
             raise ValueError(f'There is no piece at {pos1}.')
         else:
@@ -773,7 +772,7 @@ class Board:
         }
         return attacked_anti_kings != anti_kings
 
-    def winner(self) -> Optional[Player]:
+    def winner(self) -> Player | None:
         for player in (Player.WHITE, Player.BLACK):
             if set.union(*self.all_legal_moves(filter_player = player).values()) == set():
                 # Draw if no kings under attack and all anti kings under attack
@@ -787,7 +786,7 @@ class Board:
 
         return None
 
-    def all_legal_moves(self, filter_player: Optional[Player] = None) -> dict[Pos, set[Pos]]:
+    def all_legal_moves(self, filter_player: Player | None = None) -> dict[Pos, set[Pos]]:
         return {
             piece.pos: piece.legal_moves()
             for piece in self.all_pieces()
@@ -808,6 +807,3 @@ class Board:
         ret += ' '.join([f'\033[33m{str(Pos(x, 0))[0]}' for x in range(self.size_x)])
         ret += '\033[0m'
         return ret
-
-board = Board.chess960(123)
-print(board)

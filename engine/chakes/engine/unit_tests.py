@@ -16,7 +16,6 @@
 # along with Chakes.  If not, see <https://www.gnu.org/licenses/>.
 
 import unittest as ut
-from typing import Optional
 from engine.chakes.engine.engine import *
 
 # Patch piece.get_cooldown to always return 0.0 in order to not have to wait for cooldown unless self._enable_cooldown is True
@@ -31,7 +30,7 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('a1'), Pos('a3'))
         board.move_piece(Pos('a3'), Pos('b3'))
 
-        rook: Optional[Piece] = board.piece_at(Pos('b3'))
+        rook: Piece | None = board.piece_at(Pos('b3'))
         assert rook is not None
 
         self.assertEqual(
@@ -45,7 +44,7 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('b4'), Pos('b5'))
         board.move_piece(Pos('b5'), Pos('b6'))
 
-        pawn: Optional[Piece] = board.piece_at(Pos('b6'))
+        pawn: Piece | None = board.piece_at(Pos('b6'))
         assert pawn is not None
 
         self.assertEqual(
@@ -59,19 +58,19 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('b4'), Pos('b5'))
         board.move_piece(Pos('c7'), Pos('c5'))
 
-        enemy_pawn: Optional[Piece] = board.piece_at(Pos('c5'))
+        enemy_pawn: Piece | None = board.piece_at(Pos('c5'))
         assert enemy_pawn is not None
 
         enemy_pawn._enable_cooldown = True # type: ignore
         board.move_piece(Pos('b5'), Pos('c6'))
 
-        captured_pawn: Optional[Piece] = board.piece_at(Pos('c5'))
+        captured_pawn: Piece | None = board.piece_at(Pos('c5'))
         self.assertIsNone(captured_pawn)
 
     def test_promotion(self) -> None:
         board = Board.orthodox()
 
-        pawn: Optional[Piece] = board.piece_at(Pos('a2'))
+        pawn: Piece | None = board.piece_at(Pos('a2'))
         assert pawn is not None
 
         pawn.move(Pos('a4'))
@@ -80,7 +79,7 @@ class TestPieces(ut.TestCase):
         pawn.move(Pos('b7'))
         pawn.move(Pos('a8'), info = 'Knight')
 
-        knight: Optional[Piece] = board.piece_at(Pos('a8'))
+        knight: Piece | None = board.piece_at(Pos('a8'))
         assert knight is not None
 
         self.assertEqual(
@@ -92,7 +91,7 @@ class TestPieces(ut.TestCase):
         board = Board.orthodox()
         board.move_piece(Pos('b1'), Pos('c3'))
 
-        knight: Optional[Piece] = board.piece_at(Pos('c3'))
+        knight: Piece | None = board.piece_at(Pos('c3'))
         assert knight is not None
 
         self.assertEqual(
@@ -105,7 +104,7 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('d2'), Pos('d3'))
         board.move_piece(Pos('c1'), Pos('e3'))
 
-        bishop: Optional[Piece] = board.piece_at(Pos('e3'))
+        bishop: Piece | None = board.piece_at(Pos('e3'))
         assert bishop is not None
 
         self.assertEqual(
@@ -118,7 +117,7 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('e2'), Pos('e3'))
         board.move_piece(Pos('d1'), Pos('f3'))
 
-        queen: Optional[Piece] = board.piece_at(Pos('f3'))
+        queen: Piece | None = board.piece_at(Pos('f3'))
         assert queen is not None
 
         self.assertEqual(
@@ -137,7 +136,7 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('d7'), Pos('e6'))
         board.move_piece(Pos('e1'), Pos('e2'))
 
-        pawn: Optional[Piece] = board.piece_at(Pos('e3'))
+        pawn: Piece | None = board.piece_at(Pos('e3'))
         assert pawn is not None
 
         self.assertEqual(
@@ -147,7 +146,7 @@ class TestPieces(ut.TestCase):
 
         board.move_piece(Pos('f4'), Pos('e3'))
 
-        king: Optional[Piece] = board.piece_at(Pos('e2'))
+        king: Piece | None = board.piece_at(Pos('e2'))
         assert king is not None
 
         self.assertEqual(
@@ -158,7 +157,7 @@ class TestPieces(ut.TestCase):
     def test_castling(self) -> None:
         board = Board.orthodox()
 
-        queen: Optional[Piece] = board.piece_at(Pos('d1'))
+        queen: Piece | None = board.piece_at(Pos('d1'))
         assert queen is not None
 
         board.move_piece(Pos('b1'), Pos('a3'))
@@ -168,7 +167,7 @@ class TestPieces(ut.TestCase):
         queen.move(Pos('f3'))
         board.move_piece(Pos('f1'), Pos('e2'))
 
-        king: Optional[Piece] = board.piece_at(Pos('e1'))
+        king: Piece | None = board.piece_at(Pos('e1'))
         assert king is not None
 
         self.assertEqual(
@@ -178,7 +177,7 @@ class TestPieces(ut.TestCase):
 
         board.move_piece(Pos('g1'), Pos('h3'))
 
-        knight: Optional[Piece] = board.piece_at(Pos('b8'))
+        knight: Piece | None = board.piece_at(Pos('b8'))
         assert knight is not None
 
         # Attack e1
@@ -239,7 +238,7 @@ class TestPieces(ut.TestCase):
             set(map(Pos, {'c1', 'd1', 'f1', 'g1'})),
         )
 
-        pawn: Optional[Piece] = board.piece_at(Pos('d7'))
+        pawn: Piece | None = board.piece_at(Pos('d7'))
         assert pawn is not None
 
         # Attack with pawn
@@ -273,7 +272,7 @@ class TestPieces(ut.TestCase):
         # Castle
         king.move(Pos('c1'))
 
-        rook: Optional[Piece] = board.piece_at(Pos('d1'))
+        rook: Piece | None = board.piece_at(Pos('d1'))
         assert rook is not None
 
         self.assertEqual(rook.name, 'Rook')
@@ -285,7 +284,7 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('e7'), Pos('b4'))
         board.move_piece(Pos('b4'), Pos('d2'))
 
-        queen: Optional[Piece] = board.piece_at(Pos('d2'))
+        queen: Piece | None = board.piece_at(Pos('d2'))
         assert queen is not None
 
         self.assertIsNone(board.winner())
@@ -313,7 +312,7 @@ class TestPieces(ut.TestCase):
         board = Board.orthodox()
         board.move_piece(Pos('e7'), Pos('e6'))
 
-        queen: Optional[Piece] = board.piece_at(Pos('d8'))
+        queen: Piece | None = board.piece_at(Pos('d8'))
         assert queen is not None
 
         # Capture all pieces
@@ -334,7 +333,7 @@ class TestPieces(ut.TestCase):
         queen.move(Pos('a1'))
         queen.move(Pos('a2'))
 
-        king: Optional[Piece] = board.piece_at(Pos('e1'))
+        king: Piece | None = board.piece_at(Pos('e1'))
         assert king is not None
 
         # Move King to corner
@@ -354,7 +353,7 @@ class TestPieces(ut.TestCase):
         board = Board.orthodox()
         board.add_new_piece('Nightrider', Player.WHITE, Pos('b1'))
 
-        nightrider: Optional[Piece] = board.piece_at(Pos('b1'))
+        nightrider: Piece | None = board.piece_at(Pos('b1'))
         assert nightrider is not None
 
         self.assertEqual(
@@ -370,7 +369,7 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('d4'), Pos('d5'))
         board.move_piece(Pos('e7'), Pos('e6'))
 
-        anti_king: Optional[Piece] = board.piece_at(Pos('d6'))
+        anti_king: Piece | None = board.piece_at(Pos('d6'))
         assert anti_king is not None
 
         self.assertEqual(
@@ -381,7 +380,7 @@ class TestPieces(ut.TestCase):
     def test_anti_checkmate(self) -> None:
         board = Board.anti_king_chess()
 
-        anti_king: Optional[Piece] = board.piece_at(Pos('d6'))
+        anti_king: Piece | None = board.piece_at(Pos('d6'))
         assert anti_king is not None
 
         # Move pawns
@@ -419,7 +418,7 @@ class TestPieces(ut.TestCase):
         board.add_new_piece('Grasshopper', Player.WHITE, Pos('a5'))
         board.move_piece(Pos('e7'), Pos('e5'))
 
-        grasshopper: Optional[Piece] = board.piece_at(Pos('a5'))
+        grasshopper: Piece | None = board.piece_at(Pos('a5'))
         assert grasshopper is not None
 
         self.assertEqual(
@@ -433,7 +432,7 @@ class TestPieces(ut.TestCase):
         board.add_new_piece('Camel', Player.WHITE, Pos('b1'))
         board.move_piece(Pos('b1'), Pos('c4'))
 
-        camel: Optional[Piece] = board.piece_at(Pos('c4'))
+        camel: Piece | None = board.piece_at(Pos('c4'))
         assert camel is not None
 
         self.assertEqual(
@@ -444,7 +443,7 @@ class TestPieces(ut.TestCase):
     def test_berolina_pawn(self) -> None:
         board = Board.berolina_chess()
 
-        berolina_pawn: Optional[Piece] = board.piece_at(Pos('a2'))
+        berolina_pawn: Piece | None = board.piece_at(Pos('a2'))
         assert berolina_pawn is not None
 
         berolina_pawn.move(Pos('c4'))
@@ -459,7 +458,7 @@ class TestPieces(ut.TestCase):
         berolina_pawn.move(Pos('c7'))
         berolina_pawn.move(Pos('c8'), info = 'Knight')
 
-        knight: Optional[Piece] = board.piece_at(Pos('c8'))
+        knight: Piece | None = board.piece_at(Pos('c8'))
         assert knight is not None
 
         self.assertEqual(
@@ -472,7 +471,7 @@ class TestPieces(ut.TestCase):
         board.remove_piece_at(Pos('b1'))
         board.add_new_piece('Chameleon', Player.WHITE, Pos('b1'))
 
-        chameleon: Optional[Piece] = board.piece_at(Pos('b1'))
+        chameleon: Piece | None = board.piece_at(Pos('b1'))
         assert chameleon is not None
 
         # Is knight
@@ -515,7 +514,7 @@ class TestPieces(ut.TestCase):
         board.move_piece(Pos('b2'), Pos('b4'))
         board.move_piece(Pos('a1'), Pos('b3'))
 
-        gryphon: Optional[Piece] = board.piece_at(Pos('b3'))
+        gryphon: Piece | None = board.piece_at(Pos('b3'))
         assert gryphon is not None
 
         self.assertEqual(
@@ -526,7 +525,7 @@ class TestPieces(ut.TestCase):
     def test_knighted_chess(self) -> None:
         board = Board.knighted_chess()
 
-        archbishop: Optional[Piece] = board.piece_at(Pos('c1'))
+        archbishop: Piece | None = board.piece_at(Pos('c1'))
         assert archbishop is not None
 
         archbishop.move(Pos('d3'))
@@ -536,7 +535,7 @@ class TestPieces(ut.TestCase):
             set(map(Pos, {'c4', 'b5', 'a6', 'e4', 'f5', 'g6', 'h7', 'b4', 'c5', 'e5', 'f4', 'c1'})),
         )
 
-        chancellor: Optional[Piece] = board.piece_at(Pos('h1'))
+        chancellor: Piece | None = board.piece_at(Pos('h1'))
         assert chancellor is not None
 
         chancellor.move(Pos('g3'))
@@ -552,7 +551,7 @@ class TestPieces(ut.TestCase):
         board.remove_piece_at(Pos('a1'))
         board.add_new_piece('Ghost Rook', Player.WHITE, Pos('a1'))
 
-        ghost_rook: Optional[Piece] = board.piece_at(Pos('a1'))
+        ghost_rook: Piece | None = board.piece_at(Pos('a1'))
         assert ghost_rook is not None
 
         self.assertEqual(
@@ -566,7 +565,7 @@ class TestPieces(ut.TestCase):
         board.remove_piece_at(Pos('c1'))
         board.add_new_piece('Ghost Bishop', Player.WHITE, Pos('c1'))
 
-        ghost_bishop: Optional[Piece] = board.piece_at(Pos('c1'))
+        ghost_bishop: Piece | None = board.piece_at(Pos('c1'))
         assert ghost_bishop is not None
 
         ghost_bishop.move(Pos('a3'))
@@ -582,7 +581,7 @@ class TestPieces(ut.TestCase):
         board.remove_piece_at(Pos('d1'))
         board.add_new_piece('Ghost Queen', Player.WHITE, Pos('d1'))
 
-        ghost_queen: Optional[Piece] = board.piece_at(Pos('d1'))
+        ghost_queen: Piece | None = board.piece_at(Pos('d1'))
         assert ghost_queen is not None
 
         self.assertEqual(
@@ -596,7 +595,7 @@ class TestPieces(ut.TestCase):
         board.remove_piece_at(Pos('d1'))
         board.add_new_piece('Alibaba', Player.WHITE, Pos('d1'))
 
-        alibaba: Optional[Piece] = board.piece_at(Pos('d1'))
+        alibaba: Piece | None = board.piece_at(Pos('d1'))
         assert alibaba is not None
 
         self.assertEqual(
@@ -610,7 +609,7 @@ class TestPieces(ut.TestCase):
         board.remove_piece_at(Pos('c1'))
         board.add_new_piece('Alfil', Player.WHITE, Pos('c1'))
 
-        alfil: Optional[Piece] = board.piece_at(Pos('c1'))
+        alfil: Piece | None = board.piece_at(Pos('c1'))
         assert alfil is not None
 
         self.assertEqual(
@@ -624,7 +623,7 @@ class TestPieces(ut.TestCase):
         board.remove_piece_at(Pos('a1'))
         board.add_new_piece('Dabbaba', Player.WHITE, Pos('a1'))
 
-        dabbaba: Optional[Piece] = board.piece_at(Pos('a1'))
+        dabbaba: Piece | None = board.piece_at(Pos('a1'))
         assert dabbaba is not None
 
         self.assertEqual(
@@ -642,9 +641,9 @@ class TestPieces(ut.TestCase):
         board.add_new_piece('Skip Bishop', Player.WHITE, Pos('c1'))
         board.add_new_piece('Skip Queen',  Player.WHITE, Pos('d1'))
 
-        skip_rook:   Optional[Piece] = board.piece_at(Pos('a1'))
-        skip_bishop: Optional[Piece] = board.piece_at(Pos('c1'))
-        skip_queen:  Optional[Piece] = board.piece_at(Pos('d1'))
+        skip_rook:   Piece | None = board.piece_at(Pos('a1'))
+        skip_bishop: Piece | None = board.piece_at(Pos('c1'))
+        skip_queen:  Piece | None = board.piece_at(Pos('d1'))
         assert skip_rook   is not None
         assert skip_bishop is not None
         assert skip_queen  is not None
