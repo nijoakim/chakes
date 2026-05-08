@@ -4,7 +4,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 from chakes.backend.models import GameDef, MoveRequest, _DEFAULT_PIECE_NAMES, GAME_TYPES
-from chakes.engine.game_engine import piece_defs as engine_piece_defs
+from chakes.engine.engine import piece_defs as engine_piece_defs
 from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
 
 router = APIRouter(prefix="/api")

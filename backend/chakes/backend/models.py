@@ -5,10 +5,10 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from chakes.engine.game_engine import GameState, Piece as EnginePiece, piece_defs as engine_piece_defs
+from chakes.engine.engine import Board as GameState, Piece as EnginePiece, Pos, piece_defs as engine_piece_defs
 
 GAME_TYPES: dict[str, tuple[str, Callable[[], GameState]]] = {
-    "orthodox":      ("Orthodox",      GameState.default),
+    "orthodox":      ("Orthodox",      GameState.orthodox),
     "chess960":      ("Chess 960",     GameState.chess960),
     "berolina":      ("Berolina",      GameState.berolina_chess),
     "anti_king":     ("Anti-King",     GameState.anti_king_chess),
@@ -71,14 +71,12 @@ class GameDef(BaseModel):
 
     def get_piece_defs(self, state: "GameState | None" = None) -> list[PieceDef]:
         if state is not None:
-            # Derive unique piece names from the actual board
             seen: set[str] = set()
             names: list[str] = []
-            for col in state.board:
-                for piece in col:
-                    if piece is not None and piece.name not in seen:
-                        seen.add(piece.name)
-                        names.append(piece.name)
+            for piece in state.all_pieces():
+                if piece.name not in seen:
+                    seen.add(piece.name)
+                    names.append(piece.name)
         else:
             names = self.piece_defs if self.piece_defs else _DEFAULT_PIECE_NAMES
         cooldowns = self.cooldowns or {}
@@ -113,19 +111,16 @@ class ActiveGame:
         self.timestamp_end: datetime | None = None
 
         if game_def.upside_down:
-            for col in self.state.board:
-                for piece in col:
-                    if piece is not None:
-                        piece.owner = piece.owner.other()
+            for piece in self.state.all_pieces():
+                piece.owner = piece.owner.other()
 
         if game_def.cooldowns:
-            for col in self.state.board:
-                for piece in col:
-                    if piece is not None and piece.name in game_def.cooldowns:
-                        piece.value = int(game_def.cooldowns[piece.name])
+            for piece in self.state.all_pieces():
+                if piece.name in game_def.cooldowns:
+                    piece.value = int(game_def.cooldowns[piece.name])
 
     def _get_piece(self, c: int, r: int) -> EnginePiece | None:
-        return self.state.board[c][7 - r]
+        return self.state.piece_at(Pos(c, 7 - r))
 
     def serialize_board(self) -> list[list[dict | None]]:
         return [
@@ -138,7 +133,6 @@ class ActiveGame:
         ]
 
     def serialize_piece_names(self) -> list[str]:
-        """Return list of piece names for each unique piece type on the board."""
         return [pd.name for pd in self.game_def.get_piece_defs(self.state)]
 
     def serialize_max_cooldowns(self) -> dict[str, float]:
@@ -151,12 +145,11 @@ class ActiveGame:
         ]
 
     def get_legal_moves(self, r: int, c: int) -> list[list[int]]:
-        """Return legal moves for the piece at board position (r, c) as [[r, c], ...]."""
         piece = self._get_piece(c, r)
         if piece is None:
             return []
         engine_moves = piece.legal_moves()
-        return [[7 - ey, ex] for ex, ey in engine_moves]
+        return [[7 - pos.y, pos.x] for pos in engine_moves]
 
     def to_game(self) -> Game:
         pieces = []
