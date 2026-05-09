@@ -31,7 +31,10 @@ export class GameSocket {
   }
 
   on<E extends keyof GameSocketEvents>(event: E, listener: Listener<E>): () => void {
-    const set = (this.listeners[event] ??= new Set()) as Set<Listener<E>>
+    if (!this.listeners[event]) {
+      this.listeners[event] = new Set() as never
+    }
+    const set = this.listeners[event] as Set<Listener<E>>
     set.add(listener)
     return () => set.delete(listener)
   }

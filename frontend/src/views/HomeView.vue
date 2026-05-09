@@ -1,52 +1,26 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import * as api from '../services/api'
+import { useLobbyStore } from '../stores/lobby'
+import LobbyForm from '../components/lobby/LobbyForm.vue'
 
 const router = useRouter()
-const joinLobbyName = ref('')
+const lobby = useLobbyStore()
 
-async function createLobby() {
-  const customName = joinLobbyName.value.trim() || undefined
-  const name = await api.createLobby(customName)
+async function onCreate(desiredName: string | undefined) {
+  const name = await lobby.create(desiredName)
   router.push({ name: 'lobby', params: { name } })
 }
 
-function joinLobby() {
-  const name = joinLobbyName.value.trim()
-  if (name) router.push({ name: 'lobby', params: { name } })
+function onJoin(name: string) {
+  router.push({ name: 'lobby', params: { name } })
 }
 </script>
 
 <template>
   <section id="center">
-    <div class="lobby">
-      <button @click="createLobby">
-        Create lobby
-      </button>
-      <div class="join">
-        <input
-          v-model="joinLobbyName"
-          placeholder="Lobby name"
-          @keyup.enter="joinLobby"
-        >
-        <button @click="joinLobby">
-          Join lobby
-        </button>
-      </div>
-    </div>
+    <LobbyForm
+      @create="onCreate"
+      @join="onJoin"
+    />
   </section>
 </template>
-
-<style scoped>
-.lobby {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-}
-.join {
-  display: flex;
-  gap: 8px;
-}
-</style>
