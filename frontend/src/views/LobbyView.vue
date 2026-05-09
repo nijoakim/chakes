@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '../stores/catalog'
 import { useGameStore } from '../stores/game'
@@ -18,6 +18,8 @@ const {
   board, cooldowns, maxCooldowns, pieceNames, playerColor, gameId, winner,
   selected, legalMoves, selectedPromotion,
 } = storeToRefs(game)
+
+const boardCols = computed(() => board.value[0]?.length ?? 8)
 
 type StartPayload = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
 let lastSettings: StartPayload | null = null
@@ -78,6 +80,7 @@ function copyLobbyName() {
       :piece-names="pieceNames"
       :selected="selectedPromotion"
       :player-color="playerColor"
+      :cols="boardCols"
       @select="(n) => (game.selectedPromotion = n)"
     />
     <ChakesBoard

@@ -2,10 +2,11 @@
 import PieceSprite from './PieceSprite.vue'
 import type { Color } from '../../services/api'
 
-defineProps<{
+const props = defineProps<{
   pieceNames: string[]
   selected: string
   playerColor: Color
+  cols?: number
 }>()
 
 const emit = defineEmits<{
@@ -14,7 +15,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="promotion-bar">
+  <div
+    class="promotion-bar"
+    :style="{ '--promo-cols': props.cols ?? 8 }"
+  >
     <span class="promotion-label">Promote to</span>
     <div class="promotion-squares">
       <div
@@ -38,7 +42,7 @@ const emit = defineEmits<{
 
 <style scoped>
 .promotion-bar {
-  --sq: min(64px, calc((100vw - 44px) / 8));
+  --sq: min(64px, calc((100vw - 44px) / var(--promo-cols, 8)));
   display: flex;
   flex-direction: column;
   align-items: center;

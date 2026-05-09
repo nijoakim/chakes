@@ -10,11 +10,13 @@ import wAntiKing    from './white/anti-king.svg'
 import wAntiPawn    from './white/anti-pawn.svg'
 import wAntiQueen   from './white/anti-queen.svg'
 import wAmazon      from './white/amazon.svg'
+import wArchbishop  from './white/archbishop.svg'
 import wChancellor  from './white/chancellor.svg'
 import wCommoner    from './white/commoner.svg'
 import wDragon      from './white/dragon.svg'
 import wFool        from './white/fool.svg'
 import wShip        from './white/ship.svg'
+import wUnicorn     from './white/unicorn.svg'
 import wZebra       from './white/zebra.svg'
 // Orthodox — black
 import bKing   from './black/king.svg'
@@ -28,11 +30,13 @@ import bAntiKing    from './black/anti-king.svg'
 import bAntiPawn    from './black/anti-pawn.svg'
 import bAntiQueen   from './black/anti-queen.svg'
 import bAmazon      from './black/amazon.svg'
+import bArchbishop  from './black/archbishop.svg'
 import bChancellor  from './black/chancellor.svg'
 import bCommoner    from './black/commoner.svg'
 import bDragon      from './black/dragon.svg'
 import bFool        from './black/fool.svg'
 import bShip        from './black/ship.svg'
+import bUnicorn     from './black/unicorn.svg'
 import bZebra       from './black/zebra.svg'
 
 export type PieceImages = { white: string; black: string }
@@ -49,6 +53,8 @@ export const pieceImages: Partial<Record<string, PieceImages>> = {
   Pawn:            { white: wPawn,   black: bPawn   },
   // Fairy
   Amazon:          { white: wAmazon,     black: bAmazon     }, // A = Amazon = Q+N
+  Archbishop:      { white: wArchbishop, black: bArchbishop }, // A = Archbishop = B+N
+  Chancellor:      { white: wChancellor, black: bChancellor }, // C = Chancellor = R+N
   'Anti-King':     { white: wFool,       black: bFool       }, // Fool = seeks check
   'Berolina Pawn': { white: wAntiPawn,   black: bAntiPawn   }, // h = pawn variant
   Camel:           { white: wZebra,      black: bZebra      }, // Z = extended leaper family
@@ -56,6 +62,6 @@ export const pieceImages: Partial<Record<string, PieceImages>> = {
   Ferz:            { white: wAntiKing,   black: bAntiKing   }, // f = Ferz in Wikimedia
   Grasshopper:     { white: wAntiQueen,  black: bAntiQueen  }, // g = Grasshopper
   Man:             { white: wCommoner,   black: bCommoner   }, // x = Commoner = non-royal king
-  Nightrider:      { white: wChancellor, black: bChancellor }, // c = Chancellor, knight-based
+  Nightrider:      { white: wUnicorn,    black: bUnicorn    }, // knight-based slider
   Wazir:           { white: wShip,       black: bShip       }, // s = Ship, orthogonal mover
 }

@@ -47,7 +47,10 @@ function onSquareRightClick(displayR: number, displayC: number, event: MouseEven
 </script>
 
 <template>
-  <div class="board">
+  <div
+    class="board"
+    :style="{ '--chakes-cols': displayBoard[0]?.length ?? 8 }"
+  >
     <div
       v-for="(row, r) in displayBoard"
       :key="r"
@@ -71,7 +74,7 @@ function onSquareRightClick(displayR: number, displayC: number, event: MouseEven
 
 <style scoped>
 .board {
-  --chakes-sq: min(64px, calc((100vw - 44px) / 8));
+  --chakes-sq: min(64px, calc((100vw - 44px) / var(--chakes-cols, 8)));
   display: inline-block;
   border: 2px solid #333;
 }

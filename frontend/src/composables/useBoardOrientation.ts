@@ -21,11 +21,17 @@ export function useBoardOrientation(
   })
 
   function displayToBoard(displayR: number, displayC: number): [number, number] {
-    return playerColor.value === 'black' ? [7 - displayR, 7 - displayC] : [displayR, displayC]
+    if (playerColor.value !== 'black') return [displayR, displayC]
+    const rows = board.value.length
+    const cols = board.value[0]?.length ?? 0
+    return [rows - 1 - displayR, cols - 1 - displayC]
   }
 
   function boardToDisplay(r: number, c: number): [number, number] {
-    return playerColor.value === 'black' ? [7 - r, 7 - c] : [r, c]
+    if (playerColor.value !== 'black') return [r, c]
+    const rows = board.value.length
+    const cols = board.value[0]?.length ?? 0
+    return [rows - 1 - r, cols - 1 - c]
   }
 
   return { displayBoard, displayCooldowns, displayToBoard, boardToDisplay }

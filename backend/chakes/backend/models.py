@@ -12,6 +12,7 @@ GAME_TYPES: dict[str, tuple[str, Callable[[], GameState]]] = {
     "chess960":      ("Chess 960",     GameState.chess960),
     "berolina":      ("Berolina",      GameState.berolina_chess),
     "anti_king":     ("Anti-King",     GameState.anti_king_chess),
+    "knighted":      ("Knighted",      GameState.knighted_chess),
 }
 
 
@@ -120,16 +121,16 @@ class ActiveGame:
                     piece.value = int(game_def.cooldowns[piece.name])
 
     def _get_piece(self, c: int, r: int) -> EnginePiece | None:
-        return self.state.piece_at(Pos(c, 7 - r))
+        return self.state.piece_at(Pos(c, self.state.size_y - 1 - r))
 
     def serialize_board(self) -> list[list[dict | None]]:
         return [
             [
                 {"name": p.name, "owner": "white" if p.owner.name == "WHITE" else "black"}
                 if (p := self._get_piece(c, r)) else None
-                for c in range(8)
+                for c in range(self.state.size_x)
             ]
-            for r in range(8)
+            for r in range(self.state.size_y)
         ]
 
     def serialize_piece_names(self) -> list[str]:
@@ -140,8 +141,8 @@ class ActiveGame:
 
     def serialize_cooldowns(self) -> list[list[float]]:
         return [
-            [p.get_cooldown() if (p := self._get_piece(c, r)) else 0.0 for c in range(8)]
-            for r in range(8)
+            [p.get_cooldown() if (p := self._get_piece(c, r)) else 0.0 for c in range(self.state.size_x)]
+            for r in range(self.state.size_y)
         ]
 
     def get_legal_moves(self, r: int, c: int) -> list[list[int]]:
@@ -149,12 +150,12 @@ class ActiveGame:
         if piece is None:
             return []
         engine_moves = piece.legal_moves()
-        return [[7 - pos.y, pos.x] for pos in engine_moves]
+        return [[self.state.size_y - 1 - pos.y, pos.x] for pos in engine_moves]
 
     def to_game(self) -> Game:
         pieces = []
-        for r in range(8):
-            for c in range(8):
+        for r in range(self.state.size_y):
+            for c in range(self.state.size_x):
                 p = self._get_piece(c, r)
                 if p:
                     pieces.append(Piece(
