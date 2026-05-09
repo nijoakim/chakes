@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, shallowRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '../stores/catalog'
 import { useGameStore } from '../stores/game'
@@ -8,6 +8,8 @@ import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 import ChakesBoard from '../components/chess/ChakesBoard.vue'
 import PromotionBar from '../components/chess/PromotionBar.vue'
 import GameSetup from '../components/lobby/GameSetup.vue'
+
+type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
 
 const props = defineProps<{ name: string }>()
 
@@ -20,9 +22,7 @@ const {
 } = storeToRefs(game)
 
 const boardCols = computed(() => board.value[0]?.length ?? 8)
-
-type StartPayload = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
-let lastSettings: StartPayload | null = null
+const lastSettings = shallowRef<Settings | undefined>(undefined)
 
 onMounted(async () => {
   lobby.setCurrent(props.name)
@@ -37,13 +37,13 @@ onUnmounted(() => {
 
 useKeyboardShortcuts({ Escape: () => game.deselect() })
 
-async function onStartGame(payload: StartPayload) {
-  lastSettings = payload
+async function onStartGame(payload: Settings) {
+  lastSettings.value = payload
   await game.startNewGame(payload.gameType, payload.cooldowns, payload.upsideDown)
 }
 
-async function onNewGame() {
-  if (lastSettings) await onStartGame(lastSettings)
+function onNewGame() {
+  game.resetGameState()
 }
 
 function copyLobbyName() {
@@ -66,6 +66,7 @@ function copyLobbyName() {
 
     <GameSetup
       v-if="!gameId && playerColor === 'white'"
+      :initial-settings="lastSettings"
       @start="onStartGame"
     />
     <p
@@ -102,7 +103,7 @@ function copyLobbyName() {
       {{ winner === 'white' ? '♔ White' : '♚ Black' }} won!
     </div>
     <button
-      v-if="playerColor === 'white' && lastSettings"
+      v-if="playerColor === 'white' && gameId"
       class="new-game"
       @click="onNewGame"
     >

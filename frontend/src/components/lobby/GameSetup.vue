@@ -3,22 +3,21 @@ import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '../../stores/catalog'
 
-const emit = defineEmits<{
-  (e: 'start', payload: {
-    gameType: string
-    cooldowns: Record<string, number>
-    upsideDown: boolean
-  }): void
-}>()
+type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
+
+const props = defineProps<{ initialSettings?: Settings }>()
+
+const emit = defineEmits<{ (e: 'start', payload: Settings): void }>()
 
 const catalog = useCatalogStore()
 const { pieceDefs, gameTypes } = storeToRefs(catalog)
 
-const selectedGameType = ref('orthodox')
-const upsideDown = ref(false)
-const cooldownSettings = ref<Record<string, number>>({})
+const selectedGameType = ref(props.initialSettings?.gameType ?? 'orthodox')
+const upsideDown = ref(props.initialSettings?.upsideDown ?? false)
+const cooldownSettings = ref<Record<string, number>>(props.initialSettings?.cooldowns ?? {})
 
 watch(pieceDefs, (defs) => {
+  if (props.initialSettings) return
   cooldownSettings.value = Object.fromEntries(
     defs.map((p) => [p.name, p.default_cooldown])
   )
