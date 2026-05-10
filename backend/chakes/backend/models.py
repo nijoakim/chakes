@@ -112,8 +112,7 @@ class ActiveGame:
         self.timestamp_end: datetime | None = None
 
         if game_def.upside_down:
-            for piece in self.state.all_pieces():
-                piece.owner = piece.owner.other()
+            self.state.upside_down()
 
         if game_def.cooldowns:
             for piece in self.state.all_pieces():
