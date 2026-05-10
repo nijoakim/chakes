@@ -101,11 +101,11 @@ class ChakesService:
         await self._connections.broadcast(lobby_name, self._game_state_msg(game))
         return game
 
-    def get_legal_moves(self, lobby_name: str, game_id: uuid.UUID, r: int, c: int) -> list[list[int]]:
+    def get_legal_moves(self, lobby_name: str, game_id: uuid.UUID, pos: Pos) -> list[list[int]]:
         lobby = self._lobbies[lobby_name]
         if not lobby.game or lobby.game.id != game_id:
             raise ValueError("Game not found")
-        return lobby.game.get_legal_moves(r, c)
+        return lobby.game.get_legal_moves(pos)
 
     async def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> bool:
         lobby = self._lobbies[lobby_name]
@@ -113,7 +113,7 @@ class ChakesService:
             raise ValueError("Game not found")
         game = lobby.game
         try:
-            game.state.move_piece(Pos(move.from_c, 7 - move.from_r), Pos(move.to_c, 7 - move.to_r), info=move.promotion or '')
+            game.state.move_piece(move.src, move.dst, info=move.promotion or '')
         except ValueError:
             return False
         await self._connections.broadcast(lobby_name, self._game_state_msg(game))

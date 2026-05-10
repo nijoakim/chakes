@@ -4,7 +4,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 from chakes.backend.models import GameDef, MoveRequest, _DEFAULT_PIECE_NAMES, GAME_TYPES
-from chakes.engine.engine import piece_defs as engine_piece_defs
+from chakes.engine.engine import Pos, piece_defs as engine_piece_defs
 from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
 
 router = APIRouter(prefix="/api")
@@ -60,7 +60,7 @@ async def game_create(name: str, game_def: GameDef | None = None):
 
 @router.get("/lobby/{name}/game/{game_id}/legal-moves")
 def game_legal_moves(name: str, game_id: uuid.UUID, r: int, c: int):
-    moves = chakes.get_legal_moves(name, game_id, r, c)
+    moves = chakes.get_legal_moves(name, game_id, Pos(c, r))
     return {"moves": moves}
 
 

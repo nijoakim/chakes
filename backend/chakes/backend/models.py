@@ -40,10 +40,8 @@ def generate_lobby_name() -> str:
 
 
 class MoveRequest(BaseModel):
-    from_r: int
-    from_c: int
-    to_r: int
-    to_c: int
+    src : Pos
+    dst : Pos
     promotion: str | None = None
 
 
@@ -56,8 +54,7 @@ class PieceDef(BaseModel):
 class Piece(BaseModel):
     name: str
     owner: str  # "white" or "black"
-    row: int
-    col: int
+    pos: Pos
     cooldown: float
 
 
@@ -119,14 +116,14 @@ class ActiveGame:
                 if piece.name in game_def.cooldowns:
                     piece.value = int(game_def.cooldowns[piece.name])
 
-    def _get_piece(self, c: int, r: int) -> EnginePiece | None:
-        return self.state.piece_at(Pos(c, self.state.size_y - 1 - r))
+    def _get_piece(self, pos: Pos) -> EnginePiece | None:
+        return self.state.piece_at(pos)
 
     def serialize_board(self) -> list[list[dict | None]]:
         return [
             [
                 {"name": p.name, "owner": "white" if p.owner.name == "WHITE" else "black"}
-                if (p := self._get_piece(c, r)) else None
+                if (p := self._get_piece(Pos(c, r))) else None
                 for c in range(self.state.size_x)
             ]
             for r in range(self.state.size_y)
@@ -140,28 +137,28 @@ class ActiveGame:
 
     def serialize_cooldowns(self) -> list[list[float]]:
         return [
-            [p.get_cooldown() if (p := self._get_piece(c, r)) else 0.0 for c in range(self.state.size_x)]
+            [p.get_cooldown() if (p := self._get_piece(Pos(c, r))) else 0.0 for c in range(self.state.size_x)]
             for r in range(self.state.size_y)
         ]
 
-    def get_legal_moves(self, r: int, c: int) -> list[list[int]]:
-        piece = self._get_piece(c, r)
+    def get_legal_moves(self, pos: Pos) -> list[list[int]]:
+        piece = self._get_piece(pos)
         if piece is None:
             return []
         engine_moves = piece.legal_moves()
-        return [[self.state.size_y - 1 - pos.y, pos.x] for pos in engine_moves]
+        return [[pos.y, pos.x] for pos in engine_moves]
 
     def to_game(self) -> Game:
         pieces = []
         for r in range(self.state.size_y):
             for c in range(self.state.size_x):
-                p = self._get_piece(c, r)
+                pos = Pos(c, r)
+                p = self._get_piece(pos)
                 if p:
                     pieces.append(Piece(
                         name=p.name,
                         owner="white" if p.owner.name == "WHITE" else "black",
-                        row=r,
-                        col=c,
+                        pos=pos,
                         cooldown=p.get_cooldown(),
                     ))
         return Game(
@@ -185,7 +182,7 @@ class Lobby:
         if token and token in self._token_colors:
             return self._token_colors[token]
         taken = set(self._token_colors.values())
-        color = next((s for s in self._SLOTS if s not in taken), "black")
+        color = next((s for s in self._SLOTS if s not in taken), "spectator")
         if token:
             self._token_colors[token] = color
         return color
