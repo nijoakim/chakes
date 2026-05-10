@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from chakes.engine.engine import Board as GameState, Piece as EnginePiece, Pos, piece_defs as engine_piece_defs
+from chakes.engine.engine import Board as GameState, Piece as EnginePiece, Pos as EnginePos, piece_defs as engine_piece_defs
 
 GAME_TYPES: dict[str, tuple[str, Callable[[], GameState]]] = {
     "orthodox":      ("Orthodox",      GameState.orthodox),
@@ -38,6 +38,9 @@ def generate_lobby_name() -> str:
 
 # --- Pydantic models (data transfer) ---
 
+class Pos(BaseModel):
+    x: int
+    y: int
 
 class MoveRequest(BaseModel):
     src : Pos
@@ -117,13 +120,13 @@ class ActiveGame:
                     piece.value = int(game_def.cooldowns[piece.name])
 
     def _get_piece(self, pos: Pos) -> EnginePiece | None:
-        return self.state.piece_at(pos)
+        return self.state.piece_at(EnginePos(pos.x, pos.y))
 
     def serialize_board(self) -> list[list[dict | None]]:
         return [
             [
                 {"name": p.name, "owner": "white" if p.owner.name == "WHITE" else "black"}
-                if (p := self._get_piece(Pos(c, r))) else None
+                if (p := self._get_piece(Pos(x=c, y=r))) else None
                 for c in range(self.state.size_x)
             ]
             for r in range(self.state.size_y)
@@ -137,7 +140,7 @@ class ActiveGame:
 
     def serialize_cooldowns(self) -> list[list[float]]:
         return [
-            [p.get_cooldown() if (p := self._get_piece(Pos(c, r))) else 0.0 for c in range(self.state.size_x)]
+            [p.get_cooldown() if (p := self._get_piece(Pos(x=c, y=r))) else 0.0 for c in range(self.state.size_x)]
             for r in range(self.state.size_y)
         ]
 
@@ -152,7 +155,7 @@ class ActiveGame:
         pieces = []
         for r in range(self.state.size_y):
             for c in range(self.state.size_x):
-                pos = Pos(c, r)
+                pos = Pos(x=c, y=r)
                 p = self._get_piece(pos)
                 if p:
                     pieces.append(Piece(

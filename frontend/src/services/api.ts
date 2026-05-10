@@ -69,7 +69,7 @@ export async function sendMove(
   await fetch(`/api/lobby/${lobbyName}/game/${gameId}/move`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from_r: fromR, from_c: fromC, to_r: toR, to_c: toC, promotion }),
+    body: JSON.stringify({ src: { x: fromC, y: fromR }, dst: { x: toC, y: toR }, promotion }),
   })
 }
 

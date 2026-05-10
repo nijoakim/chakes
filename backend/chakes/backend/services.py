@@ -7,9 +7,10 @@ from chakes.backend.models import (
     GameDef,
     Lobby,
     MoveRequest,
+    Pos,
     generate_lobby_name,
 )
-from chakes.engine.engine import Pos
+from chakes.engine.engine import Pos as EnginePos
 
 
 class ConnectionManager:
@@ -113,7 +114,7 @@ class ChakesService:
             raise ValueError("Game not found")
         game = lobby.game
         try:
-            game.state.move_piece(move.src, move.dst, info=move.promotion or '')
+            game.state.move_piece(EnginePos(move.src.x, move.src.y), EnginePos(move.dst.x, move.dst.y), info=move.promotion or '')
         except ValueError:
             return False
         await self._connections.broadcast(lobby_name, self._game_state_msg(game))
