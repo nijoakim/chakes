@@ -16,19 +16,10 @@ export const useGameStore = defineStore('game', () => {
   const gameId = ref<string | null>(null)
   const winner = ref<Color | null>(null)
 
-  // --- Live cooldowns: derived from server snapshot + elapsed time ---
+  // --- Cooldowns: raw server snapshot; CSS transitions handle visual decay ---
   const cooldowns = ref<Cooldowns>([])
   let serverCooldowns: Cooldowns = []
   let serverCooldownTime = 0
-  let rafId = 0
-
-  function tickCooldowns() {
-    const elapsed = (performance.now() - serverCooldownTime) / 1000
-    cooldowns.value = serverCooldowns.map((row) =>
-      row.map((cd) => Math.max(cd - elapsed, 0)),
-    )
-    rafId = requestAnimationFrame(tickCooldowns)
-  }
 
   // --- UI selection state (lives here so it's cleared in one place) ---
   const selected = ref<[number, number] | null>(null)
@@ -51,6 +42,7 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('cooldowns', (c) => {
         serverCooldowns = c
         serverCooldownTime = performance.now()
+        cooldowns.value = c
       }),
       gameSocket.on('maxCooldowns', (mc) => { maxCooldowns.value = mc }),
       gameSocket.on('pieceNames', (names) => {
@@ -64,16 +56,12 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('gameId', (id) => { gameId.value = id }),
       gameSocket.on('winner', (w) => { winner.value = w }),
     ]
-
-    rafId = requestAnimationFrame(tickCooldowns)
   }
 
   function disconnect(): void {
     unsubscribers.forEach((u) => u())
     unsubscribers = []
     gameSocket.disconnect()
-    cancelAnimationFrame(rafId)
-    rafId = 0
     currentLobby = null
     resetGameState()
   }
@@ -82,6 +70,7 @@ export const useGameStore = defineStore('game', () => {
     board.value = []
     cooldowns.value = []
     serverCooldowns = []
+    serverCooldownTime = 0
     gameId.value = null
     winner.value = null
     selected.value = null
@@ -119,7 +108,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function isOnCooldown(r: number, c: number): boolean {
-    return (cooldowns.value[r]?.[c] ?? 0) > 0
+    const elapsed = (performance.now() - serverCooldownTime) / 1000
+    return (serverCooldowns[r]?.[c] ?? 0) - elapsed > 0
   }
 
   async function attemptMove(toR: number, toC: number): Promise<void> {

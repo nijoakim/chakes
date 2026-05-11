@@ -1,21 +1,34 @@
+<!--
+  ChakesSquare — a single board square.
+
+  Renders the square background (light/dark), an optional piece sprite, and
+  visual state overlays (selected, legal-move highlight, cooldown bar). Emits
+  raw click and right-click events; all game-logic decisions are left to the
+  parent.
+-->
+
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import PieceSprite from './PieceSprite.vue'
 import type { PieceInstance, Color } from '../../services/api'
+
+// --- Props & emits ---
 
 const props = defineProps<{
   piece: PieceInstance | null
   isLight: boolean
   isSelected: boolean
   isLegalMove: boolean
-  cooldown: number
-  maxCooldown: number
+  cooldown: number    // remaining cooldown in seconds (raw server value)
+  maxCooldown: number // full cooldown duration for this piece type
 }>()
 
 const emit = defineEmits<{
   (e: 'click'): void
   (e: 'rightClick', event: MouseEvent): void
 }>()
+
+// --- Derived state ---
 
 const squareClasses = computed(() => [
   props.isLight ? 'light' : 'dark',
@@ -24,6 +37,33 @@ const squareClasses = computed(() => [
   props.piece ? 'piece' : '',
   props.cooldown > 0 ? 'on-cooldown' : '',
 ])
+
+// --- Cooldown animation ---
+
+// The overlay is animated with a CSS transition driven by imperative style
+// manipulation rather than a reactive binding. This lets a single linear
+// transition run entirely in the browser's compositor between server pushes,
+// without a JS animation loop. On each new value we snap to the current
+// fraction (transition: none) then kick off a fresh transition to 0 over the
+// remaining seconds. The forced reflow between the two style writes is
+// required: without it the browser batches both writes and never sees the
+// starting state, so the transition is skipped.
+const overlayRef = ref<HTMLElement | null>(null)
+
+watch(
+  () => props.cooldown,
+  (cd) => {
+    const el = overlayRef.value
+    if (!el || cd <= 0) return
+    const pct = (cd / (props.maxCooldown || 1)) * 100
+    el.style.transition = 'none'
+    el.style.height = `${pct}%`
+    void el.offsetHeight // force reflow so the browser registers the starting height
+    el.style.transition = `height ${cd}s linear`
+    el.style.height = '0%'
+  },
+  { flush: 'post', immediate: true },
+)
 </script>
 
 <template>
@@ -40,8 +80,8 @@ const squareClasses = computed(() => [
     />
     <div
       v-if="cooldown > 0"
+      ref="overlayRef"
       class="cooldown-overlay"
-      :style="{ height: (cooldown / (maxCooldown || 1) * 100) + '%' }"
     />
   </div>
 </template>
