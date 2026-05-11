@@ -134,13 +134,9 @@ function copyLobbyName() {
       <span v-if="statusMessage.kind !== 'empty'">{{ statusMessage.text }}</span>
       <span v-else>&nbsp;</span>
     </div>
-    <button
-      v-if="playerColor === 'white' && gameId"
-      class="new-game"
-      @click="onNewGame"
-    >
-      New game
-    </button>
+    <div class="new-game-slot" :class="{ hidden: playerColor !== 'white' || !gameId }">
+      <button class="new-game" @click="onNewGame">New game</button>
+    </div>
   </section>
 </template>
 
@@ -190,8 +186,11 @@ function copyLobbyName() {
 .status-banner.mate       { background: #f6f669; color: #3d3a00; }
 .status-banner.anti-mate  { background: #f6f669; color: #3d3a00; }
 .status-banner.win        { background: #f6f669; color: #3d3a00; }
-.new-game {
+.new-game-slot {
   margin-top: 12px;
+}
+.new-game-slot.hidden {
+  visibility: hidden;
 }
 .waiting-text {
   color: #888;
