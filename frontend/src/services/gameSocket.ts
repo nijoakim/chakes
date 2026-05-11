@@ -11,6 +11,8 @@ export interface GameSocketEvents {
   pong: { id: string }
   legalMoves: Record<string, Set<string>>
   moveResult: { ok: boolean; error?: string }
+  inCheck: { white: boolean; black: boolean }
+  inAntiCheck: { white: boolean; black: boolean }
 }
 
 type Listener<E extends keyof GameSocketEvents> = (payload: GameSocketEvents[E]) => void
@@ -65,6 +67,12 @@ export class GameSocket {
     if (data.game_id) this.emit('gameId', data.game_id)
     // BUG FIX: only emit winner if the server actually sent the field.
     if ('winner' in data) this.emit('winner', data.winner ?? null)
+    if ('white_in_check' in data || 'black_in_check' in data) {
+      this.emit('inCheck', { white: data.white_in_check ?? false, black: data.black_in_check ?? false })
+    }
+    if ('white_in_anti_check' in data || 'black_in_anti_check' in data) {
+      this.emit('inAntiCheck', { white: data.white_in_anti_check ?? false, black: data.black_in_anti_check ?? false })
+    }
     if (data.legal_moves) {
       const out: Record<string, Set<string>> = {}
       for (const [k, dests] of Object.entries(data.legal_moves as Record<string, [number, number][]>)) {

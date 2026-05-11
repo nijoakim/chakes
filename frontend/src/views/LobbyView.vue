@@ -18,8 +18,31 @@ const lobby = useLobbyStore()
 const catalog = useCatalogStore()
 const {
   board, cooldowns, maxCooldowns, stablePromotionNames, playerColor, gameId, winner,
-  selected, legalMoves, selectedPromotion, rtt,
+  selected, legalMoves, selectedPromotion, rtt, inCheck, inAntiCheck,
 } = storeToRefs(game)
+
+type StatusKind = 'check' | 'anti-check' | 'both' | 'mate' | 'anti-mate' | 'win' | 'empty'
+const statusMessage = computed<{ text: string; kind: StatusKind }>(() => {
+  if (winner.value) {
+    const loser = winner.value === 'white' ? 'black' : 'white'
+    const sym = winner.value === 'white' ? '♔ White' : '♚ Black'
+    const c = inCheck.value[loser]
+    const a = inAntiCheck.value[loser]
+    if (c && a) return { text: `Checkmate & Anti-checkmate — ${sym} wins`, kind: 'mate' }
+    if (c)      return { text: `Checkmate — ${sym} wins`, kind: 'mate' }
+    if (a)      return { text: `Anti-checkmate — ${sym} wins`, kind: 'anti-mate' }
+    return { text: `${sym} won!`, kind: 'win' }
+  }
+  if (gameId.value) {
+    const color = playerColor.value as 'white' | 'black'
+    const c = inCheck.value[color]
+    const a = inAntiCheck.value[color]
+    if (c && a) return { text: 'Check & Anti-check!', kind: 'both' }
+    if (c)      return { text: 'Check!', kind: 'check' }
+    if (a)      return { text: 'Anti-check!', kind: 'anti-check' }
+  }
+  return { text: '', kind: 'empty' }
+})
 
 const rttColor = computed(() => {
   if (rtt.value === null) return '#888'
@@ -107,11 +130,9 @@ function copyLobbyName() {
       @square-right-click="(r, c) => game.handleSquareRightClick(r, c)"
     />
 
-    <div
-      v-if="winner"
-      class="winner-banner"
-    >
-      {{ winner === 'white' ? '♔ White' : '♚ Black' }} won!
+    <div class="status-banner" :class="statusMessage.kind">
+      <span v-if="statusMessage.kind !== 'empty'">{{ statusMessage.text }}</span>
+      <span v-else>&nbsp;</span>
     </div>
     <button
       v-if="playerColor === 'white' && gameId"
@@ -148,15 +169,27 @@ function copyLobbyName() {
   border-color: #888;
   color: #333;
 }
-.winner-banner {
+.status-banner {
   margin-top: 12px;
   padding: 12px 24px;
-  font-size: 28px;
-  font-weight: bold;
+  font-size: 24px;
+  font-weight: 700;
   text-align: center;
-  background: #f6f669;
   border-radius: 6px;
+  box-sizing: border-box;
+  min-height: 56px;
+  min-width: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.status-banner.empty      { visibility: hidden; }
+.status-banner.check      { background: #fde2e2; color: #7a1f1f; }
+.status-banner.anti-check { background: #ffe7c2; color: #6b3a07; }
+.status-banner.both       { background: #fde2e2; color: #5a0b0b; }
+.status-banner.mate       { background: #f6f669; color: #3d3a00; }
+.status-banner.anti-mate  { background: #f6f669; color: #3d3a00; }
+.status-banner.win        { background: #f6f669; color: #3d3a00; }
 .new-game {
   margin-top: 12px;
 }

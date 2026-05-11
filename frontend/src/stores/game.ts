@@ -17,6 +17,8 @@ export const useGameStore = defineStore('game', () => {
   const playerColor = ref<Color>('white')
   const gameId = ref<string | null>(null)
   const winner = ref<Color | null>(null)
+  const inCheck = ref<{ white: boolean; black: boolean }>({ white: false, black: false })
+  const inAntiCheck = ref<{ white: boolean; black: boolean }>({ white: false, black: false })
 
   // --- Cooldowns: raw server snapshot; CSS transitions handle visual decay ---
   const cooldowns = ref<Cooldowns>([])
@@ -83,6 +85,8 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('color', (c) => { playerColor.value = c }),
       gameSocket.on('gameId', (id) => { gameId.value = id }),
       gameSocket.on('winner', (w) => { winner.value = w }),
+      gameSocket.on('inCheck', (v) => { inCheck.value = v }),
+      gameSocket.on('inAntiCheck', (v) => { inAntiCheck.value = v }),
       gameSocket.on('pong', () => { rtt.value = rttMonitor.rtt }),
       gameSocket.on('legalMoves', (m) => { legalMovesBySrc.value = m }),
     ]
@@ -116,6 +120,8 @@ export const useGameStore = defineStore('game', () => {
     cooldownTimeouts = []
     gameId.value = null
     winner.value = null
+    inCheck.value = { white: false, black: false }
+    inAntiCheck.value = { white: false, black: false }
     selected.value = null
     legalMovesBySrc.value = {}
     stablePromotionNames.value = []
@@ -195,6 +201,7 @@ export const useGameStore = defineStore('game', () => {
   return {
     // state
     board, cooldowns, maxCooldowns, pieceNames, stablePromotionNames, playerColor, gameId, winner,
+    inCheck, inAntiCheck,
     selected, legalMoves, selectedPromotion, rtt,
     // actions
     connect, disconnect, resetGameState, startNewGame,
