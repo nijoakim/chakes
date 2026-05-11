@@ -351,6 +351,7 @@ class TestPieces(ut.TestCase):
 
     def test_nightrider(self) -> None:
         board = Board.orthodox()
+        board.remove_piece_at(Pos('b1'))
         board.add_new_piece('Nightrider', Player.WHITE, Pos('b1'))
 
         nightrider: Piece | None = board.piece_at(Pos('b1'))
@@ -510,6 +511,7 @@ class TestPieces(ut.TestCase):
 
     def test_gryphon(self) -> None:
         board = Board.orthodox()
+        board.remove_piece_at(Pos('a1'))
         board.add_new_piece('Gryphon', Player.WHITE, Pos('a1'))
         board.move_piece(Pos('b2'), Pos('b4'))
         board.move_piece(Pos('a1'), Pos('b3'))

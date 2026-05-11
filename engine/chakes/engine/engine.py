@@ -26,9 +26,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 
 
-print('Hello Chakes!')
-
-
 @dataclass(frozen = True)
 class Pos:
     x: int
@@ -537,12 +534,15 @@ class Board:
     pieces:   dict[Pos, Piece]
     move_log: list[tuple[Pos, Pos]]
 
-    def __init__(self, size_x: int = 8, size_y: int = 8) -> None:
+    def __init__(self, size_x: int = 8, size_y: int = 8, pieces: set[Piece] = set()) -> None:
         self.size_x: int = size_x
         self.size_y: int = size_y
 
         self.pieces   = {}
         self.move_log = []
+
+        for piece in pieces:
+            self.add_piece(piece)
 
     @staticmethod
     def orthodox() -> Board:
@@ -678,7 +678,22 @@ class Board:
         piece.pos = pos
         self.pieces[piece.pos] = piece
 
+    def add_piece(self, piece: Piece) -> None:
+        if not self.is_pos_within_board(piece.pos):
+            raise RuntimeError(f'{piece.pos} is outside of the board.')
+
+        if self.piece_at(piece.pos) is not None:
+            raise RuntimeError(f'There is already a piece at {piece.pos}')
+
+        self.pieces[piece.pos] = piece
+
     def add_new_piece(self, name: str, owner: Player, pos: Pos) -> None:
+        if not self.is_pos_within_board(pos):
+            raise RuntimeError(f'{pos} is outside of the board.')
+
+        if self.piece_at(pos) is not None:
+            raise RuntimeError(f'There is already a piece at {pos}')
+
         new_piece: Piece = Piece(name, owner, pos, self)
         self.pieces[pos] = new_piece
 
