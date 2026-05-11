@@ -62,6 +62,11 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('gameId', (id) => { gameId.value = id }),
       gameSocket.on('winner', (w) => { winner.value = w }),
       gameSocket.on('pong', () => { rtt.value = rttMonitor.rtt }),
+      gameSocket.on('legalMoves', ({ pos, moves }) => {
+        if (selected.value && selected.value[1] === pos.x && selected.value[0] === pos.y) {
+          legalMoves.value = new Set(moves.map(([mr, mc]) => `${mr},${mc}`))
+        }
+      }),
     ]
   }
 
@@ -97,14 +102,11 @@ export const useGameStore = defineStore('game', () => {
     await api.createGame(currentLobby, gameType, cooldownSettings, upsideDown)
   }
 
-  async function selectPiece(r: number, c: number): Promise<void> {
+  function selectPiece(r: number, c: number): void {
     if (!currentLobby || !gameId.value) return
     selected.value = [r, c]
     legalMoves.value = new Set()
-    const moves = await api.getLegalMoves(currentLobby, gameId.value, r, c)
-    if (selected.value && selected.value[0] === r && selected.value[1] === c) {
-      legalMoves.value = new Set(moves.map(([mr, mc]) => `${mr},${mc}`))
-    }
+    gameSocket.send({ type: 'legal_moves', game_id: gameId.value, pos: { x: c, y: r } })
   }
 
   function deselect(): void {
@@ -121,37 +123,43 @@ export const useGameStore = defineStore('game', () => {
     return (serverCooldowns[r]?.[c] ?? 0) - elapsed > 0
   }
 
-  async function attemptMove(toR: number, toC: number): Promise<void> {
+  function attemptMove(toR: number, toC: number): void {
     if (!currentLobby || !gameId.value || !selected.value) return
     const [fr, fc] = selected.value
     deselect()
-    await api.sendMove(currentLobby, gameId.value, fr, fc, toR, toC, selectedPromotion.value)
+    gameSocket.send({
+      type: 'move',
+      game_id: gameId.value,
+      src: { x: fc, y: fr },
+      dst: { x: toC, y: toR },
+      promotion: selectedPromotion.value,
+    })
   }
 
   // Click semantics from the original handleClick — preserve exactly.
-  async function handleSquareClick(r: number, c: number): Promise<void> {
+  function handleSquareClick(r: number, c: number): void {
     if (!gameId.value || winner.value) return
     const piece = board.value[r]?.[c]
 
     if (selected.value === null) {
-      if (piece && isOwnPiece(piece) && !isOnCooldown(r, c)) await selectPiece(r, c)
+      if (piece && isOwnPiece(piece) && !isOnCooldown(r, c)) selectPiece(r, c)
       return
     }
 
     if (piece && isOwnPiece(piece) && !isOnCooldown(r, c)) {
       const [fr, fc] = selected.value
       if (fr === r && fc === c) deselect()
-      else await selectPiece(r, c)
+      else selectPiece(r, c)
       return
     }
 
-    if (legalMoves.value.has(`${r},${c}`)) await attemptMove(r, c)
+    if (legalMoves.value.has(`${r},${c}`)) attemptMove(r, c)
   }
 
-  async function handleSquareRightClick(r: number, c: number): Promise<void> {
+  function handleSquareRightClick(r: number, c: number): void {
     if (!gameId.value || winner.value || !selected.value) return
     const [fr, fc] = selected.value
-    if (fr !== r || fc !== c) await attemptMove(r, c)
+    if (fr !== r || fc !== c) attemptMove(r, c)
   }
 
   return {

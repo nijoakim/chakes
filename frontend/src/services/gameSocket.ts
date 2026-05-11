@@ -9,6 +9,8 @@ export interface GameSocketEvents {
   gameId: string
   winner: Color | null
   pong: { id: string }
+  legalMoves: { pos: { x: number; y: number }; moves: number[][] }
+  moveResult: { ok: boolean; error?: string }
 }
 
 type Listener<E extends keyof GameSocketEvents> = (payload: GameSocketEvents[E]) => void
@@ -53,6 +55,8 @@ export class GameSocket {
     if (!e.data) return
     const data = JSON.parse(e.data)
     if (data.type === 'pong') { this.emit('pong', { id: data.id }); return }
+    if (data.type === 'legal_moves' && !data.error) { this.emit('legalMoves', { pos: data.pos, moves: data.moves }); return }
+    if (data.type === 'move_result') { this.emit('moveResult', { ok: data.ok, error: data.error }); return }
     if (data.board) this.emit('board', data.board)
     if (data.cooldowns) this.emit('cooldowns', data.cooldowns)
     if (data.max_cooldowns) this.emit('maxCooldowns', data.max_cooldowns)
