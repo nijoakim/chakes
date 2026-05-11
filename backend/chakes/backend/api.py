@@ -119,7 +119,7 @@ async def _handle_move(ws: WebSocket, lobby: str, msg: MoveMessage) -> None:
         await ws.send_json({"type": "move_result", "ok": False, "error": "illegal_move", "client_move_id": client_move_id})
     else:
         await ws.send_json({"type": "move_result", "ok": True, "client_move_id": client_move_id})
-        await connections.broadcast(lobby, GameStateMessage.from_active_game(game))
+        await connections.broadcast(lobby, GameStateMessage.from_active_game(game, include_immutables=False))
 
 
 async def _handle_legal_moves(ws: WebSocket, lobby: str, msg: LegalMovesMessage) -> None:

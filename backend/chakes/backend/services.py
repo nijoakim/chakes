@@ -40,14 +40,15 @@ class ConnectionManager:
     # exclude_none=True: fields set to None are omitted from the wire payload.
     # Required for `winner`: the frontend checks `'winner' in data` to distinguish
     # "no winner yet" (key absent) from "winner decided" (key present, possibly null).
+    # model_dump_json encodes once to a JSON string; send_text avoids a second json.dumps per recipient.
     async def send_to(self, ws: WebSocket, msg: BaseModel) -> None:
-        await ws.send_json(msg.model_dump(mode="json", exclude_none=True))
+        await ws.send_text(msg.model_dump_json(exclude_none=True))
 
     async def broadcast(self, lobby_name: str, msg: BaseModel) -> None:
-        payload = msg.model_dump(mode="json", exclude_none=True)
+        payload = msg.model_dump_json(exclude_none=True)
         for ws in list(self._connections.get(lobby_name, [])):
             try:
-                await ws.send_json(payload)
+                await ws.send_text(payload)
             except Exception:
                 pass
 
