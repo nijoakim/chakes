@@ -55,12 +55,12 @@ watch(
   (cd) => {
     const el = overlayRef.value
     if (!el || cd <= 0) return
-    const pct = (cd / (props.maxCooldown || 1)) * 100
+    const frac = cd / (props.maxCooldown || 1)
     el.style.transition = 'none'
-    el.style.height = `${pct}%`
-    void el.offsetHeight // force reflow so the browser registers the starting height
-    el.style.transition = `height ${cd}s linear`
-    el.style.height = '0%'
+    el.style.transform = `scaleY(${frac})`
+    void el.offsetHeight // force reflow so the starting transform is registered
+    el.style.transition = `transform ${cd}s linear`
+    el.style.transform = 'scaleY(0)'
   },
   { flush: 'post', immediate: true },
 )
@@ -117,6 +117,9 @@ watch(
   bottom: 0;
   left: 0;
   width: 100%;
+  height: 100%;
+  transform-origin: bottom;
+  will-change: transform;
   background: rgba(80, 80, 80, 0.5);
   pointer-events: none;
 }
