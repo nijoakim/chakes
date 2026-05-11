@@ -43,11 +43,22 @@ def game_types_list():
 
 
 @router.get("/piece-defs")
-def piece_defs_list():
+def piece_defs_list(game_type: str | None = None):
+    if game_type and game_type in GAME_TYPES:
+        factory = GAME_TYPES[game_type][1]
+        state = factory()
+        seen: set[str] = set()
+        names: list[str] = []
+        for piece in state.all_pieces():
+            if piece.name not in seen:
+                seen.add(piece.name)
+                names.append(piece.name)
+    else:
+        names = _DEFAULT_PIECE_NAMES
     return {
         "pieces": [
             {"name": n, "default_cooldown": engine_piece_defs[n][0]}
-            for n in _DEFAULT_PIECE_NAMES
+            for n in names
         ]
     }
 

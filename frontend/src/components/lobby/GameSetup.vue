@@ -2,6 +2,8 @@
 import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '../../stores/catalog'
+import { getPieceDefs } from '../../services/api'
+import type { PieceDef } from '../../services/api'
 
 type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
 
@@ -10,20 +12,26 @@ const props = defineProps<{ initialSettings?: Settings }>()
 const emit = defineEmits<{ (e: 'start', payload: Settings): void }>()
 
 const catalog = useCatalogStore()
-const { pieceDefs, gameTypes } = storeToRefs(catalog)
+const { gameTypes } = storeToRefs(catalog)
 
 const selectedGameType = ref(props.initialSettings?.gameType ?? 'orthodox')
 const upsideDown = ref(props.initialSettings?.upsideDown ?? false)
 const cooldownSettings = ref<Record<string, number>>(props.initialSettings?.cooldowns ?? {})
+const currentPieceDefs = ref<PieceDef[]>([])
+const globalCooldown = ref(3)
 
-watch(pieceDefs, (defs) => {
+watch(selectedGameType, async (gameType) => {
+  const defs = await getPieceDefs(gameType)
+  currentPieceDefs.value = [...defs].sort((a, b) => a.name.localeCompare(b.name))
   if (props.initialSettings) return
+  const prev = cooldownSettings.value
   cooldownSettings.value = Object.fromEntries(
-    defs.map((p) => [p.name, p.default_cooldown])
+    currentPieceDefs.value.map((p) => [p.name, prev[p.name] ?? globalCooldown.value])
   )
 }, { immediate: true })
 
 function adjustAll(delta: number) {
+  globalCooldown.value = Math.max(0, globalCooldown.value + delta)
   for (const name in cooldownSettings.value) {
     cooldownSettings.value[name] = Math.max(0, cooldownSettings.value[name] + delta)
   }
@@ -72,7 +80,7 @@ function onStart() {
       </thead>
       <tbody>
         <tr
-          v-for="p in pieceDefs"
+          v-for="p in currentPieceDefs"
           :key="p.name"
         >
           <td>{{ p.name }}</td>

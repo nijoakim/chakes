@@ -26,8 +26,9 @@ export async function getGameTypes(): Promise<GameType[]> {
   return data.game_types
 }
 
-export async function getPieceDefs(): Promise<PieceDef[]> {
-  const res = await fetch('/api/piece-defs')
+export async function getPieceDefs(gameType?: string): Promise<PieceDef[]> {
+  const url = gameType ? `/api/piece-defs?game_type=${encodeURIComponent(gameType)}` : '/api/piece-defs'
+  const res = await fetch(url)
   const data = await res.json()
   return data.pieces
 }
