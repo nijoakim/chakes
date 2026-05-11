@@ -1,6 +1,8 @@
 import uuid
+from dataclasses import dataclass
 
 from fastapi import WebSocket
+from pydantic import BaseModel
 
 from chakes.backend.models import (
     ActiveGame,
@@ -13,15 +15,21 @@ from chakes.backend.models import (
 from chakes.engine.engine import Pos as EnginePos
 
 
+@dataclass(frozen=True)
+class JoinResult:
+    color: str
+    game: ActiveGame | None
+
+
 class ConnectionManager:
     def __init__(self):
         self._connections: dict[str, list[WebSocket]] = {}
 
-    async def connect(self, lobby_name: str, ws: WebSocket) -> None:
+    async def accept(self, ws: WebSocket, lobby_name: str) -> None:
         await ws.accept()
         self._connections.setdefault(lobby_name, []).append(ws)
 
-    def disconnect(self, lobby_name: str, ws: WebSocket) -> None:
+    def disconnect(self, ws: WebSocket, lobby_name: str) -> None:
         self._connections[lobby_name].remove(ws)
         if not self._connections[lobby_name]:
             del self._connections[lobby_name]
@@ -29,10 +37,17 @@ class ConnectionManager:
     def connection_count(self, lobby_name: str) -> int:
         return len(self._connections.get(lobby_name, []))
 
-    async def broadcast(self, lobby_name: str, data: dict) -> None:
+    # exclude_none=True: fields set to None are omitted from the wire payload.
+    # Required for `winner`: the frontend checks `'winner' in data` to distinguish
+    # "no winner yet" (key absent) from "winner decided" (key present, possibly null).
+    async def send_to(self, ws: WebSocket, msg: BaseModel) -> None:
+        await ws.send_json(msg.model_dump(mode="json", exclude_none=True))
+
+    async def broadcast(self, lobby_name: str, msg: BaseModel) -> None:
+        payload = msg.model_dump(mode="json", exclude_none=True)
         for ws in list(self._connections.get(lobby_name, [])):
             try:
-                await ws.send_json(data)
+                await ws.send_json(payload)
             except Exception:
                 pass
 
@@ -64,43 +79,17 @@ class LobbyService:
 
 
 class ChakesService:
-    def __init__(self, lobbies: LobbyService, connections: ConnectionManager):
+    def __init__(self, lobbies: LobbyService):
         self._lobbies = lobbies
-        self._connections = connections
 
-    def _game_state_msg(self, game: ActiveGame) -> dict:
-        msg: dict = {
-            "board": game.serialize_board(),
-            "cooldowns": game.serialize_cooldowns(),
-            "max_cooldowns": game.serialize_max_cooldowns(),
-            "piece_names": game.serialize_piece_names(),
-            "game_id": str(game.id),
-        }
-        winner = game.state.winner()
-        if winner:
-            msg["winner"] = "white" if winner.name == "WHITE" else "black"
-        return msg
-
-    async def connect(self, lobby_name: str, ws: WebSocket, token: str | None = None) -> None:
-        await self._connections.connect(lobby_name, ws)
+    def player_join(self, lobby_name: str, token: str | None = None) -> JoinResult:
         lobby = self._lobbies[lobby_name]
         color = lobby.assign_color(token)
-        msg: dict = {"color": color}
-        if lobby.game:
-            msg.update(self._game_state_msg(lobby.game))
-        await ws.send_json(msg)
+        return JoinResult(color=color, game=lobby.game)
 
-    def disconnect(self, lobby_name: str, ws: WebSocket) -> None:
-        self._connections.disconnect(lobby_name, ws)
-        if self._connections.connection_count(lobby_name) == 0:
-            self._lobbies.remove(lobby_name)
-            print(f"Destroyed lobby: {lobby_name}")
-
-    async def create_game(self, lobby_name: str, game_def: GameDef) -> ActiveGame:
+    def create_game(self, lobby_name: str, game_def: GameDef) -> ActiveGame:
         lobby = self._lobbies[lobby_name]
-        game = lobby.create_game(game_def)
-        await self._connections.broadcast(lobby_name, self._game_state_msg(game))
-        return game
+        return lobby.create_game(game_def)
 
     def get_legal_moves(self, lobby_name: str, game_id: uuid.UUID, pos: Pos) -> list[list[int]]:
         lobby = self._lobbies[lobby_name]
@@ -108,7 +97,7 @@ class ChakesService:
             raise ValueError("Game not found")
         return lobby.game.get_legal_moves(pos)
 
-    def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> dict | None:
+    def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> ActiveGame | None:
         lobby = self._lobbies[lobby_name]
         if not lobby.game or lobby.game.id != game_id:
             raise ValueError("Game not found")
@@ -117,4 +106,4 @@ class ChakesService:
             game.state.move_piece(EnginePos(move.src.x, move.src.y), EnginePos(move.dst.x, move.dst.y), info=move.promotion or '')
         except ValueError:
             return None
-        return self._game_state_msg(game)
+        return game
