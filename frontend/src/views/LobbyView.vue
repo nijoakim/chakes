@@ -18,8 +18,18 @@ const lobby = useLobbyStore()
 const catalog = useCatalogStore()
 const {
   board, cooldowns, maxCooldowns, pieceNames, playerColor, gameId, winner,
-  selected, legalMoves, selectedPromotion,
+  selected, legalMoves, selectedPromotion, rtt,
 } = storeToRefs(game)
+
+const rttColor = computed(() => {
+  if (rtt.value === null) return '#888'
+  if (rtt.value < 150) return '#4caf50'
+  if (rtt.value < 500) return '#ffc107'
+  return '#f44336'
+})
+const rttLabel = computed(() =>
+  rtt.value === null ? '— ms' : `${Math.round(rtt.value)} ms`,
+)
 
 const boardCols = computed(() => board.value[0]?.length ?? 8)
 const lastSettings = shallowRef<Settings | undefined>(undefined)
@@ -52,6 +62,7 @@ function copyLobbyName() {
 </script>
 
 <template>
+  <div class="rtt-badge" :style="{ color: rttColor }">{{ rttLabel }}</div>
   <section id="center">
     <div class="room-name">
       Lobby: {{ name }}
@@ -152,5 +163,13 @@ function copyLobbyName() {
 .waiting-text {
   color: #888;
   font-size: 15px;
+}
+.rtt-badge {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  font-size: 11px;
+  font-family: monospace;
+  opacity: 0.8;
 }
 </style>

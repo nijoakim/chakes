@@ -8,6 +8,7 @@ export interface GameSocketEvents {
   color: Color
   gameId: string
   winner: Color | null
+  pong: { id: string }
 }
 
 type Listener<E extends keyof GameSocketEvents> = (payload: GameSocketEvents[E]) => void
@@ -30,6 +31,10 @@ export class GameSocket {
     this.ws = null
   }
 
+  send(msg: object): void {
+    this.ws?.send(JSON.stringify(msg))
+  }
+
   on<E extends keyof GameSocketEvents>(event: E, listener: Listener<E>): () => void {
     if (!this.listeners[event]) {
       this.listeners[event] = new Set() as never
@@ -47,6 +52,7 @@ export class GameSocket {
   private handleMessage(e: MessageEvent): void {
     if (!e.data) return
     const data = JSON.parse(e.data)
+    if (data.type === 'pong') { this.emit('pong', { id: data.id }); return }
     if (data.board) this.emit('board', data.board)
     if (data.cooldowns) this.emit('cooldowns', data.cooldowns)
     if (data.max_cooldowns) this.emit('maxCooldowns', data.max_cooldowns)

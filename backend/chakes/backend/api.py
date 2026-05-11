@@ -1,3 +1,4 @@
+import json
 import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -76,6 +77,12 @@ async def lobby_ws(name: str, ws: WebSocket, token: str | None = None):
     await chakes.connect(name, ws, token)
     try:
         while True:
-            await ws.receive_text()
+            text = await ws.receive_text()
+            try:
+                msg = json.loads(text)
+                if msg.get('type') == 'ping':
+                    await ws.send_text(json.dumps({'type': 'pong', 'id': msg['id']}))
+            except (json.JSONDecodeError, KeyError):
+                pass
     except WebSocketDisconnect:
         chakes.disconnect(name, ws)

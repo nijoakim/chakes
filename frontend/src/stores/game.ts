@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as api from '../services/api'
 import { gameSocket } from '../services/gameSocket'
+import { RttMonitor } from '../services/rtt'
 import { useSessionStore } from './session'
 import type { Board, Cooldowns, Color, PieceInstance } from '../services/api'
 
@@ -26,6 +27,10 @@ export const useGameStore = defineStore('game', () => {
   const legalMoves = ref<Set<string>>(new Set())
   const selectedPromotion = ref('Queen')
 
+  // --- RTT monitor ---
+  const rtt = ref<number | null>(null)
+  const rttMonitor = new RttMonitor(gameSocket)
+
   // --- WS subscription lifecycle ---
   let unsubscribers: Array<() => void> = []
   let currentLobby: string | null = null
@@ -36,12 +41,13 @@ export const useGameStore = defineStore('game', () => {
     const session = useSessionStore()
 
     gameSocket.connect(lobbyName, session.token)
+    rttMonitor.start()
 
     unsubscribers = [
       gameSocket.on('board', (b) => { board.value = b }),
       gameSocket.on('cooldowns', (c) => {
         serverCooldowns = c
-        serverCooldownTime = performance.now()
+        serverCooldownTime = performance.now() - (rttMonitor.rtt ?? 0) / 2
         cooldowns.value = c
       }),
       gameSocket.on('maxCooldowns', (mc) => { maxCooldowns.value = mc }),
@@ -55,12 +61,15 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('color', (c) => { playerColor.value = c }),
       gameSocket.on('gameId', (id) => { gameId.value = id }),
       gameSocket.on('winner', (w) => { winner.value = w }),
+      gameSocket.on('pong', () => { rtt.value = rttMonitor.rtt }),
     ]
   }
 
   function disconnect(): void {
     unsubscribers.forEach((u) => u())
     unsubscribers = []
+    rttMonitor.stop()
+    rtt.value = null
     gameSocket.disconnect()
     currentLobby = null
     resetGameState()
@@ -148,7 +157,7 @@ export const useGameStore = defineStore('game', () => {
   return {
     // state
     board, cooldowns, maxCooldowns, pieceNames, playerColor, gameId, winner,
-    selected, legalMoves, selectedPromotion,
+    selected, legalMoves, selectedPromotion, rtt,
     // actions
     connect, disconnect, resetGameState, startNewGame,
     selectPiece, deselect, attemptMove,
