@@ -141,7 +141,8 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
-  // Click semantics from the original handleClick — preserve exactly.
+  // Left-click priority: execute move if the square is legal, otherwise select the piece on it.
+  // Deselects after a move is executed. Clicking the selected piece deselects.
   function handleSquareClick(r: number, c: number): void {
     if (!gameId.value || winner.value) return
     const piece = board.value[r]?.[c]
@@ -151,16 +152,18 @@ export const useGameStore = defineStore('game', () => {
       return
     }
 
-    if (piece && isOwnPiece(piece) && !isOnCooldown(r, c)) {
+    if (piece && isOwnPiece(piece)) {
       const [fr, fc] = selected.value
-      if (fr === r && fc === c) deselect()
-      else selectPiece(r, c)
+      if (fr === r && fc === c) { deselect(); return }
+      if (legalMoves.value.has(`${r},${c}`)) { attemptMove(r, c); return }
+      if (!isOnCooldown(r, c)) selectPiece(r, c)
       return
     }
 
     if (legalMoves.value.has(`${r},${c}`)) attemptMove(r, c)
   }
 
+  // Right-click priority: execute move if the square is legal. Always deselects regardless of outcome.
   function handleSquareRightClick(r: number, c: number): void {
     if (!gameId.value || winner.value || !selected.value) return
     const [fr, fc] = selected.value
