@@ -22,6 +22,7 @@ export const useGameStore = defineStore('game', () => {
   const cooldowns = ref<Cooldowns>([])
   let serverCooldowns: Cooldowns = []
   let serverCooldownTime = 0
+  let cooldownTimeouts: ReturnType<typeof setTimeout>[] = []
 
   // --- UI selection state (lives here so it's cleared in one place) ---
   const selected = ref<[number, number] | null>(null)
@@ -54,7 +55,19 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('cooldowns', (c) => {
         serverCooldowns = c
         serverCooldownTime = performance.now() - (rttMonitor.rtt ?? 0) / 2
+        cooldownTimeouts.forEach(clearTimeout)
+        cooldownTimeouts = []
         cooldowns.value = c
+        const elapsed = (performance.now() - serverCooldownTime) / 1000
+        for (let r = 0; r < c.length; r++) {
+          for (let col = 0; col < c[r].length; col++) {
+            const remaining = (c[r][col] ?? 0) - elapsed
+            if (remaining > 0) {
+              const t = setTimeout(() => { cooldowns.value[r][col] = 0 }, remaining * 1000)
+              cooldownTimeouts.push(t)
+            }
+          }
+        }
       }),
       gameSocket.on('maxCooldowns', (mc) => { maxCooldowns.value = mc }),
       gameSocket.on('pieceNames', (names) => {
@@ -99,6 +112,8 @@ export const useGameStore = defineStore('game', () => {
     cooldowns.value = []
     serverCooldowns = []
     serverCooldownTime = 0
+    cooldownTimeouts.forEach(clearTimeout)
+    cooldownTimeouts = []
     gameId.value = null
     winner.value = null
     selected.value = null
