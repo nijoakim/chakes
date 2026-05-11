@@ -16,31 +16,48 @@ const { gameTypes } = storeToRefs(catalog)
 
 const selectedGameType = ref(props.initialSettings?.gameType ?? 'orthodox')
 const upsideDown = ref(props.initialSettings?.upsideDown ?? false)
-const cooldownSettings = ref<Record<string, number>>(props.initialSettings?.cooldowns ?? {})
 const currentPieceDefs = ref<PieceDef[]>([])
-const globalCooldown = ref(3)
+
+const initialAbsolute = props.initialSettings?.cooldowns ?? {}
+const initialValues = Object.values(initialAbsolute)
+const globalCooldown = ref(
+  initialValues.length > 0
+    ? Math.round(initialValues.reduce((a, b) => a + b, 0) / initialValues.length)
+    : 3
+)
+const cooldownOffsets = ref<Record<string, number>>(
+  Object.fromEntries(
+    Object.entries(initialAbsolute).map(([name, v]) => [name, v - globalCooldown.value])
+  )
+)
+
+function concreteCooldown(name: string): number {
+  return Math.max(0, globalCooldown.value + (cooldownOffsets.value[name] ?? 0))
+}
+
+function setPieceCooldown(name: string, concrete: number) {
+  cooldownOffsets.value[name] = concrete - globalCooldown.value
+}
 
 watch(selectedGameType, async (gameType) => {
   const defs = await getPieceDefs(gameType)
   currentPieceDefs.value = [...defs].sort((a, b) => a.name.localeCompare(b.name))
-  if (props.initialSettings) return
-  const prev = cooldownSettings.value
-  cooldownSettings.value = Object.fromEntries(
-    currentPieceDefs.value.map((p) => [p.name, prev[p.name] ?? globalCooldown.value])
+  const prev = cooldownOffsets.value
+  cooldownOffsets.value = Object.fromEntries(
+    currentPieceDefs.value.map((p) => [p.name, prev[p.name] ?? 0])
   )
 }, { immediate: true })
 
-function adjustAll(delta: number) {
+function adjustBase(delta: number) {
   globalCooldown.value = Math.max(0, globalCooldown.value + delta)
-  for (const name in cooldownSettings.value) {
-    cooldownSettings.value[name] = Math.max(0, cooldownSettings.value[name] + delta)
-  }
 }
 
 function onStart() {
   emit('start', {
     gameType: selectedGameType.value,
-    cooldowns: cooldownSettings.value,
+    cooldowns: Object.fromEntries(
+      currentPieceDefs.value.map((p) => [p.name, concreteCooldown(p.name)])
+    ),
     upsideDown: upsideDown.value,
   })
 }
@@ -63,11 +80,11 @@ function onStart() {
       </label>
     </div>
     <div class="cooldown-all">
-      <button @click="adjustAll(-1)">
+      <button @click="adjustBase(-1)">
         −
       </button>
-      <span>All cooldowns</span>
-      <button @click="adjustAll(1)">
+      <span>Base cooldown: {{ globalCooldown }}s</span>
+      <button @click="adjustBase(1)">
         +
       </button>
     </div>
@@ -86,10 +103,11 @@ function onStart() {
           <td>{{ p.name }}</td>
           <td>
             <input
-              v-model.number="cooldownSettings[p.name]"
               type="number"
               min="0"
               step="1"
+              :value="concreteCooldown(p.name)"
+              @change="setPieceCooldown(p.name, Number(($event.target as HTMLInputElement).value))"
             >
           </td>
         </tr>
