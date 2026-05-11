@@ -596,6 +596,9 @@ class Board:
     def chess960(n: int = -1) -> Board:
         b: int
 
+        if n >= 960:
+            raise ValueError('n must be lower than 960')
+
         if n < 0:
             n = random.randrange(960)
 
@@ -618,11 +621,11 @@ class Board:
                 if b == -1:
                     pieces[i] = 'Queen'
 
-        b = \
-            0 if n <= 3 else \
-            1 if n <= 6 else \
-            2 if n <= 8 else \
-            3
+        n, b = \
+            (n - 0, 0) if n <= 3 else \
+            (n - 3, 1) if n <= 6 else \
+            (n - 5, 2) if n <= 8 else \
+            (n - 6, 3)
 
         for i, piece in enumerate(pieces):
             if piece is None:
