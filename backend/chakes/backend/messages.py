@@ -14,10 +14,11 @@ class GameStateMessage(BaseModel):
     piece_names: list[str]
     game_id: str
     winner: str | None = None  # excluded from wire when None (see ConnectionManager.broadcast)
+    legal_moves: dict[str, list[list[int]]] = {}
 
     @classmethod
     def from_active_game(cls, game: ActiveGame) -> "GameStateMessage":
-        winner = game.state.winner()
+        all_moves, winner = game.snapshot()
         return cls(
             board=game.serialize_board(),
             cooldowns=game.serialize_cooldowns(),
@@ -25,4 +26,5 @@ class GameStateMessage(BaseModel):
             piece_names=game.serialize_piece_names(),
             game_id=str(game.id),
             winner=("white" if winner.name == "WHITE" else "black") if winner else None,
+            legal_moves=game.serialize_legal_moves(all_moves),
         )

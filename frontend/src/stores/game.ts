@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import * as api from '../services/api'
 import { gameSocket } from '../services/gameSocket'
 import { RttMonitor } from '../services/rtt'
@@ -25,7 +25,12 @@ export const useGameStore = defineStore('game', () => {
 
   // --- UI selection state (lives here so it's cleared in one place) ---
   const selected = ref<[number, number] | null>(null)
-  const legalMoves = ref<Set<string>>(new Set())
+  const legalMovesBySrc = ref<Record<string, Set<string>>>({})
+  const legalMoves = computed<Set<string>>(() => {
+    if (!selected.value) return new Set()
+    const [r, c] = selected.value
+    return legalMovesBySrc.value[`${r},${c}`] ?? new Set()
+  })
   const selectedPromotion = ref('Queen')
 
   // --- RTT monitor ---
@@ -66,12 +71,17 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('gameId', (id) => { gameId.value = id }),
       gameSocket.on('winner', (w) => { winner.value = w }),
       gameSocket.on('pong', () => { rtt.value = rttMonitor.rtt }),
-      gameSocket.on('legalMoves', ({ pos, moves }) => {
-        if (selected.value && selected.value[1] === pos.x && selected.value[0] === pos.y) {
-          legalMoves.value = new Set(moves.map(([mr, mc]) => `${mr},${mc}`))
-        }
-      }),
+      gameSocket.on('legalMoves', (m) => { legalMovesBySrc.value = m }),
     ]
+
+    watch(board, (b) => {
+      if (!selected.value) return
+      const [r, c] = selected.value
+      const piece = b[r]?.[c]
+      if (!piece || piece.owner !== playerColor.value) {
+        deselect()
+      }
+    })
   }
 
   function disconnect(): void {
@@ -92,7 +102,7 @@ export const useGameStore = defineStore('game', () => {
     gameId.value = null
     winner.value = null
     selected.value = null
-    legalMoves.value = new Set()
+    legalMovesBySrc.value = {}
     stablePromotionNames.value = []
   }
 
@@ -110,13 +120,10 @@ export const useGameStore = defineStore('game', () => {
   function selectPiece(r: number, c: number): void {
     if (!currentLobby || !gameId.value) return
     selected.value = [r, c]
-    legalMoves.value = new Set()
-    gameSocket.send({ type: 'legal_moves', game_id: gameId.value, pos: { x: c, y: r } })
   }
 
   function deselect(): void {
     selected.value = null
-    legalMoves.value = new Set()
   }
 
   function isOwnPiece(p: PieceInstance): boolean {

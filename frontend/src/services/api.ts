@@ -49,16 +49,6 @@ export async function createGame(
   return String(data.game_id)
 }
 
-export async function getLegalMoves(
-  lobbyName: string,
-  gameId: string,
-  r: number,
-  c: number,
-): Promise<number[][]> {
-  const res = await fetch(`/api/lobby/${lobbyName}/game/${gameId}/legal-moves?r=${r}&c=${c}`)
-  const data = await res.json()
-  return data.moves
-}
 
 export async function sendMove(
   lobbyName: string,

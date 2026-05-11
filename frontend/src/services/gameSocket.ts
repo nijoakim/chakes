@@ -9,7 +9,7 @@ export interface GameSocketEvents {
   gameId: string
   winner: Color | null
   pong: { id: string }
-  legalMoves: { pos: { x: number; y: number }; moves: number[][] }
+  legalMoves: Record<string, Set<string>>
   moveResult: { ok: boolean; error?: string }
 }
 
@@ -55,7 +55,7 @@ export class GameSocket {
     if (!e.data) return
     const data = JSON.parse(e.data)
     if (data.type === 'pong') { this.emit('pong', { id: data.id }); return }
-    if (data.type === 'legal_moves' && !data.error) { this.emit('legalMoves', { pos: data.pos, moves: data.moves }); return }
+    if (data.type === 'legal_moves') return
     if (data.type === 'move_result') { this.emit('moveResult', { ok: data.ok, error: data.error }); return }
     if (data.board) this.emit('board', data.board)
     if (data.cooldowns) this.emit('cooldowns', data.cooldowns)
@@ -65,6 +65,15 @@ export class GameSocket {
     if (data.game_id) this.emit('gameId', data.game_id)
     // BUG FIX: only emit winner if the server actually sent the field.
     if ('winner' in data) this.emit('winner', data.winner ?? null)
+    if (data.legal_moves) {
+      const out: Record<string, Set<string>> = {}
+      for (const [k, dests] of Object.entries(data.legal_moves as Record<string, [number, number][]>)) {
+        const [sx, sy] = k.split(',').map(Number)
+        const rcKey = `${sy},${sx}`
+        out[rcKey] = new Set(dests.map(([dx, dy]) => `${dy},${dx}`))
+      }
+      this.emit('legalMoves', out)
+    }
   }
 }
 

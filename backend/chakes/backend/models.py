@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, TypeAdapter
 
-from chakes.engine.engine import Board as GameState, Piece as EnginePiece, Pos as EnginePos, piece_defs as engine_piece_defs
+from chakes.engine.engine import Board as GameState, Piece as EnginePiece, Pos as EnginePos, Player, piece_defs as engine_piece_defs
 
 GAME_TYPES: dict[str, tuple[str, Callable[[], GameState]]] = {
     "orthodox":      ("Orthodox",      GameState.orthodox),
@@ -171,12 +171,40 @@ class ActiveGame:
             for r in range(self.state.size_y)
         ]
 
+    def serialize_legal_moves(
+        self, all_moves: dict[EnginePos, set[EnginePos]]
+    ) -> dict[str, list[list[int]]]:
+        return {
+            f"{src.x},{src.y}": sorted([p.x, p.y] for p in dests)
+            for src, dests in all_moves.items()
+        }
+
+    def _winner_from(
+        self, all_moves: dict[EnginePos, set[EnginePos]]
+    ) -> "Player | None":
+        for player in (Player.WHITE, Player.BLACK):
+            player_dests: set[EnginePos] = set()
+            for src, dests in all_moves.items():
+                piece = self.state.piece_at(src)
+                if piece is not None and piece.owner == player:
+                    player_dests |= dests
+            if player_dests == set():
+                if not self.state.is_in_check(player) and not self.state.is_in_anti_check(player):
+                    return Player.NEUTRAL
+                return player.other()
+        return None
+
+    def snapshot(self) -> tuple[dict[EnginePos, set[EnginePos]], "Player | None"]:
+        all_moves = self.state.all_legal_moves()
+        winner = self._winner_from(all_moves)
+        return all_moves, winner
+
     def get_legal_moves(self, pos: Pos) -> list[list[int]]:
         piece = self._get_piece(pos)
         if piece is None:
             return []
         engine_moves = piece.legal_moves()
-        return [[pos.y, pos.x] for pos in engine_moves]
+        return [[p.x, p.y] for p in engine_moves]
 
     def to_game(self) -> Game:
         pieces = []
