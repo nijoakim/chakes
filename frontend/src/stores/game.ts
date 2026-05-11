@@ -83,7 +83,16 @@ export const useGameStore = defineStore('game', () => {
         }
       }),
       gameSocket.on('color', (c) => { playerColor.value = c }),
-      gameSocket.on('gameId', (id) => { gameId.value = id }),
+      gameSocket.on('gameId', (id) => {
+        if (id !== gameId.value) {
+          winner.value = null
+          inCheck.value = { white: false, black: false }
+          inAntiCheck.value = { white: false, black: false }
+          selected.value = null
+          legalMovesBySrc.value = {}
+        }
+        gameId.value = id
+      }),
       gameSocket.on('winner', (w) => { winner.value = w }),
       gameSocket.on('inCheck', (v) => { inCheck.value = v }),
       gameSocket.on('inAntiCheck', (v) => { inAntiCheck.value = v }),
