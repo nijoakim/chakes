@@ -14,6 +14,7 @@ const props = defineProps<{
   playerColor: Color
   selected: [number, number] | null
   legalMoves: Set<string>
+  rejectedSquares: Set<string>
 }>()
 
 const emit = defineEmits<{
@@ -36,6 +37,11 @@ function isSelected(displayR: number, displayC: number): boolean {
 function isLegalMove(displayR: number, displayC: number): boolean {
   const [br, bc] = displayToBoard(displayR, displayC)
   return props.legalMoves.has(`${br},${bc}`)
+}
+
+function isRejected(displayR: number, displayC: number): boolean {
+  const [br, bc] = displayToBoard(displayR, displayC)
+  return props.rejectedSquares.has(`${br},${bc}`)
 }
 
 function onSquareClick(displayR: number, displayC: number) {
@@ -91,6 +97,7 @@ function rankLabel(displayR: number): string {
             :is-light="(r + c) % 2 === 0"
             :is-selected="isSelected(r, c)"
             :is-legal-move="isLegalMove(r, c)"
+            :is-rejected="isRejected(r, c)"
             :cooldown="displayCooldowns[r]?.[c] ?? 0"
             :max-cooldown="maxCooldowns[piece?.name ?? ''] ?? 1"
             @click="onSquareClick(r, c)"

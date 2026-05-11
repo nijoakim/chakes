@@ -1,5 +1,5 @@
 export type Color = 'white' | 'black'
-export type PieceInstance = { name: string; owner: Color }
+export type PieceInstance = { name: string; owner: Color; pending?: boolean }
 export type Board = (PieceInstance | null)[][]
 export type Cooldowns = number[][]
 

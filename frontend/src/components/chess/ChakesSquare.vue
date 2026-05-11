@@ -19,6 +19,7 @@ const props = defineProps<{
   isLight: boolean
   isSelected: boolean
   isLegalMove: boolean
+  isRejected: boolean
   cooldown: number    // remaining cooldown in seconds (raw server value)
   maxCooldown: number // full cooldown duration for this piece type
 }>()
@@ -36,6 +37,7 @@ const squareClasses = computed(() => [
   props.isLegalMove ? 'legal-move' : '',
   props.piece ? 'piece' : '',
   props.cooldown > 0 ? 'on-cooldown' : '',
+  props.isRejected ? 'rejected' : '',
 ])
 
 // --- Cooldown animation ---
@@ -77,6 +79,7 @@ watch(
       v-if="piece"
       :name="piece.name"
       :color="(piece.owner as Color)"
+      :pending="piece.pending"
     />
     <div
       v-if="cooldown > 0"
@@ -122,5 +125,18 @@ watch(
   will-change: transform;
   background: rgba(80, 80, 80, 0.5);
   pointer-events: none;
+}
+.square.rejected::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(220, 50, 50, 0.6);
+  animation: rejection-flash 0.3s ease-out forwards;
+  z-index: 1;
+}
+@keyframes rejection-flash {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 </style>

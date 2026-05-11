@@ -61,6 +61,7 @@ class MoveMessage(BaseModel):
     src: Pos
     dst: Pos
     promotion: str | None = None
+    client_move_id: str | None = None
 
 class LegalMovesMessage(BaseModel):
     type: Literal["legal_moves"]

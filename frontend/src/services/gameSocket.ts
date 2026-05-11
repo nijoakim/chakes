@@ -10,7 +10,7 @@ export interface GameSocketEvents {
   winner: Color | null
   pong: { id: string }
   legalMoves: Record<string, Set<string>>
-  moveResult: { ok: boolean; error?: string }
+  moveResult: { ok: boolean; error?: string; client_move_id?: string | null }
   inCheck: { white: boolean; black: boolean }
   inAntiCheck: { white: boolean; black: boolean }
 }
@@ -58,7 +58,7 @@ export class GameSocket {
     const data = JSON.parse(e.data)
     if (data.type === 'pong') { this.emit('pong', { id: data.id }); return }
     if (data.type === 'legal_moves') return
-    if (data.type === 'move_result') { this.emit('moveResult', { ok: data.ok, error: data.error }); return }
+    if (data.type === 'move_result') { this.emit('moveResult', { ok: data.ok, error: data.error, client_move_id: data.client_move_id }); return }
     if (data.board) this.emit('board', data.board)
     if (data.cooldowns) this.emit('cooldowns', data.cooldowns)
     if (data.max_cooldowns) this.emit('maxCooldowns', data.max_cooldowns)

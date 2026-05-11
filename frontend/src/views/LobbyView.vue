@@ -9,7 +9,7 @@ import ChakesBoard from '../components/chess/ChakesBoard.vue'
 import PromotionBar from '../components/chess/PromotionBar.vue'
 import GameSetup from '../components/lobby/GameSetup.vue'
 
-type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
+type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean; latencyHiding: boolean }
 
 const props = defineProps<{ name: string }>()
 
@@ -18,7 +18,7 @@ const lobby = useLobbyStore()
 const catalog = useCatalogStore()
 const {
   board, cooldowns, maxCooldowns, stablePromotionNames, playerColor, gameId, winner,
-  selected, legalMoves, selectedPromotion, rtt, inCheck, inAntiCheck,
+  selected, legalMoves, selectedPromotion, rtt, inCheck, inAntiCheck, rejectedSquares,
 } = storeToRefs(game)
 
 type StatusKind = 'check' | 'anti-check' | 'both' | 'mate' | 'anti-mate' | 'win' | 'empty'
@@ -72,6 +72,7 @@ useKeyboardShortcuts({ Escape: () => game.deselect() })
 
 async function onStartGame(payload: Settings) {
   lastSettings.value = payload
+  game.setLatencyHiding(payload.latencyHiding)
   await game.startNewGame(payload.gameType, payload.cooldowns, payload.upsideDown)
 }
 
@@ -126,6 +127,7 @@ function copyLobbyName() {
       :player-color="playerColor"
       :selected="selected"
       :legal-moves="legalMoves"
+      :rejected-squares="rejectedSquares"
       @square-click="(r, c) => game.handleSquareClick(r, c)"
       @square-right-click="(r, c) => game.handleSquareRightClick(r, c)"
     />

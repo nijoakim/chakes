@@ -109,14 +109,16 @@ async def _handle_ping(ws: WebSocket, msg: PingMessage) -> None:
 
 async def _handle_move(ws: WebSocket, lobby: str, msg: MoveMessage) -> None:
     move = MoveRequest(src=msg.src, dst=msg.dst, promotion=msg.promotion)
+    client_move_id = msg.client_move_id
     try:
         game = chakes.move(lobby, msg.game_id, move)
     except ValueError:
-        await ws.send_json({"type": "move_result", "ok": False, "error": "game_not_found", "game_id": str(msg.game_id)})
+        await ws.send_json({"type": "move_result", "ok": False, "error": "game_not_found", "game_id": str(msg.game_id), "client_move_id": client_move_id})
         return
     if game is None:
-        await ws.send_json({"type": "move_result", "ok": False, "error": "illegal_move"})
+        await ws.send_json({"type": "move_result", "ok": False, "error": "illegal_move", "client_move_id": client_move_id})
     else:
+        await ws.send_json({"type": "move_result", "ok": True, "client_move_id": client_move_id})
         await connections.broadcast(lobby, GameStateMessage.from_active_game(game))
 
 

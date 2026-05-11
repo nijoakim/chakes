@@ -6,6 +6,7 @@ import type { Color } from '../../services/api'
 const props = defineProps<{
   name: string
   color: Color
+  pending?: boolean
 }>()
 
 const src = computed(() => pieceImages[props.name]?.[props.color])
@@ -16,11 +17,13 @@ const src = computed(() => pieceImages[props.name]?.[props.color])
     v-if="src"
     :src="src"
     class="piece-img"
+    :class="{ pending }"
     :alt="name"
   >
   <span
     v-else
     class="piece-text"
+    :class="{ pending }"
   >{{ name }}</span>
 </template>
 
@@ -38,5 +41,13 @@ const src = computed(() => pieceImages[props.name]?.[props.color])
   font-weight: bold;
   pointer-events: none;
   user-select: none;
+}
+.pending {
+  opacity: 0.6;
+  animation: pending-pulse 1s ease-in-out infinite alternate;
+}
+@keyframes pending-pulse {
+  from { opacity: 0.55; }
+  to   { opacity: 0.75; }
 }
 </style>

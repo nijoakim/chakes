@@ -5,7 +5,7 @@ import { useCatalogStore } from '../../stores/catalog'
 import { getPieceDefs } from '../../services/api'
 import type { PieceDef } from '../../services/api'
 
-type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
+type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean; latencyHiding: boolean }
 
 const props = defineProps<{ initialSettings?: Settings }>()
 
@@ -16,6 +16,7 @@ const { gameTypes } = storeToRefs(catalog)
 
 const selectedGameType = ref(props.initialSettings?.gameType ?? 'orthodox')
 const upsideDown = ref(props.initialSettings?.upsideDown ?? false)
+const latencyHiding = ref(false)
 const currentPieceDefs = ref<PieceDef[]>([])
 
 const initialAbsolute = props.initialSettings?.cooldowns ?? {}
@@ -59,6 +60,7 @@ function onStart() {
       currentPieceDefs.value.map((p) => [p.name, concreteCooldown(p.name)])
     ),
     upsideDown: upsideDown.value,
+    latencyHiding: latencyHiding.value,
   })
 }
 </script>
@@ -119,6 +121,13 @@ function onStart() {
         type="checkbox"
       >
       Upside-down chess
+    </label>
+    <label class="checkbox-label">
+      <input
+        v-model="latencyHiding"
+        type="checkbox"
+      >
+      Show moves immediately (latency hiding)
     </label>
     <button @click="onStart">
       Start game
