@@ -13,6 +13,7 @@ export const useGameStore = defineStore('game', () => {
     Pawn: 3, Rook: 3, Knight: 3, Bishop: 3, Queen: 3, King: 3,
   })
   const pieceNames = ref<string[]>([])
+  const stablePromotionNames = ref<string[]>([])
   const playerColor = ref<Color>('white')
   const gameId = ref<string | null>(null)
   const winner = ref<Color | null>(null)
@@ -53,9 +54,12 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('maxCooldowns', (mc) => { maxCooldowns.value = mc }),
       gameSocket.on('pieceNames', (names) => {
         pieceNames.value = names
-        if (!names.includes(selectedPromotion.value)) {
-          selectedPromotion.value =
-            names.find((n) => n !== 'King' && n !== 'Pawn') ?? names[0]
+        if (stablePromotionNames.value.length === 0) {
+          stablePromotionNames.value = names.filter((n) => !/pawn|king/i.test(n))
+        }
+        const promotable = stablePromotionNames.value
+        if (!promotable.includes(selectedPromotion.value)) {
+          selectedPromotion.value = promotable[0] ?? ''
         }
       }),
       gameSocket.on('color', (c) => { playerColor.value = c }),
@@ -89,6 +93,7 @@ export const useGameStore = defineStore('game', () => {
     winner.value = null
     selected.value = null
     legalMoves.value = new Set()
+    stablePromotionNames.value = []
   }
 
   // --- Game actions ---
@@ -164,7 +169,7 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     // state
-    board, cooldowns, maxCooldowns, pieceNames, playerColor, gameId, winner,
+    board, cooldowns, maxCooldowns, pieceNames, stablePromotionNames, playerColor, gameId, winner,
     selected, legalMoves, selectedPromotion, rtt,
     // actions
     connect, disconnect, resetGameState, startNewGame,

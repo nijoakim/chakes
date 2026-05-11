@@ -17,7 +17,7 @@ const game = useGameStore()
 const lobby = useLobbyStore()
 const catalog = useCatalogStore()
 const {
-  board, cooldowns, maxCooldowns, pieceNames, playerColor, gameId, winner,
+  board, cooldowns, maxCooldowns, stablePromotionNames, playerColor, gameId, winner,
   selected, legalMoves, selectedPromotion, rtt,
 } = storeToRefs(game)
 
@@ -88,8 +88,8 @@ function copyLobbyName() {
     </p>
 
     <PromotionBar
-      v-if="gameId && pieceNames.length"
-      :piece-names="pieceNames"
+      v-if="gameId && stablePromotionNames.length"
+      :piece-names="stablePromotionNames"
       :selected="selectedPromotion"
       :player-color="playerColor"
       :cols="boardCols"
