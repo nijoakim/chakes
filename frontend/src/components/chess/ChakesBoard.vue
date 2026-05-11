@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { computed, toRef } from 'vue'
 import ChakesSquare from './ChakesSquare.vue'
 import type { Board, Cooldowns, Color } from '../../services/api'
 import { useBoardOrientation } from '../../composables/useBoardOrientation'
@@ -48,6 +48,8 @@ function onSquareRightClick(displayR: number, displayC: number, event: MouseEven
   emit('squareRightClick', r, c, event)
 }
 
+const fileLabelsOnBottom = computed(() => props.playerColor === 'white')
+
 function fileLabel(displayC: number): string {
   const [, bc] = displayToBoard(0, displayC)
   return FILE_LABELS[bc] ?? '?'
@@ -64,34 +66,24 @@ function rankLabel(displayR: number): string {
     class="board-with-labels"
     :style="{ '--chakes-cols': displayBoard[0]?.length ?? 8 }"
   >
-    <!-- Column labels along the top -->
+    <!-- Top row: file labels for black, empty spacers for white -->
     <div class="col-labels-row">
       <div class="label-corner" />
-      <div
-        v-for="(_, c) in displayBoard[0] ?? []"
-        :key="c"
-        class="label-cell"
-      >
-        {{ fileLabel(c) }}
+      <div v-for="(_, c) in displayBoard[0] ?? []" :key="c" class="label-cell">
+        {{ fileLabelsOnBottom ? '' : fileLabel(c) }}
       </div>
+      <div class="label-corner" />
     </div>
-    <!-- Rank labels on the left, board squares on the right -->
+
+    <!-- Middle: rank labels | board | empty rank column -->
     <div class="board-and-ranks">
       <div class="rank-labels">
-        <div
-          v-for="(_, r) in displayBoard"
-          :key="r"
-          class="label-cell"
-        >
+        <div v-for="(_, r) in displayBoard" :key="r" class="label-cell">
           {{ rankLabel(r) }}
         </div>
       </div>
       <div class="board">
-        <div
-          v-for="(row, r) in displayBoard"
-          :key="r"
-          class="row"
-        >
+        <div v-for="(row, r) in displayBoard" :key="r" class="row">
           <ChakesSquare
             v-for="(piece, c) in row"
             :key="c"
@@ -106,14 +98,26 @@ function rankLabel(displayR: number): string {
           />
         </div>
       </div>
+      <div class="rank-labels">
+        <div v-for="(_, r) in displayBoard" :key="r" class="label-cell" />
+      </div>
+    </div>
+
+    <!-- Bottom row: file labels for white, empty spacers for black -->
+    <div class="col-labels-row">
+      <div class="label-corner" />
+      <div v-for="(_, c) in displayBoard[0] ?? []" :key="c" class="label-cell">
+        {{ fileLabelsOnBottom ? fileLabel(c) : '' }}
+      </div>
+      <div class="label-corner" />
     </div>
   </div>
 </template>
 
 <style scoped>
 .board-with-labels {
-  /* +1 in denominator reserves space for the rank label column */
-  --chakes-sq: min(64px, calc((100vw - 44px) / (var(--chakes-cols, 8) + 1)));
+  /* +2 reserves space for rank label columns on both sides */
+  --chakes-sq: min(64px, calc((100vw - 44px) / (var(--chakes-cols, 8) + 2)));
   display: inline-flex;
   flex-direction: column;
 }
