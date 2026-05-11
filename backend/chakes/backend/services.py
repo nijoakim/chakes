@@ -108,7 +108,7 @@ class ChakesService:
             raise ValueError("Game not found")
         return lobby.game.get_legal_moves(pos)
 
-    async def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> bool:
+    def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> dict | None:
         lobby = self._lobbies[lobby_name]
         if not lobby.game or lobby.game.id != game_id:
             raise ValueError("Game not found")
@@ -116,6 +116,5 @@ class ChakesService:
         try:
             game.state.move_piece(EnginePos(move.src.x, move.src.y), EnginePos(move.dst.x, move.dst.y), info=move.promotion or '')
         except ValueError:
-            return False
-        await self._connections.broadcast(lobby_name, self._game_state_msg(game))
-        return True
+            return None
+        return self._game_state_msg(game)

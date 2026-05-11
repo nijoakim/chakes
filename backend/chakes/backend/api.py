@@ -3,8 +3,12 @@ import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
-from chakes.backend.models import GameDef, MoveRequest, Pos, _DEFAULT_PIECE_NAMES, GAME_TYPES
+from chakes.backend.models import (
+    GameDef, MoveRequest, Pos, _DEFAULT_PIECE_NAMES, GAME_TYPES,
+    INCOMING_ADAPTER, IncomingMessage, PingMessage, MoveMessage, LegalMovesMessage,
+)
 from chakes.engine.engine import piece_defs as engine_piece_defs
 from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
 
@@ -13,6 +17,19 @@ router = APIRouter(prefix="/api")
 lobbies = LobbyService()
 connections = ConnectionManager()
 chakes = ChakesService(lobbies, connections)
+
+
+async def _parse_incoming(ws: WebSocket, raw_text: str) -> IncomingMessage | None:
+    try:
+        data = json.loads(raw_text)
+    except json.JSONDecodeError as e:
+        await ws.send_json({"type": "error", "error": "invalid_json", "detail": str(e)})
+        return None
+    try:
+        return INCOMING_ADAPTER.validate_python(data)
+    except ValidationError as e:
+        await ws.send_json({"type": "error", "error": "invalid_message", "detail": e.errors(include_url=False)})
+        return None
 
 
 @router.get("/game-types")
@@ -67,9 +84,36 @@ def game_legal_moves(name: str, game_id: uuid.UUID, r: int, c: int):
 
 @router.post("/lobby/{name}/game/{game_id}/move")
 async def game_move(name: str, game_id: uuid.UUID, move: MoveRequest):
-    ok = await chakes.move(name, game_id, move)
-    if not ok:
+    msg = chakes.move(name, game_id, move)
+    if msg is None:
         return JSONResponse(status_code=400, content={"error": "Illegal move"})
+    await connections.broadcast(name, msg)
+
+
+async def _handle_ping(ws: WebSocket, msg: PingMessage) -> None:
+    await ws.send_json({"type": "pong", "id": msg.id})
+
+
+async def _handle_move(ws: WebSocket, lobby: str, msg: MoveMessage) -> None:
+    move = MoveRequest(src=msg.src, dst=msg.dst, promotion=msg.promotion)
+    try:
+        game_state = chakes.move(lobby, msg.game_id, move)
+    except ValueError:
+        await ws.send_json({"type": "move_result", "ok": False, "error": "game_not_found", "game_id": str(msg.game_id)})
+        return
+    if game_state is None:
+        await ws.send_json({"type": "move_result", "ok": False, "error": "illegal_move"})
+    else:
+        await connections.broadcast(lobby, game_state)
+
+
+async def _handle_legal_moves(ws: WebSocket, lobby: str, msg: LegalMovesMessage) -> None:
+    try:
+        moves = chakes.get_legal_moves(lobby, msg.game_id, msg.pos)
+    except ValueError:
+        await ws.send_json({"type": "legal_moves", "error": "game_not_found", "game_id": str(msg.game_id)})
+        return
+    await ws.send_json({"type": "legal_moves", "pos": msg.pos.model_dump(), "moves": moves})
 
 
 @router.websocket("/lobby/{name}/ws")
@@ -77,12 +121,15 @@ async def lobby_ws(name: str, ws: WebSocket, token: str | None = None):
     await chakes.connect(name, ws, token)
     try:
         while True:
-            text = await ws.receive_text()
-            try:
-                msg = json.loads(text)
-                if msg.get('type') == 'ping':
-                    await ws.send_text(json.dumps({'type': 'pong', 'id': msg['id']}))
-            except (json.JSONDecodeError, KeyError):
-                pass
+            msg = await _parse_incoming(ws, await ws.receive_text())
+            if msg is None:
+                continue
+            match msg:
+                case PingMessage():
+                    await _handle_ping(ws, msg)
+                case MoveMessage():
+                    await _handle_move(ws, name, msg)
+                case LegalMovesMessage():
+                    await _handle_legal_moves(ws, name, msg)
     except WebSocketDisconnect:
         chakes.disconnect(name, ws)

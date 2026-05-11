@@ -2,8 +2,9 @@ import random
 import uuid
 from collections.abc import Callable
 from datetime import datetime
+from typing import Annotated, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, TypeAdapter
 
 from chakes.engine.engine import Board as GameState, Piece as EnginePiece, Pos as EnginePos, piece_defs as engine_piece_defs
 
@@ -46,6 +47,32 @@ class MoveRequest(BaseModel):
     src : Pos
     dst : Pos
     promotion: str | None = None
+
+
+# --- Incoming WebSocket message models ---
+
+class PingMessage(BaseModel):
+    type: Literal["ping"]
+    id: str
+
+class MoveMessage(BaseModel):
+    type: Literal["move"]
+    game_id: uuid.UUID
+    src: Pos
+    dst: Pos
+    promotion: str | None = None
+
+class LegalMovesMessage(BaseModel):
+    type: Literal["legal_moves"]
+    game_id: uuid.UUID
+    pos: Pos
+
+IncomingMessage = Annotated[
+    PingMessage | MoveMessage | LegalMovesMessage,
+    Field(discriminator="type"),
+]
+
+INCOMING_ADAPTER: TypeAdapter[IncomingMessage] = TypeAdapter(IncomingMessage)
 
 
 class PieceDef(BaseModel):
