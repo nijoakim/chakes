@@ -4,6 +4,9 @@ import ChakesSquare from './ChakesSquare.vue'
 import type { Board, Cooldowns, Color } from '../../services/api'
 import { useBoardOrientation } from '../../composables/useBoardOrientation'
 
+// Coordinate label alphabet: a-z, A-Z, then Greek α-ω (76 total, covers up to 64 columns)
+const FILE_LABELS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZαβγδεζηθικλμνξοπρστυφχψω'
+
 const props = defineProps<{
   board: Board
   cooldowns: Cooldowns
@@ -44,37 +47,103 @@ function onSquareRightClick(displayR: number, displayC: number, event: MouseEven
   const [r, c] = displayToBoard(displayR, displayC)
   emit('squareRightClick', r, c, event)
 }
+
+function fileLabel(displayC: number): string {
+  const [, bc] = displayToBoard(0, displayC)
+  return FILE_LABELS[bc] ?? '?'
+}
+
+function rankLabel(displayR: number): string {
+  const [br] = displayToBoard(displayR, 0)
+  return String(br + 1)
+}
 </script>
 
 <template>
   <div
-    class="board"
+    class="board-with-labels"
     :style="{ '--chakes-cols': displayBoard[0]?.length ?? 8 }"
   >
-    <div
-      v-for="(row, r) in displayBoard"
-      :key="r"
-      class="row"
-    >
-      <ChakesSquare
-        v-for="(piece, c) in row"
+    <!-- Column labels along the top -->
+    <div class="col-labels-row">
+      <div class="label-corner" />
+      <div
+        v-for="(_, c) in displayBoard[0] ?? []"
         :key="c"
-        :piece="piece"
-        :is-light="(r + c) % 2 === 0"
-        :is-selected="isSelected(r, c)"
-        :is-legal-move="isLegalMove(r, c)"
-        :cooldown="displayCooldowns[r]?.[c] ?? 0"
-        :max-cooldown="maxCooldowns[piece?.name ?? ''] ?? 1"
-        @click="onSquareClick(r, c)"
-        @right-click="onSquareRightClick(r, c, $event)"
-      />
+        class="label-cell"
+      >
+        {{ fileLabel(c) }}
+      </div>
+    </div>
+    <!-- Rank labels on the left, board squares on the right -->
+    <div class="board-and-ranks">
+      <div class="rank-labels">
+        <div
+          v-for="(_, r) in displayBoard"
+          :key="r"
+          class="label-cell"
+        >
+          {{ rankLabel(r) }}
+        </div>
+      </div>
+      <div class="board">
+        <div
+          v-for="(row, r) in displayBoard"
+          :key="r"
+          class="row"
+        >
+          <ChakesSquare
+            v-for="(piece, c) in row"
+            :key="c"
+            :piece="piece"
+            :is-light="(r + c) % 2 === 0"
+            :is-selected="isSelected(r, c)"
+            :is-legal-move="isLegalMove(r, c)"
+            :cooldown="displayCooldowns[r]?.[c] ?? 0"
+            :max-cooldown="maxCooldowns[piece?.name ?? ''] ?? 1"
+            @click="onSquareClick(r, c)"
+            @right-click="onSquareRightClick(r, c, $event)"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.board-with-labels {
+  /* +1 in denominator reserves space for the rank label column */
+  --chakes-sq: min(64px, calc((100vw - 44px) / (var(--chakes-cols, 8) + 1)));
+  display: inline-flex;
+  flex-direction: column;
+}
+.col-labels-row {
+  display: flex;
+}
+.board-and-ranks {
+  display: flex;
+  flex-direction: row;
+}
+.rank-labels {
+  display: flex;
+  flex-direction: column;
+}
+.label-corner {
+  width: var(--chakes-sq);
+  height: var(--chakes-sq);
+}
+.label-cell {
+  width: var(--chakes-sq);
+  height: var(--chakes-sq);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--chakes-sq) * 0.32);
+  font-weight: 600;
+  color: #555;
+  user-select: none;
+}
 .board {
-  --chakes-sq: min(64px, calc((100vw - 44px) / var(--chakes-cols, 8)));
   display: inline-block;
   border: 2px solid #333;
 }
