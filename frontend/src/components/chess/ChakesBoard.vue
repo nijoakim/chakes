@@ -75,7 +75,11 @@ function rankLabel(displayR: number): string {
     <!-- Top row: file labels for black, empty spacers for white -->
     <div class="col-labels-row">
       <div class="label-corner" />
-      <div v-for="(_, c) in displayBoard[0] ?? []" :key="c" class="label-cell">
+      <div
+        v-for="(_, c) in displayBoard[0] ?? []"
+        :key="c"
+        class="label-cell"
+      >
         {{ fileLabelsOnBottom ? '' : fileLabel(c) }}
       </div>
       <div class="label-corner" />
@@ -84,12 +88,20 @@ function rankLabel(displayR: number): string {
     <!-- Middle: rank labels | board | empty rank column -->
     <div class="board-and-ranks">
       <div class="rank-labels">
-        <div v-for="(_, r) in displayBoard" :key="r" class="label-cell">
+        <div
+          v-for="(_, r) in displayBoard"
+          :key="r"
+          class="label-cell"
+        >
           {{ rankLabel(r) }}
         </div>
       </div>
       <div class="board">
-        <div v-for="(row, r) in displayBoard" :key="r" class="row">
+        <div
+          v-for="(row, r) in displayBoard"
+          :key="r"
+          class="row"
+        >
           <ChakesSquare
             v-for="(piece, c) in row"
             :key="c"
@@ -106,14 +118,22 @@ function rankLabel(displayR: number): string {
         </div>
       </div>
       <div class="rank-labels">
-        <div v-for="(_, r) in displayBoard" :key="r" class="label-cell" />
+        <div
+          v-for="(_, r) in displayBoard"
+          :key="r"
+          class="label-cell"
+        />
       </div>
     </div>
 
     <!-- Bottom row: file labels for white, empty spacers for black -->
     <div class="col-labels-row">
       <div class="label-corner" />
-      <div v-for="(_, c) in displayBoard[0] ?? []" :key="c" class="label-cell">
+      <div
+        v-for="(_, c) in displayBoard[0] ?? []"
+        :key="c"
+        class="label-cell"
+      >
         {{ fileLabelsOnBottom ? fileLabel(c) : '' }}
       </div>
       <div class="label-corner" />

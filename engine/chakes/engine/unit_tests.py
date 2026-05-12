@@ -16,7 +16,7 @@
 # along with Chakes.  If not, see <https://www.gnu.org/licenses/>.
 
 import unittest as ut
-from engine.chakes.engine.engine import *
+from engine.chakes.engine.engine import Board, Piece, Player, Pos
 
 # Patch piece.get_cooldown to always return 0.0 in order to not have to wait for cooldown unless self._enable_cooldown is True
 piece_get_cooldown = Piece.get_cooldown

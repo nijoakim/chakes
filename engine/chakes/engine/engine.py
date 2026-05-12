@@ -318,7 +318,6 @@ class Piece:
 
                     leaps:          bool = False
                     hops:           bool = False
-                    unsafe:         bool = False
 
                     # Parse conditions
                     if match := re.match(r'[f|c|o|i|]+', pattern_temp):

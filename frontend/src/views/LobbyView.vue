@@ -86,7 +86,12 @@ function copyLobbyName() {
 </script>
 
 <template>
-  <div class="rtt-badge" :style="{ color: rttColor }">{{ rttLabel }}</div>
+  <div
+    class="rtt-badge"
+    :style="{ color: rttColor }"
+  >
+    {{ rttLabel }}
+  </div>
   <section id="center">
     <div class="room-name">
       Lobby: {{ name }}
@@ -132,12 +137,23 @@ function copyLobbyName() {
       @square-right-click="(r, c) => game.handleSquareRightClick(r, c)"
     />
 
-    <div class="status-banner" :class="statusMessage.kind">
+    <div
+      class="status-banner"
+      :class="statusMessage.kind"
+    >
       <span v-if="statusMessage.kind !== 'empty'">{{ statusMessage.text }}</span>
       <span v-else>&nbsp;</span>
     </div>
-    <div class="new-game-slot" :class="{ hidden: playerColor !== 'white' || !gameId }">
-      <button class="new-game" @click="onNewGame">New game</button>
+    <div
+      class="new-game-slot"
+      :class="{ hidden: playerColor !== 'white' || !gameId }"
+    >
+      <button
+        class="new-game"
+        @click="onNewGame"
+      >
+        New game
+      </button>
     </div>
   </section>
 </template>

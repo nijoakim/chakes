@@ -1,10 +1,11 @@
 import re
-import pytest
 
 from pydantic import BaseModel
 
-from chakes.backend.models import ActiveGame, GameDef, Lobby, MoveRequest, Pos, summarize
+from chakes.backend.models import GameDef, Lobby, MoveRequest, Pos, summarize
+from chakes.backend.server_identity import generate_server_name
 from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
+from chakes.engine.engine import Player
 
 
 # ---------------------------------------------------------------------------
@@ -112,9 +113,6 @@ async def test_broadcast_does_not_propagate_exception_from_failing_socket():
 # Server identity
 # ---------------------------------------------------------------------------
 
-from chakes.backend.server_identity import SERVER_NAME, generate_server_name
-
-
 def test_generate_server_name_matches_format():
     assert re.fullmatch(r"[a-z]+-[a-z]+", generate_server_name())
 
@@ -128,9 +126,6 @@ def test_server_name_constant_is_stable_within_process():
 # ---------------------------------------------------------------------------
 # ActiveGame winner caching
 # ---------------------------------------------------------------------------
-
-from chakes.engine.engine import Player
-
 
 def _service_with_game(game_def: GameDef = GameDef()):
     lobbies = LobbyService()

@@ -31,8 +31,10 @@ lobby.refreshList()
           v-model="nameInput"
           placeholder="Leave empty for a random name"
           @keyup.enter="onCreate"
-        />
-        <button @click="onCreate">Create</button>
+        >
+        <button @click="onCreate">
+          Create
+        </button>
       </div>
     </section>
 
@@ -40,10 +42,18 @@ lobby.refreshList()
     <section class="browse-section">
       <div class="browse-header">
         <h2>Open lobbies</h2>
-        <button class="refresh-btn" @click="lobby.refreshList()">Refresh</button>
+        <button
+          class="refresh-btn"
+          @click="lobby.refreshList()"
+        >
+          Refresh
+        </button>
       </div>
 
-      <ul v-if="lobby.openLobbies.length > 0" class="lobby-list">
+      <ul
+        v-if="lobby.openLobbies.length > 0"
+        class="lobby-list"
+      >
         <li
           v-for="row in lobby.openLobbies"
           :key="row.name"
@@ -62,7 +72,10 @@ lobby.refreshList()
           <div class="row-secondary">
             <template v-if="row.settings">
               {{ row.settings.game_type_label }}
-              <template v-for="(p, i) in row.settings.pieces" :key="p.name">
+              <template
+                v-for="p in row.settings.pieces"
+                :key="p.name"
+              >
                 <span class="sep"> · </span>{{ p.name }} {{ p.cooldown }}s
               </template>
               <template v-if="row.settings.upside_down">
@@ -76,7 +89,10 @@ lobby.refreshList()
         </li>
       </ul>
 
-      <p v-else class="empty-state">
+      <p
+        v-else
+        class="empty-state"
+      >
         No open lobbies on this server. Create one above to get started.
       </p>
     </section>
