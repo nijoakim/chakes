@@ -94,3 +94,15 @@ export async function listLobbies(): Promise<LobbyListResponse> {
   const res = await fetch('/api/lobby')
   return await res.json()
 }
+
+export interface InitialBoardResponse {
+  board: (PieceInstance | null)[][]
+  size_x: number
+  size_y: number
+}
+
+export async function getInitialBoard(gameType?: string): Promise<InitialBoardResponse> {
+  const url = gameType ? `/api/initial-board?game_type=${encodeURIComponent(gameType)}` : '/api/initial-board'
+  const res = await fetch(url)
+  return await res.json()
+}

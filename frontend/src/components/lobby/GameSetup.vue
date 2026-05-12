@@ -2,8 +2,9 @@
 import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '../../stores/catalog'
-import { getPieceDefs } from '../../services/api'
-import type { PieceDef } from '../../services/api'
+import { getPieceDefs, getInitialBoard } from '../../services/api'
+import type { PieceDef, InitialBoardResponse, PieceInstance } from '../../services/api'
+import PieceSprite from '../chess/PieceSprite.vue'
 
 type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean; latencyHiding: boolean }
 
@@ -18,6 +19,7 @@ const selectedGameType = ref(props.initialSettings?.gameType ?? 'orthodox')
 const upsideDown = ref(props.initialSettings?.upsideDown ?? false)
 const latencyHiding = ref(false)
 const currentPieceDefs = ref<PieceDef[]>([])
+const initialBoard = ref<InitialBoardResponse | null>(null)
 
 const initialAbsolute = props.initialSettings?.cooldowns ?? {}
 const initialValues = Object.values(initialAbsolute)
@@ -41,12 +43,13 @@ function setPieceCooldown(name: string, concrete: number) {
 }
 
 watch(selectedGameType, async (gameType) => {
-  const defs = await getPieceDefs(gameType)
+  const [defs, board] = await Promise.all([getPieceDefs(gameType), getInitialBoard(gameType)])
   currentPieceDefs.value = [...defs].sort((a, b) => a.name.localeCompare(b.name))
   const prev = cooldownOffsets.value
   cooldownOffsets.value = Object.fromEntries(
     currentPieceDefs.value.map((p) => [p.name, prev[p.name] ?? 0])
   )
+  initialBoard.value = board
 }, { immediate: true })
 
 function adjustBase(delta: number) {
@@ -62,6 +65,10 @@ function onStart() {
     upsideDown: upsideDown.value,
     latencyHiding: latencyHiding.value,
   })
+}
+
+function isLight(r: number, c: number): boolean {
+  return (r + c) % 2 === 0
 }
 </script>
 
@@ -93,6 +100,7 @@ function onStart() {
     <table class="cooldown-table">
       <thead>
         <tr>
+          <th />
           <th>Piece</th>
           <th>Cooldown (s)</th>
         </tr>
@@ -102,6 +110,22 @@ function onStart() {
           v-for="p in currentPieceDefs"
           :key="p.name"
         >
+          <td>
+            <div class="piece-preview-pair">
+              <div class="piece-preview light">
+                <PieceSprite
+                  :name="p.name"
+                  color="white"
+                />
+              </div>
+              <div class="piece-preview dark">
+                <PieceSprite
+                  :name="p.name"
+                  color="black"
+                />
+              </div>
+            </div>
+          </td>
           <td>{{ p.name }}</td>
           <td>
             <input
@@ -115,6 +139,31 @@ function onStart() {
         </tr>
       </tbody>
     </table>
+
+    <div
+      v-if="initialBoard"
+      class="board-preview"
+      :style="{ '--cols': initialBoard.size_x }"
+    >
+      <template
+        v-for="(row, r) in initialBoard.board"
+        :key="r"
+      >
+        <div
+          v-for="(piece, c) in row"
+          :key="c"
+          class="mini-square"
+          :class="isLight(r, c) ? 'light' : 'dark'"
+        >
+          <PieceSprite
+            v-if="piece"
+            :name="(piece as PieceInstance).name"
+            :color="(piece as PieceInstance).owner"
+          />
+        </div>
+      </template>
+    </div>
+
     <label class="checkbox-label">
       <input
         v-model="upsideDown"
@@ -183,6 +232,36 @@ function onStart() {
 .cooldown-table input[type=number] {
   width: 60px;
 }
+.piece-preview-pair {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+.piece-preview {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+}
+.piece-preview.light { background: #f0d9b5; }
+.piece-preview.dark  { background: #b58863; }
+.board-preview {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 0;
+  border: 1px solid #888;
+}
+.mini-square {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mini-square.light { background: #f0d9b5; }
+.mini-square.dark  { background: #b58863; }
 .checkbox-label {
   display: flex;
   align-items: center;

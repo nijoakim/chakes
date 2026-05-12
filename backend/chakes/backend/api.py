@@ -12,8 +12,8 @@ from chakes.backend.models import (
     INCOMING_ADAPTER, IncomingMessage, PingMessage, MoveMessage, LegalMovesMessage,
     summarize,
 )
+from chakes.engine.engine import Pos as EnginePos, piece_defs as engine_piece_defs
 from chakes.backend.server_identity import SERVER_NAME
-from chakes.engine.engine import piece_defs as engine_piece_defs
 from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
 
 router = APIRouter(prefix="/api")
@@ -74,6 +74,21 @@ def piece_defs_list(game_type: str | None = None) -> dict[str, Any]:
     }
 
 
+@router.get("/initial-board")
+def initial_board(game_type: str | None = None) -> dict[str, Any]:
+    factory = GAME_TYPES.get(game_type or "orthodox", GAME_TYPES["orthodox"])[1]
+    state = factory()
+    board = [
+        [
+            {"name": p.name, "owner": "white" if p.owner.name == "WHITE" else "black"}
+            if (p := state.piece_at(EnginePos(c, r))) else None
+            for c in range(state.size_x)
+        ]
+        for r in range(state.size_y)
+    ]
+    return {"board": board, "size_x": state.size_x, "size_y": state.size_y}
+
+
 @router.get("/lobby")
 def lobby_list() -> dict[str, Any]:
     return {
@@ -109,12 +124,12 @@ def game_legal_moves(name: str, game_id: uuid.UUID, r: int, c: int) -> dict[str,
 
 
 @router.post("/lobby/{name}/game/{game_id}/move")
-async def game_move(name: str, game_id: uuid.UUID, move: MoveRequest) -> JSONResponse | None:
+async def game_move(name: str, game_id: uuid.UUID, move: MoveRequest) -> JSONResponse:
     game = chakes.move(name, game_id, move)
     if game is None:
         return JSONResponse(status_code=400, content={"error": "Illegal move"})
     await connections.broadcast(name, GameStateMessage.from_active_game(game))
-    return None
+    return JSONResponse(status_code=200, content={"status": "OK"})
 
 
 async def _handle_ping(ws: WebSocket, msg: PingMessage) -> None:
