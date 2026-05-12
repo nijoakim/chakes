@@ -81,6 +81,13 @@ run-frontend: check-frontend
 
 # === Test ===
 
+.PHONY: test
+test: test-engine test-backend
+
 .PHONY: test-engine
 test-engine: check-engine
 	uv run python -m engine.chakes.engine.unit_tests
+
+.PHONY: test-backend
+test-backend:
+	uv run pytest backend/tests

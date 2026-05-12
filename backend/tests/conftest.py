@@ -27,3 +27,20 @@ def lobby_with_game(client):
     r = client.post(f"/api/lobby/{name}/game")
     game_id = r.json()["game_id"]
     return name, game_id
+
+
+@pytest.fixture()
+def ws_connect(client):
+    """Open one or more WS connections to a lobby and clean them up on teardown."""
+    opened = []
+
+    def _open(lobby_name: str, token: str | None = None):
+        url = f"/api/lobby/{lobby_name}/ws" + (f"?token={token}" if token else "")
+        ctx = client.websocket_connect(url)
+        ws = ctx.__enter__()
+        opened.append((ctx, ws))
+        return ws
+
+    yield _open
+    for ctx, _ in opened:
+        ctx.__exit__(None, None, None)

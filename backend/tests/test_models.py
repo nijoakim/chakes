@@ -138,3 +138,17 @@ def test_active_game_cooldown_override_does_not_affect_other_pieces():
     game = ActiveGame(GameDef(cooldowns={"Queen": 99}))
     pawns = [p for p in game.state.all_pieces() if p.name == "Pawn"]
     assert all(p.value != 99 for p in pawns)
+
+
+# ---------------------------------------------------------------------------
+# ActiveGame winner caching (initial state)
+# ---------------------------------------------------------------------------
+
+def test_active_game_winner_starts_as_none():
+    game = ActiveGame(GameDef())
+    assert game.winner is None
+
+
+def test_active_game_timestamp_end_starts_as_none():
+    game = ActiveGame(GameDef())
+    assert game.timestamp_end is None
