@@ -19,7 +19,7 @@ if _static_dir.is_dir():
 
     # SPA fallback: serve index.html for any non-API route
     @app.get("/{path:path}")
-    async def spa_fallback(path: str):
+    async def spa_fallback(path: str) -> FileResponse:
         # Serve the actual file if it exists (e.g. favicon.ico)
         file = _static_dir / path
         if file.is_file():

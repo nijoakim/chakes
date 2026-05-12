@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import ValuesView
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -23,7 +24,7 @@ class JoinResult:
 
 
 class ConnectionManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self._connections: dict[str, list[WebSocket]] = {}
 
     async def accept(self, ws: WebSocket, lobby_name: str) -> None:
@@ -55,7 +56,7 @@ class ConnectionManager:
 
 
 class LobbyService:
-    def __init__(self):
+    def __init__(self) -> None:
         self._lobbies: dict[str, Lobby] = {}
 
     def __getitem__(self, name: str) -> Lobby:
@@ -73,7 +74,7 @@ class LobbyService:
     def list(self) -> list[str]:
         return list(self._lobbies.keys())
 
-    def values(self):
+    def values(self) -> ValuesView[Lobby]:
         return self._lobbies.values()
 
     def get(self, name: str) -> Lobby | None:

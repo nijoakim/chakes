@@ -1,5 +1,7 @@
 import re
+from typing import cast
 
+from fastapi import WebSocket
 from pydantic import BaseModel
 
 from chakes.backend.models import GameDef, Lobby, MoveRequest, Pos, summarize
@@ -93,7 +95,7 @@ async def test_broadcast_delivers_to_healthy_socket_despite_failing_one():
     mgr = ConnectionManager()
     good = _OkWebSocket()
     bad = _FailWebSocket()
-    mgr._connections["room"] = [bad, good]
+    mgr._connections["room"] = cast(list[WebSocket], [bad, good])
 
     await mgr.broadcast("room", _Msg(text="hello"))
 
@@ -104,7 +106,7 @@ async def test_broadcast_delivers_to_healthy_socket_despite_failing_one():
 async def test_broadcast_does_not_propagate_exception_from_failing_socket():
     mgr = ConnectionManager()
     bad = _FailWebSocket()
-    mgr._connections["room"] = [bad]
+    mgr._connections["room"] = cast(list[WebSocket], [bad])
 
     await mgr.broadcast("room", _Msg(text="hi"))  # must not raise
 
@@ -137,21 +139,21 @@ def _service_with_game(game_def: GameDef = GameDef()):
 
 def test_active_game_winner_cached_after_terminal_snapshot():
     svc, game = _service_with_game()
-    game.snapshot = lambda: ({}, Player.WHITE)
+    game.snapshot = lambda: ({}, Player.WHITE)  # type: ignore[method-assign]
     svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
     assert game.winner == "white"
 
 
 def test_active_game_timestamp_end_set_when_winner_decided():
     svc, game = _service_with_game()
-    game.snapshot = lambda: ({}, Player.WHITE)
+    game.snapshot = lambda: ({}, Player.WHITE)  # type: ignore[method-assign]
     svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
     assert game.timestamp_end is not None
 
 
 def test_active_game_timestamp_end_not_overwritten_on_subsequent_snapshots():
     svc, game = _service_with_game()
-    game.snapshot = lambda: ({}, Player.WHITE)
+    game.snapshot = lambda: ({}, Player.WHITE)  # type: ignore[method-assign]
     svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
     first_ts = game.timestamp_end
     # game.winner is now set; caching branch is skipped on the next move
@@ -176,7 +178,7 @@ class _FakeWS:
 def _connections_with(lobby_name: str, count: int) -> ConnectionManager:
     mgr = ConnectionManager()
     if count > 0:
-        mgr._connections[lobby_name] = [_FakeWS() for _ in range(count)]
+        mgr._connections[lobby_name] = cast(list[WebSocket], [_FakeWS() for _ in range(count)])
     return mgr
 
 
@@ -265,6 +267,7 @@ def test_summarize_settings_game_type_id_matches_game_def():
     lobby = Lobby("test")
     lobby.create_game(GameDef(game_type="orthodox"))
     result = summarize(lobby, ConnectionManager(), "srv")
+    assert result.settings is not None
     assert result.settings.game_type_id == "orthodox"
 
 
@@ -272,6 +275,7 @@ def test_summarize_settings_game_type_label_matches_game_types_table():
     lobby = Lobby("test")
     lobby.create_game(GameDef(game_type="orthodox"))
     result = summarize(lobby, ConnectionManager(), "srv")
+    assert result.settings is not None
     assert result.settings.game_type_label == "Orthodox"
 
 
@@ -279,6 +283,7 @@ def test_summarize_settings_pieces_include_orthodox_defaults():
     lobby = Lobby("test")
     lobby.create_game(GameDef(game_type="orthodox"))
     result = summarize(lobby, ConnectionManager(), "srv")
+    assert result.settings is not None
     names = [p.name for p in result.settings.pieces]
     assert "Pawn" in names
     assert "King" in names
@@ -288,6 +293,7 @@ def test_summarize_settings_cooldown_override_reflected():
     lobby = Lobby("test")
     lobby.create_game(GameDef(cooldowns={"Queen": 7}))
     result = summarize(lobby, ConnectionManager(), "srv")
+    assert result.settings is not None
     queen = next(p for p in result.settings.pieces if p.name == "Queen")
     assert queen.cooldown == 7.0
 
@@ -296,6 +302,7 @@ def test_summarize_settings_pieces_reflect_game_type_specific_set():
     lobby = Lobby("test")
     lobby.create_game(GameDef(game_type="knighted"))
     result = summarize(lobby, ConnectionManager(), "srv")
+    assert result.settings is not None
     names = [p.name for p in result.settings.pieces]
     assert "Archbishop" in names
     assert "Chancellor" in names
@@ -305,6 +312,7 @@ def test_summarize_settings_upside_down_flag_present():
     lobby = Lobby("test")
     lobby.create_game(GameDef(upside_down=True))
     result = summarize(lobby, ConnectionManager(), "srv")
+    assert result.settings is not None
     assert result.settings.upside_down is True
 
 

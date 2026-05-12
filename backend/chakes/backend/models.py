@@ -156,7 +156,7 @@ class ActiveGame:
     def _get_piece(self, pos: Pos) -> EnginePiece | None:
         return self.state.piece_at(EnginePos(pos.x, pos.y))
 
-    def serialize_board(self) -> list[list[dict | None]]:
+    def serialize_board(self) -> list[list[dict[str, str] | None]]:
         return [
             [
                 {"name": p.name, "owner": "white" if p.owner.name == "WHITE" else "black"}

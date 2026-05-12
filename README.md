@@ -1,6 +1,8 @@
 # Chakes: Real-time chess for the masses.
 
-## Set up dev environment
+## Development
+
+### Set up dev environment
 
 Make sure you have `uv` installed (`python -m pip install uv`). Then
 
@@ -14,6 +16,14 @@ Frontend requires node 24. Install with e.g. `sudo snap install node --classic -
 Use the `.env.example` file to configure your own local setup (copy to `.env`).
 Configurable environment variables:
 - BACKEND_PORT: the port the backend uses to serve content
+
+### Type checking
+
+Python code is checked by two type checkers — **ty** and **mypy** — both run as part of `make check`. Running both catches a wider class of errors, since the checkers occasionally disagree or have different blind spots. Both are configured in strict mode for source files, with relaxed rules for test files.
+
+Each package configures its own type checking in its `pyproject.toml`. The engine and backend require slightly different mypy invocation strategies due to differences in how their import paths relate to the workspace layout; the details are documented in the respective `pyproject.toml` files and in the `makefile`.
+
+When a suppression comment is needed by one checker but not the other, prefer a bare `# type: ignore` without a checker-specific error code. Unused-ignore warnings are disabled for test files to avoid false positives from this cross-checker divergence.
 
 ## Board coordinate system
 

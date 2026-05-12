@@ -294,7 +294,7 @@ class TestPieces(ut.TestCase):
         self.assertIsNone(board.winner())
 
         # Assert King can not be captured
-        self.assertTrue('e1' not in queen.legal_moves())
+        self.assertTrue(Pos('e1') not in queen.legal_moves())
 
         board.move_piece(Pos('b1'), Pos('d2'))
         board.move_piece(Pos('h2'), Pos('h3'))

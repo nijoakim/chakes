@@ -6,7 +6,12 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["ruff", "ty"]
+dev = ["ruff", "ty", "mypy"]
+
+[tool.mypy]
+mypy_path = ".."
+explicit_package_bases = true
+strict = true
 
 [build-system]
 requires = ["hatchling"]

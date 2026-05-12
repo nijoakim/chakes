@@ -308,7 +308,7 @@ class Piece:
                 for pos in moves_comp_temp:
                     pattern_temp = pattern
 
-                    match: re.Match | None = None
+                    match: re.Match[str] | None = None
 
                     num_steps_range: range
 
@@ -605,7 +605,7 @@ class Board:
 
         board.add_new_piece_row('Pawn', Player.WHITE, '2')
 
-        pieces: list[str | None] = 8*[None]
+        pieces: list[str | None] = 8 * [None]  # type: ignore[assignment]
 
         n, b = divmod(n, 4)
         pieces[b*2+1] = 'Bishop'
@@ -675,7 +675,7 @@ class Board:
     def piece_at(self, pos: Pos) -> Piece | None:
         return self.pieces.get(pos, None)
 
-    def relocate_piece(self, piece: Piece, pos: Pos):
+    def relocate_piece(self, piece: Piece, pos: Pos) -> None:
         self.remove_piece(piece)
         piece.pos = pos
         self.pieces[piece.pos] = piece
@@ -710,10 +710,10 @@ class Board:
                 if name is not None:
                     self.add_new_piece(name, owner, Pos(x, y))
 
-    def remove_piece(self, piece: Piece):
+    def remove_piece(self, piece: Piece) -> None:
         del self.pieces[piece.pos]
 
-    def remove_piece_at(self, pos: Pos):
+    def remove_piece_at(self, pos: Pos) -> None:
         del self.pieces[pos]
 
     def upside_down(self) -> None:
@@ -747,7 +747,7 @@ class Board:
 
         self.move_log.append((pos1, pos2))
 
-    def is_pos_within_board(self, pos: Pos):
+    def is_pos_within_board(self, pos: Pos) -> bool:
         return \
             pos.x >= 0 and \
             pos.y >= 0 and \

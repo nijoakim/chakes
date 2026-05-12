@@ -12,11 +12,24 @@ dependencies = [
 engine = { workspace = true }
 
 [dependency-groups]
-dev = ["ruff", "ty", "pytest", "pytest-asyncio", "httpx"]
+dev = ["ruff", "ty", "mypy", "pytest", "pytest-asyncio", "httpx"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.mypy]
+mypy_path = [".", "../engine"]
+explicit_package_bases = true
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "conftest"]
+disallow_untyped_defs = false
+disallow_untyped_decorators = false
+disallow_untyped_calls = false
+disallow_incomplete_defs = false
+warn_unused_ignores = false
 
 [build-system]
 requires = ["hatchling"]

@@ -29,10 +29,12 @@ typecheck: typecheck-engine typecheck-backend typecheck-frontend
 .PHONY: typecheck-engine
 typecheck-engine:
 	uv run ty check engine
+	uv run --package engine mypy --config-file engine/pyproject.toml engine
 
 .PHONY: typecheck-backend
 typecheck-backend:
 	uv run ty check backend
+	cd backend && uv run --package backend mypy .
 
 .PHONY: typecheck-frontend
 typecheck-frontend:
@@ -86,7 +88,7 @@ test: test-engine test-backend
 
 .PHONY: test-engine
 test-engine: check-engine
-	uv run python -m engine.chakes.engine.unit_tests
+	uv run --package engine python -m chakes.engine.unit_tests
 
 .PHONY: test-backend
 test-backend:

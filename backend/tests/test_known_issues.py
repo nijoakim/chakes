@@ -12,7 +12,7 @@ from chakes.backend.models import ActiveGame, GameDef
 )
 def test_neutral_winner_serializes_as_neutral():
     game = ActiveGame(GameDef())
-    game.snapshot = lambda: ({}, Player.NEUTRAL)
+    game.snapshot = lambda: ({}, Player.NEUTRAL)  # type: ignore
     msg = GameStateMessage.from_active_game(game)
     assert msg.winner == "neutral"
 

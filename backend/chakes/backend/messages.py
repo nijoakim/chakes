@@ -9,7 +9,7 @@ class LobbyJoinedMessage(BaseModel):
 
 
 class GameStateMessage(BaseModel):
-    board: list[list[dict | None]]
+    board: list[list[dict[str, str] | None]]
     cooldowns: list[list[float]]
     max_cooldowns: dict[str, float] | None = None
     piece_names: list[str] | None = None
