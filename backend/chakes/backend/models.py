@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import random
 import uuid
 from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
+
+if TYPE_CHECKING:
+    from chakes.backend.services import ConnectionManager
 
 from pydantic import BaseModel, Field, TypeAdapter
 
@@ -138,6 +143,7 @@ class ActiveGame:
         self.game_def = game_def
         self.timestamp_start = datetime.now()
         self.timestamp_end: datetime | None = None
+        self.winner: str | None = None  # cached after first compute
 
         if game_def.upside_down:
             self.state.upside_down()
@@ -249,3 +255,65 @@ class Lobby:
     def create_game(self, game_def: GameDef) -> ActiveGame:
         self.game = ActiveGame(game_def)
         return self.game
+
+
+# --- Lobby summary (for list endpoint) ---
+
+class PieceCooldown(BaseModel):
+    name: str
+    cooldown: float
+
+
+class GameSettingsSummary(BaseModel):
+    game_type_id: str
+    game_type_label: str
+    pieces: list[PieceCooldown]
+    upside_down: bool
+
+
+class LobbySummary(BaseModel):
+    name: str
+    server_name: str
+    state: Literal["waiting", "in_progress", "ended"]
+    players: int
+    spectators: int
+    settings: GameSettingsSummary | None
+
+
+def summarize(lobby: Lobby, connections: ConnectionManager, server_name: str) -> LobbySummary:
+    game = lobby.game
+    if game is None:
+        state: Literal["waiting", "in_progress", "ended"] = "waiting"
+    elif game.winner is None:
+        state = "in_progress"
+    else:
+        state = "ended"
+
+    players = sum(
+        1 for c in lobby._token_colors.values() if c in ("white", "black")
+    )
+    total = connections.connection_count(lobby.name)
+    spectators = max(0, total - players)
+
+    settings: GameSettingsSummary | None = None
+    if game is not None:
+        gd = game.game_def
+        game_type_id = gd.game_type
+        game_type_label = GAME_TYPES.get(game_type_id, ("Unknown", None))[0]
+        cooldowns_map = game.serialize_max_cooldowns()
+        pieces = [PieceCooldown(name=n, cooldown=c) for n, c in cooldowns_map.items()]
+        settings = GameSettingsSummary(
+            game_type_id=game_type_id,
+            game_type_label=game_type_label,
+            pieces=pieces,
+            upside_down=gd.upside_down,
+        )
+
+    return LobbySummary(
+        name=lobby.name,
+        server_name=server_name,
+        state=state,
+        players=players,
+        spectators=spectators,
+        settings=settings,
+    )

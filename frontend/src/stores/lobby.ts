@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as api from '../services/api'
+import type { LobbySummary } from '../services/api'
 
 export const useLobbyStore = defineStore('lobby', () => {
   const currentName = ref<string | null>(null)
-  const openLobbies = ref<string[]>([])
+  const openLobbies = ref<LobbySummary[]>([])
+  const serverName = ref<string | null>(null)
 
   async function create(desiredName?: string): Promise<string> {
     const name = await api.createLobby(desiredName)
@@ -12,13 +14,14 @@ export const useLobbyStore = defineStore('lobby', () => {
   }
 
   async function refreshList(): Promise<void> {
-    // TODO: returns [] until backend implements /api/lobbies
-    openLobbies.value = await api.listLobbies()
+    const data = await api.listLobbies()
+    serverName.value = data.server_name
+    openLobbies.value = data.lobbies
   }
 
   function setCurrent(name: string | null): void {
     currentName.value = name
   }
 
-  return { currentName, openLobbies, create, refreshList, setCurrent }
+  return { currentName, openLobbies, serverName, create, refreshList, setCurrent }
 })

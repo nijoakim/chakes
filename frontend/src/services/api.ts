@@ -64,7 +64,33 @@ export async function sendMove(
   })
 }
 
-// TODO: backend endpoint pending
-export async function listLobbies(): Promise<string[]> {
-  return []
+export interface PieceCooldown {
+  name: string
+  cooldown: number
+}
+
+export interface GameSettingsSummary {
+  game_type_id: string
+  game_type_label: string
+  pieces: PieceCooldown[]
+  upside_down: boolean
+}
+
+export interface LobbySummary {
+  name: string
+  server_name: string
+  state: 'waiting' | 'in_progress' | 'ended'
+  players: number
+  spectators: number
+  settings: GameSettingsSummary | null
+}
+
+export interface LobbyListResponse {
+  server_name: string
+  lobbies: LobbySummary[]
+}
+
+export async function listLobbies(): Promise<LobbyListResponse> {
+  const res = await fetch('/api/lobby')
+  return await res.json()
 }

@@ -9,7 +9,9 @@ from chakes.backend.messages import GameStateMessage, LobbyJoinedMessage
 from chakes.backend.models import (
     GameDef, MoveRequest, Pos, _DEFAULT_PIECE_NAMES, GAME_TYPES,
     INCOMING_ADAPTER, IncomingMessage, PingMessage, MoveMessage, LegalMovesMessage,
+    summarize,
 )
+from chakes.backend.server_identity import SERVER_NAME
 from chakes.engine.engine import piece_defs as engine_piece_defs
 from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
 
@@ -18,6 +20,8 @@ router = APIRouter(prefix="/api")
 lobbies = LobbyService()
 connections = ConnectionManager()
 chakes = ChakesService(lobbies)
+
+print(f"Server name: {SERVER_NAME}")
 
 
 async def _parse_incoming(ws: WebSocket, raw_text: str) -> IncomingMessage | None:
@@ -31,6 +35,11 @@ async def _parse_incoming(ws: WebSocket, raw_text: str) -> IncomingMessage | Non
     except ValidationError as e:
         await ws.send_json({"type": "error", "error": "invalid_message", "detail": e.errors(include_url=False)})
         return None
+
+
+@router.get("/server")
+def server_info():
+    return {"name": SERVER_NAME}
 
 
 @router.get("/game-types")
@@ -66,7 +75,10 @@ def piece_defs_list(game_type: str | None = None):
 
 @router.get("/lobby")
 def lobby_list():
-    return {"lobbies": lobbies.list()}
+    return {
+        "server_name": SERVER_NAME,
+        "lobbies": [summarize(lob, connections, SERVER_NAME) for lob in lobbies.values()],
+    }
 
 
 @router.post("/lobby")

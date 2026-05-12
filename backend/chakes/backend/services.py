@@ -1,5 +1,6 @@
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 
 from fastapi import WebSocket
 from pydantic import BaseModel
@@ -72,6 +73,9 @@ class LobbyService:
     def list(self) -> list[str]:
         return list(self._lobbies.keys())
 
+    def values(self):
+        return self._lobbies.values()
+
     def get(self, name: str) -> Lobby | None:
         return self._lobbies.get(name)
 
@@ -107,4 +111,9 @@ class ChakesService:
             game.state.move_piece(EnginePos(move.src.x, move.src.y), EnginePos(move.dst.x, move.dst.y), info=move.promotion or '')
         except ValueError:
             return None
+        if game.winner is None:
+            _, winner = game.snapshot()
+            if winner is not None:
+                game.winner = "white" if winner.name == "WHITE" else "black"
+                game.timestamp_end = datetime.now()
         return game
