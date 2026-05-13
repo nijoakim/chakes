@@ -6,7 +6,7 @@ import { getPieceDefs, getInitialBoard } from '../../services/api'
 import type { PieceDef, InitialBoardResponse, PieceInstance } from '../../services/api'
 import PieceSprite from '../chess/PieceSprite.vue'
 
-type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean; latencyHiding: boolean }
+type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
 
 const props = defineProps<{ initialSettings?: Settings }>()
 
@@ -17,7 +17,6 @@ const { gameTypes } = storeToRefs(catalog)
 
 const selectedGameType = ref(props.initialSettings?.gameType ?? 'orthodox')
 const upsideDown = ref(props.initialSettings?.upsideDown ?? false)
-const latencyHiding = ref(false)
 const currentPieceDefs = ref<PieceDef[]>([])
 const initialBoard = ref<InitialBoardResponse | null>(null)
 
@@ -63,7 +62,6 @@ function onStart() {
       currentPieceDefs.value.map((p) => [p.name, concreteCooldown(p.name)])
     ),
     upsideDown: upsideDown.value,
-    latencyHiding: latencyHiding.value,
   })
 }
 
@@ -170,13 +168,6 @@ function isLight(r: number, c: number): boolean {
         type="checkbox"
       >
       Upside-down chess
-    </label>
-    <label class="checkbox-label">
-      <input
-        v-model="latencyHiding"
-        type="checkbox"
-      >
-      Show moves immediately (latency hiding)
     </label>
     <button @click="onStart">
       Start game

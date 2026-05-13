@@ -6,6 +6,8 @@ import { RttMonitor } from '../services/rtt'
 import { useSessionStore } from './session'
 import type { Board, Cooldowns, Color, PieceInstance } from '../services/api'
 
+const LATENCY_HIDING_KEY = 'chakes_latency_hiding'
+
 interface PendingMove {
   id: string
   src: [number, number]
@@ -37,7 +39,7 @@ export const useGameStore = defineStore('game', () => {
   let cooldownTimeouts: ReturnType<typeof setTimeout>[] = []
 
   // --- Latency hiding ---
-  const latencyHidingEnabled = ref(false)
+  const latencyHidingEnabled = ref(localStorage.getItem(LATENCY_HIDING_KEY) === 'true')
   const pendingMoves = ref<Map<string, PendingMove>>(new Map())
   const rejectedSquares = ref<Set<string>>(new Set())
 
@@ -88,7 +90,7 @@ export const useGameStore = defineStore('game', () => {
     rttMonitor.start()
 
     unsubscribers = [
-      gameSocket.on('board', (b) => { authoritativeBoard.value = b }),
+      gameSocket.on('board', (b) => { authoritativeBoard.value = b; console.log(performance.now(), 'board');}),
       gameSocket.on('cooldowns', (c) => {
         serverCooldowns = c
         serverCooldownTime = performance.now() - (rttMonitor.rtt ?? 0) / 2
@@ -162,6 +164,7 @@ export const useGameStore = defineStore('game', () => {
         const srcEmpty = b[sr]?.[sc] == null
         const dstPiece = b[dr]?.[dc]
         if (srcEmpty && dstPiece != null && dstPiece.owner === playerColor.value) {
+          console.log(performance.now(), 'move', sr, sc, dr, dc, id);
           pendingMoves.value.delete(id)
         }
       }
@@ -202,12 +205,12 @@ export const useGameStore = defineStore('game', () => {
     legalMovesBySrc.value = {}
     stablePromotionNames.value = []
     pendingMoves.value = new Map()
-    latencyHidingEnabled.value = false
     rejectedSquares.value = new Set()
   }
 
   function setLatencyHiding(enabled: boolean): void {
     latencyHidingEnabled.value = enabled
+    localStorage.setItem(LATENCY_HIDING_KEY, String(enabled))
   }
 
   // --- Game actions ---
@@ -270,6 +273,7 @@ export const useGameStore = defineStore('game', () => {
     })
 
     if (latencyHidingEnabled.value) {
+      console.log(performance.now(), 'move (pending)', fc, fr, toC, toR, moveId);
       const piece = authoritativeBoard.value[fr]?.[fc]
       if (piece) {
         pendingMoves.value.set(moveId, {

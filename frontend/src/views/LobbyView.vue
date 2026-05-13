@@ -9,7 +9,7 @@ import ChakesBoard from '../components/chess/ChakesBoard.vue'
 import PromotionBar from '../components/chess/PromotionBar.vue'
 import GameSetup from '../components/lobby/GameSetup.vue'
 
-type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean; latencyHiding: boolean }
+type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
 
 const props = defineProps<{ name: string }>()
 
@@ -19,6 +19,7 @@ const catalog = useCatalogStore()
 const {
   board, cooldowns, maxCooldowns, stablePromotionNames, playerColor, gameId, winner,
   selected, legalMoves, selectedPromotion, rtt, inCheck, inAntiCheck, rejectedSquares,
+  latencyHidingEnabled,
 } = storeToRefs(game)
 
 type StatusKind = 'check' | 'anti-check' | 'both' | 'mate' | 'anti-mate' | 'win' | 'empty'
@@ -72,7 +73,6 @@ useKeyboardShortcuts({ Escape: () => game.deselect() })
 
 async function onStartGame(payload: Settings) {
   lastSettings.value = payload
-  game.setLatencyHiding(payload.latencyHiding)
   await game.startNewGame(payload.gameType, payload.cooldowns, payload.upsideDown)
 }
 
@@ -86,11 +86,24 @@ function copyLobbyName() {
 </script>
 
 <template>
-  <div
-    class="rtt-badge"
-    :style="{ color: rttColor }"
-  >
-    {{ rttLabel }}
+  <div class="info-bar">
+    <div
+      class="rtt-badge"
+      :style="{ color: rttColor }"
+    >
+      {{ rttLabel }}
+    </div>
+    <label
+      class="latency-toggle"
+      title="Show your moves immediately, before the server confirms them"
+    >
+      <input
+        type="checkbox"
+        :checked="latencyHidingEnabled"
+        @change="(e) => game.setLatencyHiding((e.target as HTMLInputElement).checked)"
+      >
+      latency hiding
+    </label>
   </div>
   <section id="center">
     <div class="room-name">
@@ -214,12 +227,28 @@ function copyLobbyName() {
   color: #888;
   font-size: 15px;
 }
+.info-bar {
+  width: 100%;
+  height: 30px;
+  display: inline-flex;
+  justify-content: end;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 10px;
+}
 .rtt-badge {
-  position: fixed;
-  top: 8px;
-  right: 12px;
+  width: 5em;
   font-size: 11px;
   font-family: monospace;
   opacity: 0.8;
+}
+.latency-toggle {
+  font-size: 11px;
+  font-family: monospace;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
 }
 </style>
