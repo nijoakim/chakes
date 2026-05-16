@@ -8,6 +8,10 @@ class LobbyJoinedMessage(BaseModel):
     color: str
 
 
+class AllLegalMovesMessage(BaseModel):
+    legal_moves: dict[str, list[list[int]]]
+
+
 class GameStateMessage(BaseModel):
     board: list[list[dict[str, str] | None]]
     cooldowns: list[list[float]]
@@ -15,7 +19,7 @@ class GameStateMessage(BaseModel):
     piece_names: list[str] | None = None
     game_id: str
     winner: str | None = None  # excluded from wire when None (see ConnectionManager.broadcast)
-    legal_moves: dict[str, list[list[int]]] = {}
+    legal_moves: dict[str, list[list[int]]] | None = None  # excluded when None
     white_in_check: bool = False
     black_in_check: bool = False
     white_in_anti_check: bool = False
@@ -23,17 +27,22 @@ class GameStateMessage(BaseModel):
 
     @classmethod
     def from_active_game(
-        cls, game: ActiveGame, *, include_immutables: bool = True
+        cls, game: ActiveGame, *, include_immutables: bool = True, include_legal_moves: bool = True
     ) -> "GameStateMessage":
-        all_moves, winner = game.snapshot()
+        legal_moves = None
+        winner = game.winner  # string or None, already set by services.move()
+        if include_legal_moves:
+            all_moves, snapshot_winner = game.snapshot()
+            winner = ("white" if snapshot_winner.name == "WHITE" else "black") if snapshot_winner else game.winner
+            legal_moves = game.serialize_legal_moves(all_moves)
         return cls(
             board=game.serialize_board(),
             cooldowns=game.serialize_cooldowns(),
             max_cooldowns=game.serialize_max_cooldowns() if include_immutables else None,
             piece_names=game.serialize_piece_names() if include_immutables else None,
             game_id=str(game.id),
-            winner=("white" if winner.name == "WHITE" else "black") if winner else None,
-            legal_moves=game.serialize_legal_moves(all_moves),
+            winner=winner,
+            legal_moves=legal_moves,
             white_in_check=game.state.is_in_check(Player.WHITE),
             black_in_check=game.state.is_in_check(Player.BLACK),
             white_in_anti_check=game.state.is_in_anti_check(Player.WHITE),

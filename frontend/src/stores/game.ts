@@ -90,7 +90,7 @@ export const useGameStore = defineStore('game', () => {
     rttMonitor.start()
 
     unsubscribers = [
-      gameSocket.on('board', (b) => { authoritativeBoard.value = b; console.log(performance.now(), 'board');}),
+      gameSocket.on('board', (b) => { authoritativeBoard.value = b; legalMovesBySrc.value = {}; console.log(performance.now(), 'board');}),
       gameSocket.on('cooldowns', (c) => {
         serverCooldowns = c
         serverCooldownTime = performance.now() - (rttMonitor.rtt ?? 0) / 2

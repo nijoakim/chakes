@@ -6,7 +6,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from chakes.backend.messages import GameStateMessage, LobbyJoinedMessage
+from chakes.backend.messages import AllLegalMovesMessage, GameStateMessage, LobbyJoinedMessage
 from chakes.backend.models import (
     GameDef, MoveRequest, Pos, _DEFAULT_PIECE_NAMES, GAME_TYPES,
     INCOMING_ADAPTER, IncomingMessage, PingMessage, MoveMessage, LegalMovesMessage,
@@ -148,7 +148,9 @@ async def _handle_move(ws: WebSocket, lobby: str, msg: MoveMessage) -> None:
         await ws.send_json({"type": "move_result", "ok": False, "error": "illegal_move", "client_move_id": client_move_id})
     else:
         await ws.send_json({"type": "move_result", "ok": True, "client_move_id": client_move_id})
-        await connections.broadcast(lobby, GameStateMessage.from_active_game(game, include_immutables=False))
+        await connections.broadcast(lobby, GameStateMessage.from_active_game(game, include_immutables=False, include_legal_moves=False))
+        all_moves, _ = game.snapshot()
+        await connections.broadcast(lobby, AllLegalMovesMessage(legal_moves=game.serialize_legal_moves(all_moves)))
 
 
 async def _handle_legal_moves(ws: WebSocket, lobby: str, msg: LegalMovesMessage) -> None:
