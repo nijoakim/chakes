@@ -2,6 +2,8 @@
 
 # Medium priority:
 - frontend: display check and anti-check messages
++ engine: Optimization: Parse the moveset string only once
++ engine: Optimization: Add possibility to revert a move in order to not have to copy the board excessively
 
 # Low priority:
 + engine: Generalize en passant moves

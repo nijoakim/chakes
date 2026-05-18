@@ -824,3 +824,13 @@ class Board:
         ret += ' '.join([f'\033[33m{str(Pos(x, 0))[0]}' for x in range(self.size_x)])
         ret += '\033[0m'
         return ret
+
+board = Board.orthodox()
+start = monotonic()
+all_legal_moves = board.all_legal_moves()
+# pawn = board.piece_at(Pos('a2'))
+# assert pawn is not None
+# pawn_legal_moves = pawn.legal_moves()
+end   = monotonic()
+
+print(end - start)
