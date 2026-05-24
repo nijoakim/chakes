@@ -110,7 +110,56 @@ piece_defs: dict[str, tuple[int, str]] = {
 }
 
 
+# TODO: @dataclass()
+class Move:
+    def __init__(
+            self,
+            capture_friend: bool,
+            capture_enemy:  bool,
+            capture_none:   bool,
+            initial_only:   bool,
+            leaps:          bool,
+            hops:           bool,
+            num_steps:      range,
+        ):
+        self.capture_friend: bool  = capture_friend
+        self.capture_enemy:  bool  = capture_enemy
+        self.capture_none:   bool  = capture_none
+        self.initial_only:   bool  = initial_only
+        self.leaps:          bool  = leaps
+        self.hops:           bool  = hops
+        self.num_steps:      range = num_steps
+
+        self.diff_poses: set[Pos]    = set()
+        self.compound:   Move | None = None
+
+    def __str__(self) -> str:
+        ret: str = ''
+
+        ret += (
+            f"{'i' if self.initial_only   else ''}"
+            f"{'f' if self.capture_friend else ''}"
+            f"{'c' if self.capture_enemy  else ''}"
+            f"{'o' if self.capture_none   else ''}"
+            f"{'~' if self.leaps          else ''}"
+            f"{'^' if self.hops           else ''}"
+            f", {self.num_steps}"
+        )
+        ret += ': ' + f'{ {str((diff_pos.x, diff_pos.y)) for diff_pos in self.diff_poses} }'.replace("'", '')[1:-1]
+
+        if self.compound is not None:
+            ret += f' . {self.compound}'
+
+        return ret
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
 class Piece:
+    movesets: dict[str, set[Move]] = {}
+
+
     def __init__(
         self, name: str, owner: Player, pos: Pos, board: Board
     ) -> None:
@@ -125,6 +174,10 @@ class Piece:
         # Piece definition
         self.value:   int = piece_defs[name][0]
         self.moveset: str = piece_defs[name][1]
+
+        # Parse moveset if not already parsed
+        if self.moveset not in Piece.movesets:
+            Piece.movesets[self.moveset] = Piece.parse_moveset(self.moveset)
 
     def __str__(self) -> str:
         abbreviation: str = self.name[0] if self.name != 'Knight' else 'N'
@@ -283,187 +336,207 @@ class Piece:
             check_safe:      bool = True,
             invert_captures: bool = False,
         ) -> set[Pos]:
-        """
-        Returns a set of legal moves for a piece.
+        ret: set[Pos] = set()
 
-        Args:
-            check_safe:      Whether to exclude moves that are unsafe
-            invert_captures: Whether to invert capturing and non-capturing moves
+        move_dests: set[Pos] = set()
+        poses:      set[Pos] = {self.pos}
 
-        Returns:
-            Set of legal moves
-        """
+        for move in Piece.movesets[self.moveset]:
+            while True:
+                for pos in poses:
+                    for diff_pos in move.diff_poses:
+                        diff_pos = Pos(diff_pos.x, self._forwards()*diff_pos.y)
+                        for num_steps in move.num_steps:
+                            move_dests |= self._legal_moves_in_direction(pos, diff_pos, num_steps, move.leaps, move.hops)
 
-        moves: set[Pos] = set()
+                capture_friend: bool = move.capture_friend
+                capture_enemy:  bool = move.capture_enemy
+                capture_none:   bool = move.capture_none
+
+                # Invert captures
+                if invert_captures:
+                    capture_friend = capture_enemy
+                    capture_enemy, capture_none = capture_none, capture_enemy
+
+                # Filter out moves based on what/whether they capture
+                move_dests = {
+                    move_dest for move_dest in move_dests for piece in (self.board.piece_at(move_dest),)
+                    if  (not move.initial_only or not self.has_moved)
+                    and (
+                        (capture_friend and piece is not None and piece.owner == self.owner)
+                        or (capture_enemy  and piece is not None and piece.owner != self.owner)
+                        or (capture_none   and piece is None)
+                    )
+                }
+
+                ret |= move_dests
+
+                if move.compound is None:
+                    break
+                else:
+                    move       = move.compound
+                    poses      = move_dests
+                    move_dests = set()
+
+        # Apply special rules
+        moves = self._legal_moves_special(ret, check_safe = check_safe)
+
+        return ret
+
+    @staticmethod
+    def parse_moveset(
+            moveset_str: str,
+        ) -> set[Move]:
+
+        moveset: set[Move] = set()
 
         # Parse alternatives
-        for pattern in self.moveset.split(','):
-            moves_alt:  set[Pos] = set()
-            moves_comp: set[Pos] = {self.pos}
+        for pattern in moveset_str.split(','):
+            last_move: Move | None = None
 
             # Parse compounds
             for pattern in pattern.split('.'):
-                moves_comp_temp: set[Pos] = moves_comp
-                moves_comp = set()
-                for pos in moves_comp_temp:
-                    pattern_temp = pattern
+                match: re.Match[str] | None = None
 
-                    match: re.Match[str] | None = None
+                num_steps_range: range
 
-                    num_steps_range: range
+                capture_friend: bool = False
+                capture_enemy:  bool = True
+                capture_none:   bool = True
+                initial_only:   bool = False
 
-                    capture_friend: bool = False
-                    capture_enemy:  bool = True
-                    capture_none:   bool = True
+                leaps:          bool = False
+                hops:           bool = False
 
-                    leaps:          bool = False
-                    hops:           bool = False
+                # Parse conditions
+                if match := re.match(r'[f|c|o|i|]+', pattern):
+                    capture_friend = 'f' in pattern
+                    capture_enemy  = 'c' in pattern
+                    capture_none   = 'o' in pattern
+                    initial_only   = 'i' in pattern
+                    pattern = pattern[match.end():]
 
-                    # Parse conditions
-                    if match := re.match(r'[f|c|o|i|]+', pattern_temp):
-                        pattern_temp = '_' if 'i' in pattern_temp and self.has_moved else pattern_temp.replace('i', '')
-                    if match := re.match(r'[f|c|o|i|]+', pattern_temp):
-                        capture_friend = 'f' in pattern_temp
-                        capture_enemy  = 'c' in pattern_temp
-                        capture_none   = 'o' in pattern_temp
-                        pattern_temp = pattern_temp[match.end():]
+                # Parse move type
+                match pattern[0]:
+                    case '~':
+                        leaps = True
+                        pattern = pattern[1:]
+                    case '^':
+                        hops = True
+                        pattern = pattern[1:]
 
-                    # Invert captures
-                    if invert_captures:
-                        capture_friend = capture_enemy
-                        capture_enemy, capture_none = capture_none, capture_enemy
+                # Parse number of steps
+                if not re.match(r'\(?[0-9]+/', pattern):
+                    # n
+                    if pattern[0] == 'n':
+                        num_steps_range = range(-1, 0)
+                        pattern = pattern[1:]
 
-                    # Parse move type
-                    match pattern_temp[0]:
-                        case '~':
-                            leaps = True
-                            pattern_temp = pattern_temp[1:]
-                        case '^':
-                            hops = True
-                            pattern_temp = pattern_temp[1:]
+                    # x-y
+                    elif match := re.match(r'[0-9]+\-[0-9]+', pattern):
+                        start, end = tuple([int(num) for num in pattern[:match.end()].split('-')])
+                        if start >= end:
+                            raise AssertionError(f'For number of steps range, {start} is larger than or equal to {end}.')
+                        num_steps_range = range(start, end+1)
+                        pattern = pattern[match.end():]
 
-                    # Parse number of steps
-                    if not re.match(r'\(?[0-9]+/', pattern_temp):
-                        # n
-                        if pattern_temp[0] == 'n':
-                            num_steps_range = range(-1, 0)
-                            pattern_temp = pattern_temp[1:]
+                    # x
+                    elif match := re.match(r'[0-9]+', pattern):
+                        num: int = int(pattern[:match.end()])
+                        num_steps_range = range(num, num+1)
+                        pattern = pattern[match.end():]
+                else:
+                    num_steps_range = range(1, 2)
 
-                        # x-y
-                        elif match := re.match(r'[0-9]+\-[0-9]+', pattern_temp):
-                            start, end = tuple([int(num) for num in pattern_temp[:match.end()].split('-')])
-                            if start >= end:
-                                raise AssertionError(f'For number of steps range in {self.name}, {start} is larger than or equal to {end}.')
-                            num_steps_range = range(start, end+1)
-                            pattern_temp = pattern_temp[match.end():]
+                # Create move
+                move: Move = Move(capture_friend, capture_enemy, capture_none, initial_only, leaps, hops, num_steps_range)
 
-                        # x
-                        elif match := re.match(r'[0-9]+', pattern_temp):
-                            num: int = int(pattern_temp[:match.end()])
-                            num_steps_range = range(num, num+1)
-                            pattern_temp = pattern_temp[match.end():]
-                    else:
-                        num_steps_range = range(1, 2)
+                # Attach move either to base moveset or to last move
+                if last_move is None:
+                    moveset.add(move)
+                else:
+                    last_move.compound = move
 
-                    # Parse parentheses
-                    if match := re.match(r'\(.*\)', pattern_temp):
-                        pattern_temp = pattern_temp[1:match.end()-1] + pattern_temp[match.end():]
+                # Update last move
+                last_move = move
 
-                    # Parse direction
-                    if match := re.match(r'X>|X<|<>|>=|<=|>|<|=|\+|X|\*|[0-9]+/[0-9]+', pattern_temp):
-                        move_type: str = pattern_temp[:match.end()]
-                        pattern_temp = pattern_temp[match.end():]
+                # Parse parentheses
+                if match := re.match(r'\(.*\)', pattern):
+                    pattern = pattern[1:match.end()-1] + pattern[match.end():]
 
-                        # For each number of steps
-                        for num_steps in num_steps_range:
-                            match move_type:
-                                # Orthogonally forwards
-                                case '>':
-                                    moves_comp |= self._legal_moves_in_direction(pos, Pos(0, self._forwards()), num_steps, leaps, hops)
+                # Parse direction
+                if match := re.match(r'X>|X<|<>|>=|<=|>|<|=|\+|X|\*|[0-9]+/[0-9]+', pattern):
+                    move_type: str = pattern[:match.end()]
+                    pattern   = pattern[match.end():]
 
-                                # Orthogonally backwards
-                                case '<':
-                                    moves_comp |= self._legal_moves_in_direction(pos, Pos(0, -self._forwards()), num_steps, leaps, hops)
+                    # For each number of steps
+                    for num_steps in num_steps_range:
+                        match move_type:
+                            # Orthogonally forwards
+                            case '>':
+                                move.diff_poses.add(Pos(0, 1))
 
-                                # Orthogonally forwards and backwards
-                                case '<>':
-                                    for direction in (-1, 1):
-                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(0, direction), num_steps, leaps, hops)
+                            # Orthogonally backwards
+                            case '<':
+                                move.diff_poses.add(Pos(0, -1))
 
-                                # Orthogonally sideways
-                                case '=':
-                                    for direction in (-1, 1):
-                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(direction, 0), num_steps, leaps, hops)
+                            # Orthogonally forwards and backwards
+                            case '<>':
+                                for y in (-1, 1):
+                                    move.diff_poses.add(Pos(0, y))
 
-                                # Orthogonally forwards and sideways
-                                case '>=':
-                                    moves_comp |= self._legal_moves_in_direction(pos, Pos(0, self._forwards()), num_steps, leaps, hops)
-                                    for direction in (-1, 1):
-                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(direction, 0), num_steps, leaps, hops)
+                            # Orthogonally sideways
+                            case '=':
+                                for y in (-1, 1):
+                                    move.diff_poses.add(Pos(0, y))
 
-                                # Orthogonally backwards and sideways
-                                case '<=':
-                                    moves_comp |= self._legal_moves_in_direction(pos, Pos(0, -num_steps), 1, leaps, hops)
-                                    for direction in (-1, 1):
-                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(direction*self._forwards(), 0), num_steps, leaps, hops)
+                            # Orthogonally forwards and sideways
+                            case '>=':
+                                move.diff_poses.add(Pos(0, 1))
+                                for x in (-1, 1):
+                                    move.diff_poses.add(Pos(x, 0))
 
-                                # Diagonally forwards
-                                case 'X>':
-                                    y = self._forwards()
-                                    for x in -1, 1:
-                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
+                            # Orthogonally backwards and sideways
+                            case '<=':
+                                move.diff_poses.add(Pos(0, -1))
+                                for x in (-1, 1):
+                                    move.diff_poses.add(Pos(x, 0))
 
-                                # Diagonally backwards
-                                case 'X<':
-                                    y = -self._forwards()
-                                    for x in -1, 1:
-                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
+                            # Diagonally forwards
+                            case 'X>':
+                                for x in -1, 1:
+                                    move.diff_poses.add(Pos(x, 1))
 
-                                # Orthogonally
-                                case '+':
-                                    for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
-                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
+                            # Diagonally backwards
+                            case 'X<':
+                                for x in -1, 1:
+                                    move.diff_poses.add(Pos(x, -1))
 
-                                # Diagonally
-                                case 'X':
-                                    for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
-                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
+                            # Orthogonally
+                            case '+':
+                                for x, y in (1, 0), (0, 1), (-1, 0), (0, -1):
+                                    move.diff_poses.add(Pos(x, y))
 
-                                # Any direction
-                                case '*':
-                                    for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
-                                        moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
+                            # Diagonally
+                            case 'X':
+                                for x, y in (1, 1), (-1, 1), (1, -1), (-1, -1):
+                                    move.diff_poses.add(Pos(x, y))
 
-                                # Hippogonally
-                                case _ if '/' in move_type:
-                                    a: int
-                                    b: int
-                                    a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
-                                    for c, d in ((a, b), (-a, b), (a, -b), (-a, -b)):
-                                        for x, y in ((c, d), (d, c)):
-                                            moves_comp |= self._legal_moves_in_direction(pos, Pos(x, y), num_steps, leaps, hops)
+                            # Any direction
+                            case '*':
+                                for x, y in (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1):
+                                    move.diff_poses.add(Pos(x, y))
 
-                # Filter out moves based on what/whether they capture
-                moves_comp = {
-                    move for move in moves_comp for piece in (self.board.piece_at(move),)
-                    if (capture_friend and piece is not None and piece.owner == self.owner)
-                    or (capture_enemy  and piece is not None and piece.owner != self.owner)
-                    or (capture_none   and piece is None)
-                }
+                            # Hippogonally
+                            case _ if '/' in move_type:
+                                a: int
+                                b: int
+                                a, b = tuple([int(num_str) for num_str in move_type.split('/')][:2])
+                                for c, d in ((a, b), (-a, b), (a, -b), (-a, -b)):
+                                    for x, y in ((c, d), (d, c)):
+                                        move.diff_poses.add(Pos(x, y))
 
-                # Include compound moves in move alternatives
-                moves_alt |= moves_comp
-
-            # Include move alteratives in main moves
-            moves |= moves_alt
-
-        # Apply special rules
-        moves = self._legal_moves_special(moves, check_safe = check_safe)
-
-        # Filter starting position
-        moves -= {self.pos}
-
-        return moves
+        return moveset
 
     def _legal_moves_special(
             self,
@@ -824,3 +897,14 @@ class Board:
         ret += ' '.join([f'\033[33m{str(Pos(x, 0))[0]}' for x in range(self.size_x)])
         ret += '\033[0m'
         return ret
+
+board = Board.orthodox()
+start = monotonic()
+board.all_legal_moves()
+end = monotonic()
+print(end - start)
+
+# import cProfile
+
+# board = Board.orthodox()
+# cProfile.run('board.all_legal_moves()')
