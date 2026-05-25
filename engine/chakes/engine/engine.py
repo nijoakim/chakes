@@ -897,14 +897,3 @@ class Board:
         ret += ' '.join([f'\033[33m{str(Pos(x, 0))[0]}' for x in range(self.size_x)])
         ret += '\033[0m'
         return ret
-
-board = Board.orthodox()
-start = monotonic()
-board.all_legal_moves()
-end = monotonic()
-print(end - start)
-
-# import cProfile
-
-# board = Board.orthodox()
-# cProfile.run('board.all_legal_moves()')
