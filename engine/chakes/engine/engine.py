@@ -22,7 +22,7 @@ import re
 import random
 from enum import auto, Enum
 from time import monotonic
-from copy import deepcopy
+from copy import deepcopy, copy
 from dataclasses import dataclass
 
 
@@ -159,7 +159,6 @@ class Move:
 class Piece:
     movesets: dict[str, set[Move]] = {}
 
-
     def __init__(
         self, name: str, owner: Player, pos: Pos, board: Board
     ) -> None:
@@ -179,6 +178,8 @@ class Piece:
         if self.moveset not in Piece.movesets:
             Piece.movesets[self.moveset] = Piece.parse_moveset(self.moveset)
 
+        self.captures: set[Piece] = set()
+
     def __str__(self) -> str:
         abbreviation: str = self.name[0] if self.name != 'Knight' else 'N'
         if self.get_cooldown() > 0:
@@ -191,6 +192,10 @@ class Piece:
             color = '\033[1;34m'
 
         return color + abbreviation + '\033[0m'
+
+    def _capture(self, piece: Piece) -> None:
+        self.captures.add(piece)
+        self.board.remove_piece(piece)
 
     def _forwards(self) -> int:
         match self.owner:
@@ -264,6 +269,10 @@ class Piece:
 
         self._move_special(new_pos, info = info)
 
+        other: Piece | None = self.board.piece_at(new_pos)
+        if other is not None:
+            self._capture(other)
+
         self.board.relocate_piece(self, new_pos)
 
         self.has_moved      = True
@@ -289,7 +298,7 @@ class Piece:
                     other = self.board.piece_at(Pos(new_pos.x, self.pos.y))
                     if other is not None:
                         if getattr(other, '_en_passantable', False):
-                            self.board.remove_piece(other)
+                            self._capture(other)
 
             case 'King':
                 # Castling
@@ -581,14 +590,18 @@ class Piece:
         # Filter unsafe moves
         if check_safe:
             for new_pos in set(moves):
+                old_pos: Pos = self.pos
+
                 # Test move
-                test_state: Board = deepcopy(self.board)
-                test_state.move_piece(self.pos, new_pos, check_safe = False)
+                self.board.move_piece(self.pos, new_pos, check_safe = False)
 
                 # Remove move if in check or anti-check
-                if test_state.is_in_anti_check(self.owner) \
-                or test_state.is_in_check(self.owner):
+                if self.board.is_in_anti_check(self.owner) \
+                or self.board.is_in_check(self.owner):
                     moves -= {new_pos}
+
+                # Revert test move
+                self.board.revert_moves(1)
 
         # Filter moves that capture invincible pieces
         if check_safe:
@@ -604,7 +617,7 @@ class Piece:
 
 class Board:
     pieces:   dict[Pos, Piece]
-    move_log: list[tuple[Pos, Pos]]
+    move_log: list[tuple[Piece, Pos, set[Piece]]] # Format: (piece before move, destination, captures)
 
     def __init__(self, size_x: int = 8, size_y: int = 8, pieces: set[Piece] = set()) -> None:
         self.size_x: int = size_x
@@ -816,9 +829,30 @@ class Board:
         if piece is None:
             raise ValueError(f'There is no piece at {pos1}.')
         else:
+            piece_copy: Piece = copy(piece)
             piece.move(pos2, info = info, check_safe = check_safe)
 
-        self.move_log.append((pos1, pos2))
+        self.move_log.append((piece_copy, pos2, piece.captures))
+        piece.captures = set()
+
+    def revert_moves(self, n: int) -> None:
+        if n <= 0:
+            return
+        else:
+            piece_old, pos_new, captures = self.move_log.pop()
+
+            # Restore old piece
+            piece_new: Piece | None = self.piece_at(pos_new)
+            assert piece_new is not None
+            self.remove_piece_at(pos_new)
+            piece_new.__dict__.update(piece_old.__dict__)
+            piece_new.captures = set()
+            self.add_piece(piece_new)
+
+            for captured in captures:
+                self.add_piece(captured)
+
+            self.revert_moves(n-1)
 
     def is_pos_within_board(self, pos: Pos) -> bool:
         return \
