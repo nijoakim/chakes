@@ -25,6 +25,8 @@ from time import monotonic
 from copy import deepcopy
 from dataclasses import dataclass
 
+def _sign(x: int) -> int:
+    return x // abs(x) if x != 0 else 0
 
 @dataclass(frozen = True)
 class Pos:
@@ -559,24 +561,29 @@ class Piece:
 
             case 'King':
                 # Castling
-                attacked:     set[Pos] = self.board.attacked_squares(self.owner, invert_captures = False) if check_safe else set()
-                attacked_inv: set[Pos] = self.board.attacked_squares(self.owner, invert_captures = True) if check_safe else set()
-                for diff_x in (-1, 1):
-                    if  self.pos not in attacked \
-                    and self.pos + Pos(diff_x, 0) not in attacked_inv:
+                if not self.has_moved:
+                    pot_moves: set[Pos] = set()
+                    for diff_x in (-1, 1):
                         cur_x: int = self.pos.x + diff_x
                         while self.board.is_pos_within_board(Pos(cur_x, self.pos.y)):
                             other = self.board.piece_at(Pos(cur_x, self.pos.y))
                             if other is not None:
                                 if other.name == 'Rook' \
                                 and other.owner == self.owner \
-                                and not self.has_moved \
                                 and not other.has_moved \
                                 and self.board.is_pos_within_board(self.pos + Pos(2*diff_x, 0)) \
                                 and self.board.piece_at(Pos(self.pos.x+2*diff_x, self.pos.y)) is None:
-                                    moves |= {self.pos + Pos(2*diff_x, 0)}
+                                    pot_moves |= {self.pos + Pos(2*diff_x, 0)}
                                 break
                             cur_x += diff_x
+
+                    if not pot_moves == set():
+                        attacked:     set[Pos] = self.board.attacked_squares(self.owner, invert_captures = False) if check_safe else set()
+                        attacked_inv: set[Pos] = self.board.attacked_squares(self.owner, invert_captures = True) if check_safe else set()
+                        for pot_move in pot_moves:
+                            if  self.pos not in attacked \
+                            and self.pos + Pos(_sign(pot_move.x - self.pos.x), 0) not in attacked_inv:
+                                moves |= {pot_move}
 
         # Filter unsafe moves
         if check_safe:
