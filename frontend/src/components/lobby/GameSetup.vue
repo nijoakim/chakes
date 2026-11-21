@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useCatalogStore } from '../../stores/catalog'
-import { getPieceDefs, getInitialBoard } from '../../services/api'
-import type { PieceDef, InitialBoardResponse, PieceInstance } from '../../services/api'
-import PieceSprite from '../chess/PieceSprite.vue'
+import { useCatalogStore } from '@/stores/catalog'
+import { getPieceDefs, getInitialBoard } from '@/services/api'
+import type { PieceDef, InitialBoardResponse } from '@/services/types'
+import type { GameSettings } from '@/chakes/types'
+import { isLightSquare } from '@/chakes/square'
+import { orientedSquares } from '@/chakes/orientation'
+import BoardGrid from '@/components/board/BoardGrid.vue'
+import BoardSquare from '@/components/board/BoardSquare.vue'
+import PieceSprite from '@/components/chakes/PieceSprite.vue'
 
-type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
+const props = defineProps<{ initialSettings?: GameSettings }>()
 
-const props = defineProps<{ initialSettings?: Settings }>()
-
-const emit = defineEmits<{ (e: 'start', payload: Settings): void }>()
+const emit = defineEmits<{ (e: 'start', payload: GameSettings): void }>()
 
 const catalog = useCatalogStore()
 const { gameTypes } = storeToRefs(catalog)
@@ -41,8 +44,8 @@ function setPieceCooldown(name: string, concrete: number) {
   cooldownOffsets.value[name] = concrete - globalCooldown.value
 }
 
-watch(selectedGameType, async (gameType) => {
-  const [defs, board] = await Promise.all([getPieceDefs(gameType), getInitialBoard(gameType)])
+watch([selectedGameType, upsideDown], async ([gameType, flipped]) => {
+  const [defs, board] = await Promise.all([getPieceDefs(gameType), getInitialBoard(gameType, flipped)])
   currentPieceDefs.value = [...defs].sort((a, b) => a.name.localeCompare(b.name))
   const prev = cooldownOffsets.value
   cooldownOffsets.value = Object.fromEntries(
@@ -65,9 +68,11 @@ function onStart() {
   })
 }
 
-function isLight(r: number, c: number): boolean {
-  return (r + c) % 2 === 0
-}
+// Preview is shown from white's side.
+const previewSquares = computed(() => {
+  const b = initialBoard.value?.board
+  return b ? orientedSquares(b.length, b[0]?.length ?? 0, 'white') : null
+})
 </script>
 
 <template>
@@ -110,18 +115,24 @@ function isLight(r: number, c: number): boolean {
         >
           <td>
             <div class="piece-preview-pair">
-              <div class="piece-preview light">
+              <BoardSquare
+                class="piece-preview"
+                light
+              >
                 <PieceSprite
                   :name="p.name"
                   color="white"
                 />
-              </div>
-              <div class="piece-preview dark">
+              </BoardSquare>
+              <BoardSquare
+                class="piece-preview"
+                :light="false"
+              >
                 <PieceSprite
                   :name="p.name"
                   color="black"
                 />
-              </div>
+              </BoardSquare>
             </div>
           </td>
           <td>{{ p.name }}</td>
@@ -138,29 +149,21 @@ function isLight(r: number, c: number): boolean {
       </tbody>
     </table>
 
-    <div
-      v-if="initialBoard"
+    <BoardGrid
+      v-if="previewSquares && initialBoard"
+      v-slot="{ cell: [r, c] }"
       class="board-preview"
-      :style="{ '--cols': initialBoard.size_x }"
+      :cells="previewSquares"
+      square-size="32px"
     >
-      <template
-        v-for="(row, r) in initialBoard.board"
-        :key="r"
-      >
-        <div
-          v-for="(piece, c) in row"
-          :key="c"
-          class="mini-square"
-          :class="isLight(r, c) ? 'light' : 'dark'"
-        >
-          <PieceSprite
-            v-if="piece"
-            :name="(piece as PieceInstance).name"
-            :color="(piece as PieceInstance).owner"
-          />
-        </div>
-      </template>
-    </div>
+      <BoardSquare :light="isLightSquare([r, c])">
+        <PieceSprite
+          v-if="initialBoard.board[r]?.[c]"
+          :name="initialBoard.board[r][c]!.name"
+          :color="initialBoard.board[r][c]!.owner"
+        />
+      </BoardSquare>
+    </BoardGrid>
 
     <label class="checkbox-label">
       <input
@@ -191,15 +194,16 @@ function isLight(r: number, c: number): boolean {
 }
 .game-type-picker label {
   padding: 4px 10px;
-  border: 1px solid #aaa;
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
 }
 .game-type-picker label.active {
-  border-color: #333;
+  border-color: var(--text-h);
   font-weight: bold;
-  background: #f0f0f0;
+  color: var(--text-h);
+  background: var(--code-bg);
 }
 .game-type-picker input[type=radio] {
   display: none;
@@ -218,7 +222,7 @@ function isLight(r: number, c: number): boolean {
 .cooldown-table td {
   padding: 4px 10px;
   text-align: left;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--border);
 }
 .cooldown-table input[type=number] {
   width: 60px;
@@ -229,30 +233,12 @@ function isLight(r: number, c: number): boolean {
   align-items: center;
 }
 .piece-preview {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  --sq: 28px;
   border-radius: 2px;
 }
-.piece-preview.light { background: #f0d9b5; }
-.piece-preview.dark  { background: #b58863; }
 .board-preview {
-  display: grid;
-  grid-template-columns: repeat(var(--cols), 1fr);
-  gap: 0;
-  border: 1px solid #888;
+  border-width: 1px;
 }
-.mini-square {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.mini-square.light { background: #f0d9b5; }
-.mini-square.dark  { background: #b58863; }
 .checkbox-label {
   display: flex;
   align-items: center;

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useLobbyStore } from '../../stores/lobby'
-import type { LobbySummary } from '../../services/api'
+import { useLobbyStore } from '@/stores/lobby'
+import type { LobbySummary } from '@/services/types'
 
 const router = useRouter()
 const lobby = useLobbyStore()

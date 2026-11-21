@@ -1,81 +1,53 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, shallowRef } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useCatalogStore } from '../stores/catalog'
-import { useGameStore } from '../stores/game'
-import { useLobbyStore } from '../stores/lobby'
-import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
-import ChakesBoard from '../components/chess/ChakesBoard.vue'
-import PromotionBar from '../components/chess/PromotionBar.vue'
-import GameSetup from '../components/lobby/GameSetup.vue'
-
-type Settings = { gameType: string; cooldowns: Record<string, number>; upsideDown: boolean }
+import { useCatalogStore } from '@/stores/catalog'
+import { useGameStore } from '@/stores/game'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
+import type { GameSettings } from '@/chakes/types'
+import ChakesBoard from '@/components/chakes/ChakesBoard.vue'
+import PromotionBar from '@/components/chakes/PromotionBar.vue'
+import StatusBanner from '@/components/chakes/StatusBanner.vue'
+import GameSetup from '@/components/lobby/GameSetup.vue'
+import LatencyToggle from '@/components/lobby/LatencyToggle.vue'
+import RttBadge from '@/components/lobby/RttBadge.vue'
 
 const props = defineProps<{ name: string }>()
 
 const game = useGameStore()
-const lobby = useLobbyStore()
 const catalog = useCatalogStore()
 const {
-  board, cooldowns, maxCooldowns, stablePromotionNames, playerColor, gameId, winner,
+  board, cooldownGrid, maxCooldowns, stablePromotionNames, playerColor, isHost, gameId, winner,
   selected, legalMoves, selectedPromotion, rtt, inCheck, inAntiCheck, rejectedSquares,
   latencyHidingEnabled,
 } = storeToRefs(game)
 
-type StatusKind = 'check' | 'anti-check' | 'both' | 'mate' | 'anti-mate' | 'win' | 'empty'
-const statusMessage = computed<{ text: string; kind: StatusKind }>(() => {
-  if (winner.value) {
-    const loser = winner.value === 'white' ? 'black' : 'white'
-    const sym = winner.value === 'white' ? '♔ White' : '♚ Black'
-    const c = inCheck.value[loser]
-    const a = inAntiCheck.value[loser]
-    if (c && a) return { text: `Checkmate & Anti-checkmate — ${sym} wins`, kind: 'mate' }
-    if (c)      return { text: `Checkmate — ${sym} wins`, kind: 'mate' }
-    if (a)      return { text: `Anti-checkmate — ${sym} wins`, kind: 'anti-mate' }
-    return { text: `${sym} won!`, kind: 'win' }
-  }
-  if (gameId.value) {
-    const color = playerColor.value as 'white' | 'black'
-    const c = inCheck.value[color]
-    const a = inAntiCheck.value[color]
-    if (c && a) return { text: 'Check & Anti-check!', kind: 'both' }
-    if (c)      return { text: 'Check!', kind: 'check' }
-    if (a)      return { text: 'Anti-check!', kind: 'anti-check' }
-  }
-  return { text: '', kind: 'empty' }
+const latencyHiding = computed({
+  get: () => latencyHidingEnabled.value,
+  set: (v: boolean) => game.setLatencyHiding(v),
 })
-
-const rttColor = computed(() => {
-  if (rtt.value === null) return '#888'
-  if (rtt.value < 150) return '#4caf50'
-  if (rtt.value < 500) return '#ffc107'
-  return '#f44336'
-})
-const rttLabel = computed(() =>
-  rtt.value === null ? '— ms' : `${Math.round(rtt.value)} ms`,
-)
 
 const boardCols = computed(() => board.value[0]?.length ?? 8)
-const lastSettings = shallowRef<Settings | undefined>(undefined)
+const lastSettings = shallowRef<GameSettings | undefined>(undefined)
 
 onMounted(async () => {
-  lobby.setCurrent(props.name)
   game.connect(props.name)
   await catalog.load()
 })
 
 onUnmounted(() => {
   game.disconnect()
-  lobby.setCurrent(null)
 })
 
 useKeyboardShortcuts({ Escape: () => game.deselect() })
 
-async function onStartGame(payload: Settings) {
+async function onStartGame(payload: GameSettings) {
   lastSettings.value = payload
   await game.startNewGame(payload.gameType, payload.cooldowns, payload.upsideDown)
 }
 
+// Local only: returns the host to the setup screen; the server game is not ended
+// until the host starts a new one.
 function onNewGame() {
   game.resetGameState()
 }
@@ -87,23 +59,8 @@ function copyLobbyName() {
 
 <template>
   <div class="info-bar">
-    <div
-      class="rtt-badge"
-      :style="{ color: rttColor }"
-    >
-      {{ rttLabel }}
-    </div>
-    <label
-      class="latency-toggle"
-      title="Show your moves immediately, before the server confirms them"
-    >
-      <input
-        type="checkbox"
-        :checked="latencyHidingEnabled"
-        @change="(e) => game.setLatencyHiding((e.target as HTMLInputElement).checked)"
-      >
-      latency hiding
-    </label>
+    <RttBadge :rtt="rtt" />
+    <LatencyToggle v-model="latencyHiding" />
   </div>
   <section id="center">
     <div class="room-name">
@@ -118,12 +75,12 @@ function copyLobbyName() {
     </div>
 
     <GameSetup
-      v-if="!gameId && playerColor === 'white'"
+      v-if="!gameId && isHost"
       :initial-settings="lastSettings"
       @start="onStartGame"
     />
     <p
-      v-if="!gameId && playerColor !== 'white'"
+      v-if="!gameId && !isHost"
       class="waiting-text"
     >
       Waiting for host to start the game…
@@ -135,31 +92,31 @@ function copyLobbyName() {
       :selected="selectedPromotion"
       :player-color="playerColor"
       :cols="boardCols"
-      @select="(n) => (game.selectedPromotion = n)"
+      @select="(n: string) => (selectedPromotion = n)"
     />
     <ChakesBoard
       v-if="gameId"
       :board="board"
-      :cooldowns="cooldowns"
+      :cooldowns="cooldownGrid"
       :max-cooldowns="maxCooldowns"
       :player-color="playerColor"
       :selected="selected"
       :legal-moves="legalMoves"
       :rejected-squares="rejectedSquares"
-      @square-click="(r, c) => game.handleSquareClick(r, c)"
-      @square-right-click="(r, c) => game.handleSquareRightClick(r, c)"
+      @square-click="game.handleSquareClick"
+      @square-right-click="game.handleSquareRightClick"
     />
 
-    <div
-      class="status-banner"
-      :class="statusMessage.kind"
-    >
-      <span v-if="statusMessage.kind !== 'empty'">{{ statusMessage.text }}</span>
-      <span v-else>&nbsp;</span>
-    </div>
+    <StatusBanner
+      :in-game="gameId !== null"
+      :player-color="playerColor"
+      :winner="winner"
+      :in-check="inCheck"
+      :in-anti-check="inAntiCheck"
+    />
     <div
       class="new-game-slot"
-      :class="{ hidden: playerColor !== 'white' || !gameId }"
+      :class="{ hidden: !isHost || !gameId }"
     >
       <button
         class="new-game"
@@ -175,7 +132,7 @@ function copyLobbyName() {
 .room-name {
   margin-bottom: 6px;
   font-size: 13px;
-  color: #666;
+  color: var(--text);
   text-align: center;
   display: flex;
   align-items: center;
@@ -188,35 +145,14 @@ function copyLobbyName() {
   line-height: 1.4;
   cursor: pointer;
   background: none;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 3px;
-  color: #888;
+  color: var(--text);
 }
 .copy-btn:hover {
-  border-color: #888;
-  color: #333;
+  border-color: var(--text);
+  color: var(--text-h);
 }
-.status-banner {
-  margin-top: 12px;
-  padding: 12px 24px;
-  font-size: 24px;
-  font-weight: 700;
-  text-align: center;
-  border-radius: 6px;
-  box-sizing: border-box;
-  min-height: 56px;
-  min-width: 360px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.status-banner.empty      { visibility: hidden; }
-.status-banner.check      { background: #fde2e2; color: #7a1f1f; }
-.status-banner.anti-check { background: #ffe7c2; color: #6b3a07; }
-.status-banner.both       { background: #fde2e2; color: #5a0b0b; }
-.status-banner.mate       { background: #f6f669; color: #3d3a00; }
-.status-banner.anti-mate  { background: #f6f669; color: #3d3a00; }
-.status-banner.win        { background: #f6f669; color: #3d3a00; }
 .new-game-slot {
   margin-top: 12px;
 }
@@ -224,7 +160,7 @@ function copyLobbyName() {
   visibility: hidden;
 }
 .waiting-text {
-  color: #888;
+  color: var(--text);
   font-size: 15px;
 }
 .info-bar {
@@ -235,20 +171,5 @@ function copyLobbyName() {
   flex-direction: row-reverse;
   align-items: center;
   gap: 10px;
-}
-.rtt-badge {
-  width: 5em;
-  font-size: 11px;
-  font-family: monospace;
-  opacity: 0.8;
-}
-.latency-toggle {
-  font-size: 11px;
-  font-family: monospace;
-  opacity: 0.8;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
 }
 </style>

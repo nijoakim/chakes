@@ -1,26 +1,22 @@
 <!--
-  ChakesSquare — a single board square.
-
-  Renders the square background (light/dark), an optional piece sprite, and
-  visual state overlays (selected, legal-move highlight, cooldown bar). Emits
-  raw click and right-click events; all game-logic decisions are left to the
-  parent.
+  ChakesSquare — a game board square: a BoardSquare with an optional piece
+  sprite, a cooldown overlay and a rejected-move flash. Emits raw click and
+  right-click events; all game-logic decisions are left to the parent.
 -->
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
+import BoardSquare from '@/components/board/BoardSquare.vue'
 import PieceSprite from './PieceSprite.vue'
-import type { PieceInstance, Color } from '../../services/api'
-
-// --- Props & emits ---
+import type { DisplayPiece } from '@/chakes/types'
 
 const props = defineProps<{
-  piece: PieceInstance | null
+  piece: DisplayPiece | null
   isLight: boolean
   isSelected: boolean
   isLegalMove: boolean
   isRejected: boolean
-  cooldown: number    // remaining cooldown in seconds (raw server value)
+  cooldown: number    // remaining cooldown in seconds as of the last server push; 0 when expired
   maxCooldown: number // full cooldown duration for this piece type
 }>()
 
@@ -28,17 +24,6 @@ const emit = defineEmits<{
   (e: 'click'): void
   (e: 'rightClick', event: MouseEvent): void
 }>()
-
-// --- Derived state ---
-
-const squareClasses = computed(() => [
-  props.isLight ? 'light' : 'dark',
-  props.isSelected ? 'selected' : '',
-  props.isLegalMove ? 'legal-move' : '',
-  props.piece ? 'piece' : '',
-  props.cooldown > 0 ? 'on-cooldown' : '',
-  props.isRejected ? 'rejected' : '',
-])
 
 // --- Cooldown animation ---
 
@@ -69,16 +54,19 @@ watch(
 </script>
 
 <template>
-  <div
-    class="square"
-    :class="squareClasses"
+  <BoardSquare
+    class="chakes-square"
+    :class="{ piece: piece !== null, 'on-cooldown': cooldown > 0, 'legal-move': isLegalMove }"
+    :light="isLight"
+    :selected="isSelected"
+    :legal="isLegalMove"
     @click="emit('click')"
     @contextmenu.prevent="emit('rightClick', $event)"
   >
     <PieceSprite
       v-if="piece"
       :name="piece.name"
-      :color="(piece.owner as Color)"
+      :color="piece.owner"
       :pending="piece.pending"
     />
     <div
@@ -86,35 +74,18 @@ watch(
       ref="overlayRef"
       class="cooldown-overlay"
     />
-  </div>
+    <div
+      v-if="isRejected"
+      class="rejected-flash"
+    />
+  </BoardSquare>
 </template>
 
 <style scoped>
-.square {
-  --sq: var(--chakes-sq, min(64px, calc((100vw - 44px) / 8)));
-  width: var(--sq);
-  height: var(--sq);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: default;
-  user-select: none;
-  position: relative;
-}
-.square.piece { cursor: pointer; }
-.square.on-cooldown { cursor: not-allowed; }
-.light { background: #f0d9b5; }
-.dark  { background: #b58863; }
-.square.selected::after,
-.square.legal-move::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.square.selected::after { background: rgba(246, 246, 105, 0.6); }
-.square.legal-move::after { background: rgba(130, 190, 80, 0.45); }
-.square.legal-move { cursor: pointer; }
+.chakes-square { cursor: default; }
+.chakes-square.piece { cursor: pointer; }
+.chakes-square.on-cooldown { cursor: not-allowed; }
+.chakes-square.legal-move { cursor: pointer; }
 .cooldown-overlay {
   position: absolute;
   bottom: 0;
@@ -123,15 +94,14 @@ watch(
   height: 100%;
   transform-origin: bottom;
   will-change: transform;
-  background: rgba(80, 80, 80, 0.5);
+  background: var(--board-cooldown);
   pointer-events: none;
 }
-.square.rejected::before {
-  content: '';
+.rejected-flash {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: rgba(220, 50, 50, 0.6);
+  background: var(--board-rejected);
   animation: rejection-flash 0.3s ease-out forwards;
   z-index: 1;
 }

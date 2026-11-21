@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import LobbyBrowser from '../components/lobby/LobbyBrowser.vue'
+import LobbyBrowser from '@/components/lobby/LobbyBrowser.vue'
 </script>
 
 <template>

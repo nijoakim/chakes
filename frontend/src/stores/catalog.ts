@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import * as api from '../services/api'
-import type { PieceDef, GameType } from '../services/api'
+import * as api from '@/services/api'
+import type { PieceDef, GameType } from '@/services/types'
 
 export const useCatalogStore = defineStore('catalog', () => {
   const pieceDefs = ref<PieceDef[]>([])
