@@ -15,7 +15,8 @@ const props = defineProps<{
   board: DisplayBoard
   cooldowns: Cooldowns
   maxCooldowns: Record<string, number>
-  playerColor: Color
+  /** Side the board is viewed from (spectators pass 'white'). */
+  viewer: Color
   selected: Square | null
   legalMoves: Set<string>
   rejectedSquares: Set<string>
@@ -30,11 +31,12 @@ const rows = computed(() => props.board.length)
 const cols = computed(() => props.board[0]?.length ?? 0)
 
 // Display-ordered grid of board-space squares; every lookup below is in board space.
-const squares = computed(() => orientedSquares(rows.value, cols.value, props.playerColor))
+const squares = computed(() => orientedSquares(rows.value, cols.value, props.viewer))
 
 const fileLabels = computed(() => (squares.value[0] ?? []).map(([, c]) => FILE_LABELS[c] ?? '?'))
 const rankLabels = computed(() => squares.value.map(([[r]]) => String(r + 1)))
-const fileLabelsOnBottom = computed(() => props.playerColor === 'white')
+// Files sit on the edge nearest rank 1, which is the bottom unless viewing as black.
+const fileLabelsOnBottom = computed(() => props.viewer !== 'black')
 
 function pieceAt([r, c]: Square) {
   return props.board[r]?.[c] ?? null
@@ -46,7 +48,7 @@ function pieceAt([r, c]: Square) {
     class="board-with-labels"
     :style="{ '--sq': responsiveSquareSize(cols || 8) }"
   >
-    <!-- Top row: file labels for black, empty spacers for white -->
+    <!-- Top row: file labels when viewing as black, else empty spacers -->
     <div class="col-labels-row">
       <div class="label-cell" />
       <div
@@ -95,7 +97,7 @@ function pieceAt([r, c]: Square) {
       </div>
     </div>
 
-    <!-- Bottom row: file labels for white, empty spacers for black -->
+    <!-- Bottom row: file labels when viewing as white, else empty spacers -->
     <div class="col-labels-row">
       <div class="label-cell" />
       <div

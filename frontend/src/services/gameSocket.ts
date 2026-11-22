@@ -1,4 +1,4 @@
-import type { Board, Color, Cooldowns } from './types'
+import type { Board, Color, Cooldowns, Role } from './types'
 import type { SideFlags } from '@/chakes/types'
 import { fromWireKey, fromWireTuple, squareKey, toWire, type Square } from '@/chakes/square'
 
@@ -7,7 +7,7 @@ export interface GameSocketEvents {
   cooldowns: Cooldowns
   maxCooldowns: Record<string, number>
   pieceNames: string[]
-  color: Color
+  role: Role
   gameId: string
   winner: Color | null
   pong: { id: string }
@@ -31,7 +31,7 @@ type Listener<E extends keyof GameSocketEvents> = (payload: GameSocketEvents[E])
 // The backend sends two families of messages:
 //  - typed replies: {type: 'pong' | 'move_result' | 'legal_moves' | 'error', ...}
 //  - untyped pushes, told apart by their fields (None-valued fields are omitted):
-//      lobby joined:   {color}
+//      lobby joined:   {color: 'white' | 'black' | 'spectator'}
 //      game state:     {board, cooldowns, game_id, white_in_check, ..., max_cooldowns?,
 //                       piece_names?, winner?, legal_moves?}
 //      all legal moves: {legal_moves}
@@ -105,7 +105,7 @@ export class GameSocket {
   }
 
   private handlePush(data: Incoming): void {
-    if ('color' in data) this.emit('color', data.color)
+    if ('color' in data) this.emit('role', parseRole(data.color))
     if ('board' in data) this.handleGameState(data)
     if ('legal_moves' in data) this.emit('legalMoves', parseLegalMoves(data.legal_moves))
   }
@@ -123,6 +123,10 @@ export class GameSocket {
     this.emit('inCheck', { white: data.white_in_check ?? false, black: data.black_in_check ?? false })
     this.emit('inAntiCheck', { white: data.white_in_anti_check ?? false, black: data.black_in_anti_check ?? false })
   }
+}
+
+function parseRole(wire: unknown): Role {
+  return wire === 'white' || wire === 'black' ? wire : 'spectator'
 }
 
 function parseLegalMoves(wire: Record<string, number[][]>): Record<string, Set<string>> {

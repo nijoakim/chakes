@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, shallowRef } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '@/stores/catalog'
 import { useGameStore } from '@/stores/game'
@@ -17,7 +17,7 @@ const props = defineProps<{ name: string }>()
 const game = useGameStore()
 const catalog = useCatalogStore()
 const {
-  board, cooldownGrid, maxCooldowns, stablePromotionNames, playerColor, isHost, gameId, winner,
+  board, cooldownGrid, maxCooldowns, stablePromotionNames, role, playerColor, viewColor, isSpectator, isHost, gameId, winner,
   selected, legalMoves, selectedPromotion, rtt, inCheck, inAntiCheck, rejectedSquares,
   latencyHidingEnabled,
 } = storeToRefs(game)
@@ -37,6 +37,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   game.disconnect()
+  clearTimeout(copiedTimer)
 })
 
 useKeyboardShortcuts({ Escape: () => game.deselect() })
@@ -52,8 +53,22 @@ function onNewGame() {
   game.resetGameState()
 }
 
-function copyLobbyName() {
-  navigator.clipboard.writeText(props.name)
+const ROLE_LABELS = { white: 'You are White', black: 'You are Black', spectator: 'Spectating' } as const
+const roleLabel = computed(() => (role.value ? ROLE_LABELS[role.value] : ''))
+
+const COPIED_FEEDBACK_MS = 1500
+const copied = ref(false)
+let copiedTimer: ReturnType<typeof setTimeout> | undefined
+
+async function copyLobbyLink() {
+  try {
+    await navigator.clipboard.writeText(window.location.href)
+  } catch {
+    return // clipboard unavailable (e.g. insecure context or permission denied)
+  }
+  copied.value = true
+  clearTimeout(copiedTimer)
+  copiedTimer = setTimeout(() => { copied.value = false }, COPIED_FEEDBACK_MS)
 }
 </script>
 
@@ -67,11 +82,24 @@ function copyLobbyName() {
       Lobby: {{ name }}
       <button
         class="copy-btn"
-        title="Copy lobby name"
-        @click="copyLobbyName"
+        :class="{ copied }"
+        aria-label="Copy lobby link"
+        title="Copy lobby link"
+        @click="copyLobbyLink"
       >
-        ⎘
+        {{ copied ? 'Copied' : 'Copy link' }}
       </button>
+      <span
+        v-if="roleLabel"
+        class="role-badge"
+        :class="role"
+      >
+        {{ roleLabel }}
+      </span>
+      <span
+        class="visually-hidden"
+        aria-live="polite"
+      >{{ copied ? 'Lobby link copied' : '' }}</span>
     </div>
 
     <GameSetup
@@ -80,14 +108,14 @@ function copyLobbyName() {
       @start="onStartGame"
     />
     <p
-      v-if="!gameId && !isHost"
+      v-if="!gameId && role && !isHost"
       class="waiting-text"
     >
       Waiting for host to start the game…
     </p>
 
     <PromotionBar
-      v-if="gameId && stablePromotionNames.length"
+      v-if="gameId && playerColor && stablePromotionNames.length"
       :piece-names="stablePromotionNames"
       :selected="selectedPromotion"
       :player-color="playerColor"
@@ -99,7 +127,7 @@ function copyLobbyName() {
       :board="board"
       :cooldowns="cooldownGrid"
       :max-cooldowns="maxCooldowns"
-      :player-color="playerColor"
+      :viewer="viewColor"
       :selected="selected"
       :legal-moves="legalMoves"
       :rejected-squares="rejectedSquares"
@@ -107,9 +135,10 @@ function copyLobbyName() {
       @square-right-click="game.handleSquareRightClick"
     />
 
+    <!-- Spectators get no check warnings (they have no side), only the result. -->
     <StatusBanner
-      :in-game="gameId !== null"
-      :player-color="playerColor"
+      :in-game="gameId !== null && !isSpectator"
+      :player-color="viewColor"
       :winner="winner"
       :in-check="inCheck"
       :in-anti-check="inAntiCheck"
@@ -140,7 +169,8 @@ function copyLobbyName() {
   gap: 6px;
 }
 .copy-btn {
-  padding: 0 5px;
+  min-width: 6.5em;
+  padding: 0 6px;
   font-size: 12px;
   line-height: 1.4;
   cursor: pointer;
@@ -149,9 +179,31 @@ function copyLobbyName() {
   border-radius: 3px;
   color: var(--text);
 }
-.copy-btn:hover {
+.copy-btn:hover,
+.copy-btn.copied {
   border-color: var(--text);
   color: var(--text-h);
+}
+.role-badge {
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--code-bg);
+  color: var(--text-h);
+}
+.role-badge.spectator {
+  color: var(--text);
+  font-style: italic;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 .new-game-slot {
   margin-top: 12px;
