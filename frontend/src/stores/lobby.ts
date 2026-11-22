@@ -86,16 +86,16 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   /**
    * Create a lobby and return its name. An empty name asks the server for a
-   * random one. The backend silently replaces an existing lobby on a name
-   * clash, so check a fresh list first and refuse with LobbyNameTakenError.
+   * random one. The server refuses a taken name with 409, which surfaces as
+   * LobbyNameTakenError; other failures propagate as ApiError / fetch errors.
    */
   async function create(name: string): Promise<string> {
-    if (name) {
-      const data = await api.listLobbies({ signal: AbortSignal.timeout(LIST_TIMEOUT_MS) })
-      applyList(data)
-      if (data.lobbies.some(l => l.name === name)) throw new LobbyNameTakenError(name)
+    try {
+      return await api.createLobby(name || undefined)
+    } catch (e) {
+      if (name && e instanceof api.ApiError && e.status === 409) throw new LobbyNameTakenError(name)
+      throw e
     }
-    return api.createLobby(name || undefined)
   }
 
   return { openLobbies, serverName, listStatus, hasLoaded, create, refreshList }

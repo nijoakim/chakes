@@ -42,6 +42,26 @@ def generate_lobby_name() -> str:
     return f"{random.choice(_ADJECTIVES)}-{random.choice(_ANIMALS)}"
 
 
+MAX_LOBBY_NAME_LENGTH = 40
+_LOBBY_NAME_PUNCTUATION = frozenset(" _.-")
+
+
+def validate_lobby_name(name: str) -> str | None:
+    """Return why `name` is not an acceptable lobby name, or None if it is.
+
+    Mirrors the frontend rule (lobbySummary.ts `validateLobbyName`): at most 40
+    characters of letters, numbers, space, `-`, `_` and `.`. Additionally the
+    name must not be blank or start/end with a space (the frontend trims).
+    """
+    if len(name) > MAX_LOBBY_NAME_LENGTH:
+        return f"Lobby name must be at most {MAX_LOBBY_NAME_LENGTH} characters."
+    if not name.strip() or name != name.strip():
+        return "Lobby name must not be blank or start or end with a space."
+    if not all(c.isalnum() or c in _LOBBY_NAME_PUNCTUATION for c in name):
+        return "Lobby name may only contain letters, numbers, spaces, dashes, underscores and dots."
+    return None
+
+
 # --- Pydantic models (data transfer) ---
 
 class Pos(BaseModel):
@@ -244,12 +264,16 @@ class Lobby:
         self._token_colors: dict[str, str] = {}
 
     def assign_color(self, token: str | None) -> str:
-        if token and token in self._token_colors:
+        # Seats are bound to a session token so a player can rejoin. A join
+        # without a token can never be recognised again, so it only watches:
+        # handing it a seat would let anyone take over an unclaimed colour.
+        if not token:
+            return "spectator"
+        if token in self._token_colors:
             return self._token_colors[token]
         taken = set(self._token_colors.values())
         color = next((s for s in self._SLOTS if s not in taken), "spectator")
-        if token:
-            self._token_colors[token] = color
+        self._token_colors[token] = color
         return color
 
     def create_game(self, game_def: GameDef) -> ActiveGame:

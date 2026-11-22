@@ -38,12 +38,13 @@ def test_assign_color_same_token_rejoining_is_idempotent():
     assert first == second == "white"
 
 
-def test_assign_color_anonymous_does_not_occupy_slot():
+def test_assign_color_anonymous_is_always_spectator():
+    # A tokenless join can't be recognised on rejoin, so it never gets a seat.
     lobby = Lobby("test")
-    first = lobby.assign_color(None)
-    second = lobby.assign_color(None)
-    assert first == "white"
-    assert second == "white"
+    assert lobby.assign_color(None) == "spectator"
+    assert lobby.assign_color("") == "spectator"
+    lobby.assign_color("token-a")
+    assert lobby.assign_color(None) == "spectator"
 
 
 def test_assign_color_anonymous_does_not_block_tokened_joiner():
