@@ -36,7 +36,8 @@ function initialVolume(): number {
 }
 
 export const soundSettings = reactive({
-  muted: readStorage(MUTED_KEY) === 'true',
+  // Off by default: sound is opt-in, so only an explicit 'false' unmutes.
+  muted: readStorage(MUTED_KEY) !== 'false',
   /** 0..1, mapped to the master gain on a perceptual (squared) curve. */
   volume: initialVolume(),
 })
