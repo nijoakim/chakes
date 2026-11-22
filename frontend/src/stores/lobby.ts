@@ -3,15 +3,100 @@ import { ref } from 'vue'
 import * as api from '@/services/api'
 import type { LobbySummary } from '@/services/types'
 
+export type ListStatus = 'loading' | 'ok' | 'error'
+
+/** Thrown by `create` when a lobby with the requested name already exists. */
+export class LobbyNameTakenError extends Error {
+  readonly lobbyName: string
+
+  constructor(lobbyName: string) {
+    super(`A lobby named "${lobbyName}" already exists`)
+    this.name = 'LobbyNameTakenError'
+    this.lobbyName = lobbyName
+  }
+}
+
+const LIST_TIMEOUT_MS = 8000
+
+function sameRow(a: LobbySummary, b: LobbySummary): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
+/**
+ * Merge a fresh list into the current one without reordering rows the user
+ * already sees: known lobbies keep their position (updated in place), new
+ * lobbies are appended in server order, vanished lobbies are dropped.
+ * Returns `current` itself when nothing changed, so nothing re-renders.
+ */
+function mergeLobbies(current: LobbySummary[], fresh: LobbySummary[]): LobbySummary[] {
+  const freshByName = new Map(fresh.map(l => [l.name, l]))
+  const kept: LobbySummary[] = []
+  let changed = false
+  for (const old of current) {
+    const next = freshByName.get(old.name)
+    if (!next) {
+      changed = true
+      continue
+    }
+    if (sameRow(old, next)) {
+      kept.push(old)
+    } else {
+      kept.push(next)
+      changed = true
+    }
+    freshByName.delete(old.name)
+  }
+  if (freshByName.size > 0) changed = true
+  return changed ? [...kept, ...freshByName.values()] : current
+}
+
 export const useLobbyStore = defineStore('lobby', () => {
   const openLobbies = ref<LobbySummary[]>([])
   const serverName = ref<string | null>(null)
+  /** 'loading' until the first fetch settles; 'error' while the latest fetch failed. */
+  const listStatus = ref<ListStatus>('loading')
+  const hasLoaded = ref(false)
 
-  async function refreshList(): Promise<void> {
-    const data = await api.listLobbies()
+  let inFlight: Promise<boolean> | null = null
+
+  function applyList(data: { server_name: string, lobbies: LobbySummary[] }) {
     serverName.value = data.server_name
-    openLobbies.value = data.lobbies
+    openLobbies.value = mergeLobbies(openLobbies.value, data.lobbies)
+    listStatus.value = 'ok'
+    hasLoaded.value = true
   }
 
-  return { openLobbies, serverName, create: api.createLobby, refreshList }
+  /** Fetch the lobby list. Never rejects; resolves to whether it succeeded. */
+  function refreshList(): Promise<boolean> {
+    if (inFlight) return inFlight
+    inFlight = (async () => {
+      try {
+        applyList(await api.listLobbies({ signal: AbortSignal.timeout(LIST_TIMEOUT_MS) }))
+        return true
+      } catch (e) {
+        console.warn('Failed to fetch lobby list:', e)
+        listStatus.value = 'error'
+        return false
+      } finally {
+        inFlight = null
+      }
+    })()
+    return inFlight
+  }
+
+  /**
+   * Create a lobby and return its name. An empty name asks the server for a
+   * random one. The backend silently replaces an existing lobby on a name
+   * clash, so check a fresh list first and refuse with LobbyNameTakenError.
+   */
+  async function create(name: string): Promise<string> {
+    if (name) {
+      const data = await api.listLobbies({ signal: AbortSignal.timeout(LIST_TIMEOUT_MS) })
+      applyList(data)
+      if (data.lobbies.some(l => l.name === name)) throw new LobbyNameTakenError(name)
+    }
+    return api.createLobby(name || undefined)
+  }
+
+  return { openLobbies, serverName, listStatus, hasLoaded, create, refreshList }
 })

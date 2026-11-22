@@ -2,11 +2,28 @@ import type {
   GameType, InitialBoardResponse, LobbyListResponse, PieceDef,
 } from './types'
 
+/** Thrown for non-2xx responses. Network failures surface as the `fetch` TypeError. */
+export class ApiError extends Error {
+  readonly status: number
+  readonly detail: string
+
+  constructor(message: string, status: number, detail: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.detail = detail
+  }
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
-    throw new Error(`${init?.method ?? 'GET'} ${url} failed: ${res.status} ${res.statusText}${detail ? ` — ${detail}` : ''}`)
+    throw new ApiError(
+      `${init?.method ?? 'GET'} ${url} failed: ${res.status} ${res.statusText}${detail ? ` — ${detail}` : ''}`,
+      res.status,
+      detail,
+    )
   }
   return (await res.json()) as T
 }
@@ -43,8 +60,8 @@ export async function createGame(
   return String(data.game_id)
 }
 
-export function listLobbies(): Promise<LobbyListResponse> {
-  return fetchJson<LobbyListResponse>('/api/lobby')
+export function listLobbies(init?: RequestInit): Promise<LobbyListResponse> {
+  return fetchJson<LobbyListResponse>('/api/lobby', { cache: 'no-store', ...init })
 }
 
 export function getInitialBoard(gameType?: string, upsideDown?: boolean): Promise<InitialBoardResponse> {
