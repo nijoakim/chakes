@@ -11,8 +11,9 @@ class LobbyJoinedMessage(BaseModel):
 
 
 class AllLegalMovesMessage(BaseModel):
-    """Background push of every piece's legal moves for board `version`."""
+    """Background push of every piece's legal moves for board `version` of game `game_id`."""
     legal_moves: dict[str, list[list[int]]]
+    game_id: str  # versions restart at 0 per game, so clients need both to match a board
     version: int
     winner: str | None = None  # excluded from wire when None, like GameStateMessage.winner
 

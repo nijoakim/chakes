@@ -9,8 +9,11 @@ export interface ClickState {
   /** Piece on the clicked square, as displayed (including optimistic moves). */
   piece: DisplayPiece | null
   selected: Square | null
-  /** Destination keys (see squareKey) legal for the current selection. */
-  legalTargets: ReadonlySet<string>
+  /**
+   * Destination keys (see squareKey) legal for the current selection, or null
+   * while they are not known yet (requested from the server, reply pending).
+   */
+  legalTargets: ReadonlySet<string> | null
   playerColor: Color
   /** Clicked square is neither on cooldown nor an unconfirmed optimistic piece. */
   selectable: boolean
@@ -28,6 +31,10 @@ const NONE: ClickAction = { kind: 'none' }
  * Left-click priority: execute the move if the square is a legal target,
  * otherwise select the own piece on it. Clicking the selected piece deselects.
  * (Moving also deselects; the caller does that when applying the move.)
+ *
+ * While the selection's legal targets are unknown, any square not holding an
+ * own piece counts as a target: the move is sent and the server judges it (a
+ * rejection flashes). Own pieces are then always selected, never moved onto.
  */
 export function decideLeftClick(s: ClickState): ClickAction {
   if (!s.active) return NONE
@@ -36,13 +43,14 @@ export function decideLeftClick(s: ClickState): ClickAction {
 
   if (s.selected === null) return own ? select : NONE
 
-  const isTarget = s.legalTargets.has(squareKey(s.square))
+  const known = s.legalTargets
+  const move: ClickAction = { kind: 'move', from: s.selected, to: s.square }
   if (own) {
     if (sameSquare(s.selected, s.square)) return { kind: 'deselect' }
-    if (isTarget) return { kind: 'move', from: s.selected, to: s.square }
+    if (known?.has(squareKey(s.square))) return move
     return select
   }
-  return isTarget ? { kind: 'move', from: s.selected, to: s.square } : NONE
+  return known === null || known.has(squareKey(s.square)) ? move : NONE
 }
 
 /**

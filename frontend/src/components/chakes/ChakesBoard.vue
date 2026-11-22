@@ -17,7 +17,8 @@ const props = defineProps<{
   maxCooldowns: Record<string, number>
   playerColor: Color
   selected: Square | null
-  legalMoves: Set<string>
+  /** null: the selection's legal moves are not known yet (nothing highlighted). */
+  legalMoves: ReadonlySet<string> | null
   rejectedSquares: Set<string>
 }>()
 
@@ -78,7 +79,7 @@ function pieceAt([r, c]: Square) {
           :piece="pieceAt(sq)"
           :is-light="isLightSquare(sq)"
           :is-selected="sameSquare(selected, sq)"
-          :is-legal-move="legalMoves.has(squareKey(sq))"
+          :is-legal-move="legalMoves?.has(squareKey(sq)) ?? false"
           :is-rejected="rejectedSquares.has(squareKey(sq))"
           :cooldown="cooldowns[sq[0]]?.[sq[1]] ?? 0"
           :max-cooldown="maxCooldowns[pieceAt(sq)?.name ?? ''] ?? 1"

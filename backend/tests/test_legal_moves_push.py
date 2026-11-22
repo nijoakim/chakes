@@ -97,6 +97,7 @@ def test_move_sends_result_then_board_then_versioned_legal_moves(ws_connect, lob
     push = ws.receive_json()
     assert "board" not in push
     assert push["version"] == 1
+    assert push["game_id"] == game_id
     assert "winner" not in push  # exclude_none
     assert "4,3" in push["legal_moves"]
     assert "4,1" not in push["legal_moves"]
@@ -110,6 +111,7 @@ def test_per_square_legal_moves_reply_includes_version(ws_connect, lobby_with_ga
     reply = ws.receive_json()
     assert reply["type"] == "legal_moves"
     assert reply["version"] == 0
+    assert reply["game_id"] == game_id
     assert reply["pos"] == {"x": 4, "y": 1}
     assert sorted(reply["moves"]) == [[4, 2], [4, 3]]
 

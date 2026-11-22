@@ -67,6 +67,7 @@ async def _push_legal_moves(lobby_name: str, game: ActiveGame) -> None:
             return
         await connections.broadcast(lobby_name, AllLegalMovesMessage(
             legal_moves=serialize_legal_moves(all_moves),
+            game_id=str(game.id),
             version=version,
             winner=game.winner,
         ))
@@ -214,7 +215,10 @@ async def _handle_legal_moves(ws: WebSocket, lobby: str, msg: LegalMovesMessage)
         return
     # Cheap: only this one piece's legal moves, on the current board.
     moves = game.get_legal_moves(msg.pos)
-    await ws.send_json({"type": "legal_moves", "version": game.version, "pos": msg.pos.model_dump(), "moves": moves})
+    await ws.send_json({
+        "type": "legal_moves", "game_id": str(game.id), "version": game.version,
+        "pos": msg.pos.model_dump(), "moves": moves,
+    })
 
 
 @router.websocket("/lobby/{name}/ws")
