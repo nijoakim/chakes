@@ -145,3 +145,13 @@ svg {
   opacity: 0.45;
 }
 </style>
+
+<!-- Unscoped: on narrow screens the game-setup's sticky start bar occupies the
+     bottom edge, so lift the control above it rather than covering its text. -->
+<style>
+@media (max-width: 860px) {
+  body:has(.start-bar) .sound-control {
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+</style>

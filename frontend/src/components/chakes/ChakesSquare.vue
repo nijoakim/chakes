@@ -8,7 +8,7 @@
 -->
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import BoardSquare from '@/components/board/BoardSquare.vue'
 import PieceSprite from './PieceSprite.vue'
 import type { DisplayPiece } from '@/chakes/types'
@@ -70,9 +70,7 @@ const emit = defineEmits<{
 const fillRef = ref<HTMLElement | null>(null)
 const barRef = ref<HTMLElement | null>(null)
 
-watch(
-  () => props.cooldown,
-  (cd) => {
+function startCooldownAnimation(cd: number): void {
     const fill = fillRef.value
     const bar = barRef.value
     if (!fill || !bar || cd <= 0) return
@@ -86,9 +84,12 @@ watch(
     bar.style.transition = `transform ${cd}s linear`
     fill.style.transform = 'scaleY(0)'
     bar.style.transform = 'scaleX(0)'
-  },
-  { flush: 'post', immediate: true },
-)
+}
+
+watch(() => props.cooldown, startCooldownAnimation, { flush: 'post' })
+// A square that mounts already cooling (joining or reloading mid-game) has no
+// elements yet when an immediate watcher would run, so start it once mounted.
+onMounted(() => startCooldownAnimation(props.cooldown))
 
 // --- "Ready" flash ---
 
