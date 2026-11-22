@@ -220,6 +220,10 @@ async function copyLobbyLink() {
       :selected="selected"
       :legal-moves="legalMoves"
       :rejected-squares="rejectedSquares"
+      :recent-moves="game.recentMoves"
+      :in-check="inCheck"
+      :in-anti-check="inAntiCheck"
+      :game-id="gameId"
       @square-click="game.handleSquareClick"
       @square-right-click="game.handleSquareRightClick"
     />
