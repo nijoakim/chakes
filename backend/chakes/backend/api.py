@@ -15,6 +15,7 @@ from chakes.backend.models import (
 from chakes.engine.engine import Pos as EnginePos, piece_defs as engine_piece_defs
 from chakes.backend.server_identity import SERVER_NAME
 from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
+from chakes.backend.catalog import game_types_payload, piece_guide
 
 router = APIRouter(prefix="/api")
 
@@ -45,12 +46,7 @@ def server_info() -> dict[str, str]:
 
 @router.get("/game-types")
 def game_types_list() -> dict[str, Any]:
-    return {
-        "game_types": [
-            {"id": key, "name": label}
-            for key, (label, _) in GAME_TYPES.items()
-        ]
-    }
+    return game_types_payload(GAME_TYPES)
 
 
 @router.get("/piece-defs")
@@ -186,3 +182,37 @@ async def lobby_ws(name: str, ws: WebSocket, token: str | None = None) -> None:
         if connections.connection_count(name) == 0:
             lobbies.remove(name)
             print(f"Destroyed lobby: {name}")
+
+
+# --- Game-setup catalogue (read-only) ---
+
+
+def _game_type_piece_names(game_type: str | None) -> list[str]:
+    if game_type and game_type in GAME_TYPES:
+        state = GAME_TYPES[game_type][1]()
+        return sorted({piece.name for piece in state.all_pieces()})
+    return list(_DEFAULT_PIECE_NAMES)
+
+
+@router.get("/piece-guide")
+def piece_guide_list(game_type: str | None = None) -> dict[str, Any]:
+    """Movement diagrams and rule notes for each piece of a game type."""
+    return piece_guide(_game_type_piece_names(game_type))
+
+
+@router.get("/setup-preview")
+def setup_preview(game_type: str | None = None, upside_down: bool = False) -> dict[str, Any]:
+    """Starting position as the game will be created, including the upside-down option."""
+    state = GAME_TYPES.get(game_type or "orthodox", GAME_TYPES["orthodox"])[1]()
+    if upside_down:
+        state.upside_down()
+    board = [
+        [
+            {"name": p.name, "owner": "white" if p.owner.name == "WHITE" else "black"}
+            if (p := state.piece_at(EnginePos(c, r)))
+            else None
+            for c in range(state.size_x)
+        ]
+        for r in range(state.size_y)
+    ]
+    return {"board": board, "size_x": state.size_x, "size_y": state.size_y}
