@@ -1,6 +1,8 @@
 // Wire types: shapes exchanged with the backend over REST and WebSocket.
 
 export type Color = 'white' | 'black'
+/** What the server assigns on join: a side, or 'spectator' once both sides are taken. */
+export type Role = Color | 'spectator'
 export type PieceInstance = { name: string; owner: Color }
 export type Board = (PieceInstance | null)[][]
 export type Cooldowns = number[][]

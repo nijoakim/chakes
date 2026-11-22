@@ -11,7 +11,8 @@ export interface ClickState {
   selected: Square | null
   /** Destination keys (see squareKey) legal for the current selection. */
   legalTargets: ReadonlySet<string>
-  playerColor: Color
+  /** Null for spectators, who own no pieces and so can never select. */
+  playerColor: Color | null
   /** Clicked square is neither on cooldown nor an unconfirmed optimistic piece. */
   selectable: boolean
 }
@@ -31,7 +32,7 @@ const NONE: ClickAction = { kind: 'none' }
  */
 export function decideLeftClick(s: ClickState): ClickAction {
   if (!s.active) return NONE
-  const own = s.piece !== null && s.piece.owner === s.playerColor
+  const own = s.playerColor !== null && s.piece !== null && s.piece.owner === s.playerColor
   const select: ClickAction = s.selectable ? { kind: 'select', square: s.square } : NONE
 
   if (s.selected === null) return own ? select : NONE
@@ -52,7 +53,7 @@ export function decideLeftClick(s: ClickState): ClickAction {
  * when applying it), and right-clicking the selected square just deselects.
  */
 export function decideRightClick(s: ClickState): ClickAction {
-  if (!s.active || s.selected === null) return NONE
+  if (!s.active || s.playerColor === null || s.selected === null) return NONE
   if (sameSquare(s.selected, s.square)) return { kind: 'deselect' }
   return { kind: 'move', from: s.selected, to: s.square }
 }
