@@ -1,8 +1,10 @@
 <!--
   ChakesSquare — a game board square: a BoardSquare with an optional piece
-  sprite, a cooldown indicator, a "ready" flash and a rejected-move flash.
-  Emits raw click and right-click events; all game-logic decisions are left
-  to the parent.
+  sprite, a cooldown indicator, a "ready" flash, a rejected-move flash and
+  shake, a fading last-move highlight, a check pulse and a fading ghost of a
+  just-captured piece. Emits raw click and right-click events; all game-logic
+  decisions are left to the parent. Piece slides are driven by ChakesBoard,
+  which finds the piece through its `square-piece` class.
 -->
 
 <script setup lang="ts">
@@ -10,6 +12,21 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import BoardSquare from '@/components/board/BoardSquare.vue'
 import PieceSprite from './PieceSprite.vue'
 import type { DisplayPiece } from '@/chakes/types'
+import { MOVE_HIGHLIGHT_MS } from '@/composables/useRecentMoves'
+
+/** Last-move highlight on this square; `id` changes restart the fade. */
+export interface MoveMark {
+  id: number
+  own: boolean
+  /** Destination (rather than source) of the move. */
+  to: boolean
+}
+
+/** A just-captured piece, shown briefly while it fades out. */
+export interface CaptureGhost {
+  id: number
+  piece: DisplayPiece
+}
 
 const props = defineProps<{
   piece: DisplayPiece | null
@@ -19,7 +36,13 @@ const props = defineProps<{
   isRejected: boolean
   cooldown: number    // remaining cooldown in seconds as of the last server push; 0 when expired
   maxCooldown: number // full cooldown duration for this piece type
+  moveMark?: MoveMark | null
+  ghost?: CaptureGhost | null
+  /** The piece here is a King in check, or an Anti-King in anti-check. */
+  alert?: 'check' | 'anti-check' | null
 }>()
+
+const markStyle = { animationDuration: `${MOVE_HIGHLIGHT_MS}ms` }
 
 const emit = defineEmits<{
   (e: 'click'): void
@@ -108,13 +131,33 @@ onBeforeUnmount(() => {
     @contextmenu.prevent="emit('rightClick', $event)"
   >
     <div
+      v-if="moveMark"
+      :key="moveMark.id"
+      class="move-mark"
+      :class="{ own: moveMark.own, to: moveMark.to }"
+      :style="markStyle"
+    />
+    <div
+      v-if="alert"
+      class="check-pulse"
+      :class="alert"
+    />
+    <div
       v-if="cooldown > 0"
       ref="fillRef"
       class="cooldown-fill"
     />
     <PieceSprite
+      v-if="ghost"
+      :key="ghost.id"
+      class="capture-ghost"
+      :name="ghost.piece.name"
+      :color="ghost.piece.owner"
+    />
+    <PieceSprite
       v-if="piece"
       class="square-piece"
+      :class="{ shake: isRejected }"
       :name="piece.name"
       :color="piece.owner"
       :pending="piece.pending"
@@ -147,8 +190,9 @@ onBeforeUnmount(() => {
 .chakes-square.legal-move { cursor: pointer; }
 
 /* Stacking, bottom to top: square colour, selected / legal marker
-   (BoardSquare ::before/::after), cooldown fill / ready flash, piece (z 1),
-   cooldown bar (z 2), rejected flash (z 3). */
+   (BoardSquare ::before/::after), last-move mark / check pulse / cooldown
+   fill / ready flash, capture ghost and piece (z 1), cooldown bar (z 2),
+   rejected flash (z 3); a sliding piece is lifted to z 5 by ChakesBoard. */
 .square-piece {
   position: relative;
   z-index: 1;
@@ -216,5 +260,90 @@ onBeforeUnmount(() => {
 @keyframes rejection-flash {
   from { opacity: 1; }
   to   { opacity: 0; }
+}
+
+/* Rejected move: the piece shakes along with the flash. Uses the individual
+   `translate` property so it composes with the slide, which animates
+   `transform`. */
+.square-piece.shake {
+  animation: rejection-shake 0.3s ease-out;
+}
+@keyframes rejection-shake {
+  0%, 100% { translate: 0; }
+  20%      { translate: -9% 0; }
+  40%      { translate: 7% 0; }
+  60%      { translate: -5% 0; }
+  80%      { translate: 2% 0; }
+}
+
+/* Last move: a tint on the source and destination that holds briefly, then
+   fades (duration set from MOVE_HIGHLIGHT_MS). Opponent moves are warm amber,
+   own moves a quieter blue, so the eye goes to what the opponent did. */
+.move-mark {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--board-last-move-from, rgba(255, 190, 30, 0.32));
+  animation: move-mark-fade 1.8s ease-in forwards;
+}
+.move-mark.to {
+  background: var(--board-last-move-to, rgba(255, 180, 0, 0.5));
+}
+.move-mark.own {
+  background: var(--board-own-move-from, rgba(70, 140, 255, 0.2));
+}
+.move-mark.own.to {
+  background: var(--board-own-move-to, rgba(70, 140, 255, 0.32));
+}
+@keyframes move-mark-fade {
+  0%, 35% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+
+/* King in check: a pulsing red glow under the piece. Anti-check (an
+   Anti-King that is NOT attacked, which it must be) pulses violet. */
+.check-pulse {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    var(--board-check, rgba(255, 30, 30, 0.95)) 0 30%,
+    var(--board-check-edge, rgba(230, 0, 0, 0.35)) 75%,
+    transparent 100%
+  );
+  animation: check-pulse 0.8s ease-in-out infinite alternate;
+}
+.check-pulse.anti-check {
+  background: radial-gradient(
+    circle,
+    var(--board-anti-check, rgba(170, 70, 255, 0.95)) 0 30%,
+    var(--board-anti-check-edge, rgba(130, 30, 230, 0.35)) 75%,
+    transparent 100%
+  );
+}
+@keyframes check-pulse {
+  from { opacity: 0.45; }
+  to   { opacity: 1; }
+}
+
+/* Captured piece: shrinks and fades away under the arriving piece. */
+.capture-ghost {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  animation: capture-out 0.2s ease-in forwards;
+}
+@keyframes capture-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .square-piece.shake { animation: none; }
+  /* Static highlights; ChakesBoard removes them on the same schedule. */
+  .move-mark { animation: none; opacity: 0.7; }
+  .check-pulse { animation: none; opacity: 0.85; }
+  .capture-ghost { display: none; }
 }
 </style>

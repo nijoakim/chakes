@@ -10,6 +10,7 @@ import { promotablePieces } from '@/chakes/promotion'
 import { decideLeftClick, decideRightClick, type ClickAction, type ClickState } from '@/chakes/input'
 import { useCooldownClock } from '@/composables/useCooldownClock'
 import { useOptimisticMoves } from '@/composables/useOptimisticMoves'
+import { useRecentMoves } from '@/composables/useRecentMoves'
 import { useSessionStore } from './session'
 
 const LATENCY_HIDING_KEY = 'chakes_latency_hiding'
@@ -50,6 +51,8 @@ export const useGameStore = defineStore('game', () => {
     authoritativeBoard, playerColor: viewColor, maxCooldowns, enabled: latencyHidingEnabled,
   })
   const board = optimistic.board
+  // Last-move highlights, diffed from authoritative boards (see observe below).
+  const recent = useRecentMoves(playerColor)
 
   // --- UI selection state (lives here so it's cleared in one place) ---
   const selected = ref<Square | null>(null)
@@ -105,6 +108,9 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('inAntiCheck', (v) => { inAntiCheck.value = v }),
       gameSocket.on('pong', () => { rtt.value = rttMonitor.rtt }),
       gameSocket.on('legalMoves', (m) => { legalMovesBySrc.value = m }),
+      // 'gameId' is emitted right after 'board' for every game-state push, so
+      // the board is already current here and the id tells a move from a new game.
+      gameSocket.on('gameId', (id) => recent.observe(id, authoritativeBoard.value)),
       gameSocket.on('moveResult', ({ ok, client_move_id }) => {
         if (!ok && client_move_id) optimistic.reject(client_move_id)
       }),
@@ -126,6 +132,7 @@ export const useGameStore = defineStore('game', () => {
     authoritativeBoard.value = []
     clock.reset()
     optimistic.reset()
+    recent.reset()
     gameId.value = null
     winner.value = null
     inCheck.value = noFlags()
@@ -214,6 +221,7 @@ export const useGameStore = defineStore('game', () => {
     gameId, winner, inCheck, inAntiCheck,
     selected, legalMoves, selectedPromotion, rtt,
     latencyHidingEnabled, rejectedSquares: optimistic.rejectedSquares,
+    recentMoves: recent.recentMoves,
     // actions
     connect, disconnect, resetGameState, startNewGame,
     setLatencyHiding,
