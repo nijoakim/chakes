@@ -41,6 +41,13 @@ export const useGameStore = defineStore('game', () => {
   // stop matching and get overwritten by newer replies/pushes.
   // shallowRef: always replaced wholesale, never mutated in place.
   const legalMovesBySrc = shallowRef<Record<string, LegalMovesEntry>>({})
+  // Own moves sent without a move_result yet. While awaitingBoard is true, the
+  // board we hold may predate our own move, so cached moves for it are not
+  // trusted: selecting then requests fresh moves, which the server answers
+  // right behind the move (same socket), i.e. for the post-move version.
+  // Independent of latency hiding (useOptimisticMoves' pending set).
+  const unresolvedMoves = new Set<string>()
+  const awaitingBoard = ref(false)
 
   // The lobby host is the player assigned white.
   const isHost = computed(() => playerColor.value === 'white')
@@ -61,6 +68,7 @@ export const useGameStore = defineStore('game', () => {
   const selected = ref<Square | null>(null)
   /** Legal moves of `sq` on the current board, or null if not known yet. */
   function knownMovesFor(sq: Square): ReadonlySet<string> | null {
+    if (awaitingBoard.value) return null
     const entry = legalMovesBySrc.value[squareKey(sq)]
     return entry && entry.version === boardVersion.value ? entry.moves : null
   }
@@ -118,6 +126,8 @@ export const useGameStore = defineStore('game', () => {
   function clearLegalMoves(): void {
     boardVersion.value = -1
     legalMovesBySrc.value = {}
+    unresolvedMoves.clear()
+    awaitingBoard.value = false
   }
 
   // --- WS subscription lifecycle ---
@@ -134,6 +144,9 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('board', (b) => { authoritativeBoard.value = b }),
       gameSocket.on('boardVersion', (v) => {
         boardVersion.value = v
+        // The server sends move_result before the resulting board on this
+        // socket, so with no move unresolved this board includes all our moves.
+        if (unresolvedMoves.size === 0) awaitingBoard.value = false
         requestSelectedMovesIfUnknown()
       }),
       gameSocket.on('cooldowns', (c) => clock.applySnapshot(c, rttMonitor.rtt)),
@@ -165,6 +178,11 @@ export const useGameStore = defineStore('game', () => {
       gameSocket.on('legalMoves', applyAllLegalMoves),
       gameSocket.on('squareLegalMoves', applySquareLegalMoves),
       gameSocket.on('moveResult', ({ ok, client_move_id }) => {
+        if (client_move_id) unresolvedMoves.delete(client_move_id)
+        // A rejected move changes no board. Accepted ones wait for their board
+        // (boardVersion handler); an earlier accepted move's board has already
+        // arrived, since the server sends it before handling our next message.
+        if (!ok && unresolvedMoves.size === 0) awaitingBoard.value = false
         if (!ok && client_move_id) optimistic.reject(client_move_id)
       }),
     ]
@@ -221,6 +239,8 @@ export const useGameStore = defineStore('game', () => {
     if (!currentLobby || !gameId.value) return
     deselect()
     const clientMoveId = crypto.randomUUID()
+    unresolvedMoves.add(clientMoveId)
+    awaitingBoard.value = true
     gameSocket.sendMove({
       gameId: gameId.value,
       src: from,
