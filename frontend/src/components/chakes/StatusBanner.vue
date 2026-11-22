@@ -3,28 +3,18 @@ import { computed } from 'vue'
 import type { Color } from '@/services/types'
 import type { SideFlags } from '@/chakes/types'
 
+// In-game check warnings for a player. The final result is shown by GameResult.
 const props = defineProps<{
-  /** Whether a game is running (in-check warnings are only shown then). */
+  /** Whether a game is running and undecided (warnings are only shown then). */
   inGame: boolean
   playerColor: Color
-  winner: Color | null
   inCheck: SideFlags
   inAntiCheck: SideFlags
 }>()
 
-type StatusKind = 'check' | 'anti-check' | 'both' | 'mate' | 'anti-mate' | 'win' | 'empty'
+type StatusKind = 'check' | 'anti-check' | 'both' | 'empty'
 
 const status = computed<{ text: string; kind: StatusKind }>(() => {
-  if (props.winner) {
-    const loser = props.winner === 'white' ? 'black' : 'white'
-    const sym = props.winner === 'white' ? '♔ White' : '♚ Black'
-    const c = props.inCheck[loser]
-    const a = props.inAntiCheck[loser]
-    if (c && a) return { text: `Checkmate & Anti-checkmate — ${sym} wins`, kind: 'mate' }
-    if (c)      return { text: `Checkmate — ${sym} wins`, kind: 'mate' }
-    if (a)      return { text: `Anti-checkmate — ${sym} wins`, kind: 'anti-mate' }
-    return { text: `${sym} won!`, kind: 'win' }
-  }
   if (props.inGame) {
     const c = props.inCheck[props.playerColor]
     const a = props.inAntiCheck[props.playerColor]
@@ -37,38 +27,32 @@ const status = computed<{ text: string; kind: StatusKind }>(() => {
 </script>
 
 <template>
+  <!-- The slot keeps its height when empty so the controls below never jump. -->
   <div
     class="status-banner"
     :class="status.kind"
+    role="status"
   >
-    <span v-if="status.kind !== 'empty'">{{ status.text }}</span>
-    <span v-else>&nbsp;</span>
+    {{ status.text }}
   </div>
 </template>
 
 <style scoped>
 .status-banner {
-  margin-top: 12px;
-  padding: 12px 24px;
-  font-size: 24px;
+  padding: 6px 14px;
+  font-size: 17px;
   font-weight: 700;
+  line-height: 1.3;
   text-align: center;
   border: 1px solid transparent;
   border-radius: var(--radius);
   box-sizing: border-box;
-  min-height: 56px;
-  min-width: min(360px, 100%);
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.status-banner.empty      { visibility: hidden; }
-@media (max-width: 480px) {
-  .status-banner {
-    font-size: 19px;
-    padding: 10px 16px;
-  }
-}
+.status-banner.empty { visibility: hidden; }
 .status-banner.check,
 .status-banner.both {
   background: var(--status-check-bg);
@@ -79,12 +63,5 @@ const status = computed<{ text: string; kind: StatusKind }>(() => {
   background: var(--status-anti-bg);
   border-color: var(--status-anti-border);
   color: var(--status-anti-fg);
-}
-.status-banner.mate,
-.status-banner.anti-mate,
-.status-banner.win {
-  background: var(--status-win-bg);
-  border-color: var(--status-win-border);
-  color: var(--status-win-fg);
 }
 </style>
