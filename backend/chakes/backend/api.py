@@ -61,9 +61,19 @@ async def _push_legal_moves(lobby_name: str, game: ActiveGame) -> None:
         version = game.version
         board = deepcopy(game.state)
         all_moves, winner = await asyncio.to_thread(compute_snapshot, board)
-        game.record_winner(winner)
+        newly_latched = game.record_winner(winner)
         lobby = lobbies.get(lobby_name)
-        if game.version != version or lobby is None or lobby.game is not game:
+        if lobby is None or lobby.game is not game:
+            return
+        if game.version != version:
+            # Stale moves are dropped, but a winner only this task found must
+            # still reach clients: a newer task may already have broadcast
+            # without it. Empty legal_moves + stale version: clients apply the
+            # winner and ignore the (absent) moves.
+            if newly_latched:
+                await connections.broadcast(lobby_name, AllLegalMovesMessage(
+                    legal_moves={}, game_id=str(game.id), version=version, winner=game.winner,
+                ))
             return
         await connections.broadcast(lobby_name, AllLegalMovesMessage(
             legal_moves=serialize_legal_moves(all_moves),

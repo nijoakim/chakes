@@ -1,5 +1,6 @@
 """Move → board broadcast → background legal-moves push (versioned)."""
 
+import asyncio
 import json
 import logging
 import threading
@@ -203,20 +204,83 @@ async def test_handle_move_returns_before_snapshot_finishes(monkeypatch):
     assert "legal_moves" in ws.sent[2]
 
 
-async def test_superseded_snapshot_is_dropped_but_winner_latched(monkeypatch):
+async def test_superseded_snapshot_is_dropped(monkeypatch):
     ws, game = _setup_lobby()
 
     def superseded(board):
         moves, _ = compute_snapshot(board)
         game.version += 1  # a newer move landed while we were computing
+        return moves, None
+
+    monkeypatch.setattr(api, "compute_snapshot", superseded)
+    await api._push_legal_moves("room", game)
+    assert ws.sent == []
+
+
+async def test_superseded_snapshot_latches_winner_and_sends_it_without_moves(monkeypatch):
+    ws, game = _setup_lobby()
+
+    def superseded(board):
+        moves, _ = compute_snapshot(board)
+        game.version += 1
         return moves, Player.WHITE
 
     monkeypatch.setattr(api, "compute_snapshot", superseded)
     await api._push_legal_moves("room", game)
 
-    assert ws.sent == []
     assert game.winner == "white"
     assert game.timestamp_end is not None
+    assert ws.sent == [{"legal_moves": {}, "game_id": str(game.id), "version": 0, "winner": "white"}]
+
+
+async def test_superseded_snapshot_does_not_resend_already_latched_winner(monkeypatch):
+    ws, game = _setup_lobby()
+    game.record_winner(Player.WHITE)
+
+    def superseded(board):
+        moves, _ = compute_snapshot(board)
+        game.version += 1
+        return moves, Player.WHITE
+
+    monkeypatch.setattr(api, "compute_snapshot", superseded)
+    await api._push_legal_moves("room", game)
+    assert ws.sent == []
+
+
+async def test_winner_from_slower_stale_task_is_still_broadcast(monkeypatch):
+    # Task for version N finds the winner but finishes after the task for N+1,
+    # which already broadcast its moves without a winner.
+    ws, game = _setup_lobby()
+    game.version = 1
+    n_entered = threading.Event()
+    release_n = threading.Event()
+
+    def snapshot(board):
+        moves, _ = compute_snapshot(board)
+        if not n_entered.is_set():  # first call: task N
+            n_entered.set()
+            assert release_n.wait(timeout=5)
+            return moves, Player.WHITE
+        return moves, None  # task N+1
+
+    monkeypatch.setattr(api, "compute_snapshot", snapshot)
+
+    api._spawn(api._push_legal_moves("room", game))
+    await asyncio.to_thread(n_entered.wait, 5)  # N recorded version 1 and is computing
+    game.version = 2  # move N+1 applied
+    await api._push_legal_moves("room", game)  # N+1 completes first
+
+    assert len(ws.sent) == 1
+    assert ws.sent[0]["version"] == 2
+    assert ws.sent[0]["legal_moves"]
+    assert "winner" not in ws.sent[0]
+
+    release_n.set()
+    await api.drain_background_tasks()
+
+    assert game.winner == "white"
+    assert len(ws.sent) == 2
+    assert ws.sent[1] == {"legal_moves": {}, "game_id": str(game.id), "version": 1, "winner": "white"}
 
 
 async def test_snapshot_dropped_when_lobby_has_new_game(monkeypatch):

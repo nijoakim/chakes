@@ -223,12 +223,16 @@ class ActiveGame:
         self.version += 1
         return self.version
 
-    def record_winner(self, winner: "Player | None") -> None:
-        """Latch the first decided winner; later results never overwrite it."""
+    def record_winner(self, winner: "Player | None") -> bool:
+        """Latch the first decided winner; later results never overwrite it.
+
+        Returns True only if this call latched it.
+        """
         if winner is None or self.winner is not None:
-            return
+            return False
         self.winner = winner_name(winner)
         self.timestamp_end = datetime.now()
+        return True
 
     def get_legal_moves(self, pos: Pos) -> list[list[int]]:
         piece = self._get_piece(pos)
