@@ -1,13 +1,15 @@
 """End-to-end tests through the HTTP API using TestClient."""
 
 
+
 # ---------------------------------------------------------------------------
-# Happy path: create → move → verify board changed
+# Happy path: create → move (over the WebSocket) → verify board changed
 # ---------------------------------------------------------------------------
 
-def test_happy_path_move_reflects_on_board(client):
-    # Create lobby and game
+def test_happy_path_move_reflects_on_board(client, seated, ws_move):
+    # Create lobby, seat both players, start a game
     name = client.post("/api/lobby", params={"name": "e2e-lobby"}).json()["lobby"]
+    white, _ = seated(name)
     game_id = client.post(f"/api/lobby/{name}/game").json()["game_id"]
 
     # Fetch legal moves for the e-pawn (r=1, c=4 → Pos(x=4, y=1))
@@ -22,11 +24,7 @@ def test_happy_path_move_reflects_on_board(client):
     dst_x, dst_y = moves[0]
 
     # Apply the move
-    r = client.post(
-        f"/api/lobby/{name}/game/{game_id}/move",
-        json={"src": {"x": 4, "y": 1}, "dst": {"x": dst_x, "y": dst_y}},
-    )
-    assert r.status_code == 200
+    assert ws_move(white, game_id, (4, 1), (dst_x, dst_y))["ok"] is True
 
     # Source square is now empty — legal-moves returns []
     r = client.get(
@@ -44,29 +42,17 @@ def test_happy_path_move_reflects_on_board(client):
 
 
 # ---------------------------------------------------------------------------
-# Illegal move: pawn jumping three squares → 400
+# Illegal move: pawn jumping three squares → rejected
 # ---------------------------------------------------------------------------
 
-def test_illegal_move_returns_400(client):
+def test_illegal_move_is_rejected(client, seated, ws_move):
     name = client.post("/api/lobby", params={"name": "illegal-lobby"}).json()["lobby"]
+    white, _ = seated(name)
     game_id = client.post(f"/api/lobby/{name}/game").json()["game_id"]
 
-    r = client.post(
-        f"/api/lobby/{name}/game/{game_id}/move",
-        json={"src": {"x": 4, "y": 1}, "dst": {"x": 4, "y": 4}},
-    )
-    assert r.status_code == 400
-
-
-def test_illegal_move_response_body(client):
-    name = client.post("/api/lobby", params={"name": "illegal-body-lobby"}).json()["lobby"]
-    game_id = client.post(f"/api/lobby/{name}/game").json()["game_id"]
-
-    r = client.post(
-        f"/api/lobby/{name}/game/{game_id}/move",
-        json={"src": {"x": 4, "y": 1}, "dst": {"x": 4, "y": 4}},
-    )
-    assert r.json() == {"error": "Illegal move"}
+    result = ws_move(white, game_id, (4, 1), (4, 4))
+    assert result["ok"] is False
+    assert result["error"] == "illegal_move"
 
 
 # ---------------------------------------------------------------------------
@@ -114,18 +100,19 @@ def test_lobby_list_state_transitions_waiting_to_in_progress(client):
     assert entry["state"] == "in_progress"
 
 
-def test_lobby_list_state_ended_after_checkmate(client):
+def test_lobby_list_state_ended_after_checkmate(client, seated, ws_move):
     name = client.post("/api/lobby", params={"name": "mate-lobby"}).json()["lobby"]
+    white, black = seated(name)
     game_id = client.post(f"/api/lobby/{name}/game").json()["game_id"]
 
     # Fool's mate: f2→f3, e7→e5, g2→g4, d8→h4#
-    for src, dst in [
-        ({"x": 5, "y": 1}, {"x": 5, "y": 2}),
-        ({"x": 4, "y": 6}, {"x": 4, "y": 4}),
-        ({"x": 6, "y": 1}, {"x": 6, "y": 3}),
-        ({"x": 3, "y": 7}, {"x": 7, "y": 3}),
+    for ws, src, dst in [
+        (white, (5, 1), (5, 2)),
+        (black, (4, 6), (4, 4)),
+        (white, (6, 1), (6, 3)),
+        (black, (3, 7), (7, 3)),
     ]:
-        client.post(f"/api/lobby/{name}/game/{game_id}/move", json={"src": src, "dst": dst})
+        assert ws_move(ws, game_id, src, dst)["ok"] is True
 
     r = client.get("/api/lobby")
     entry = next(e for e in r.json()["lobbies"] if e["name"] == name)

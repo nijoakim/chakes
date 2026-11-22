@@ -2,8 +2,7 @@ import json
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
 from chakes.backend.messages import AllLegalMovesMessage, GameStateMessage, LobbyJoinedMessage
@@ -14,7 +13,10 @@ from chakes.backend.models import (
 )
 from chakes.engine.engine import Pos as EnginePos, piece_defs as engine_piece_defs
 from chakes.backend.server_identity import SERVER_NAME
-from chakes.backend.services import ChakesService, ConnectionManager, LobbyService
+from chakes.backend.services import (
+    ChakesService, ConnectionManager, InvalidLobbyNameError, LobbyExistsError, LobbyService,
+    MoveNotAllowedError,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -99,48 +101,63 @@ def lobby_list() -> dict[str, Any]:
 
 @router.post("/lobby")
 def lobby_create(name: str | None = None) -> dict[str, str]:
-    lobby = lobbies.create(name)
+    try:
+        lobby = lobbies.create(name)
+    except InvalidLobbyNameError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except LobbyExistsError as e:
+        raise HTTPException(status_code=409, detail=f"A lobby named {name!r} already exists.") from e
     return {"lobby": lobby.name}
+
+
+def _lobby_not_found(name: str) -> HTTPException:
+    return HTTPException(status_code=404, detail=f"No lobby named {name!r}.")
 
 
 @router.get("/lobby/{name}")
 def lobby_get(name: str) -> dict[str, str | None]:
-    lobby = lobbies[name]
+    lobby = lobbies.get(name)
+    if lobby is None:
+        raise _lobby_not_found(name)
     game_id = str(lobby.game.id) if lobby.game else None
     return {"name": lobby.name, "game_id": game_id}
 
 
 @router.post("/lobby/{name}/game")
 async def game_create(name: str, game_def: GameDef | None = None) -> dict[str, str]:
-    game = chakes.create_game(name, game_def or GameDef())
+    try:
+        game = chakes.create_game(name, game_def or GameDef())
+    except KeyError as e:
+        raise _lobby_not_found(name) from e
     await connections.broadcast(name, GameStateMessage.from_active_game(game))
     return {"game_id": str(game.id)}
 
 
 @router.get("/lobby/{name}/game/{game_id}/legal-moves")
 def game_legal_moves(name: str, game_id: uuid.UUID, r: int, c: int) -> dict[str, Any]:
-    moves = chakes.get_legal_moves(name, game_id, Pos(x=c, y=r))
+    try:
+        moves = chakes.get_legal_moves(name, game_id, Pos(x=c, y=r))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail="Game not found.") from e
     return {"moves": moves}
 
 
-@router.post("/lobby/{name}/game/{game_id}/move")
-async def game_move(name: str, game_id: uuid.UUID, move: MoveRequest) -> JSONResponse:
-    game = chakes.move(name, game_id, move)
-    if game is None:
-        return JSONResponse(status_code=400, content={"error": "Illegal move"})
-    await connections.broadcast(name, GameStateMessage.from_active_game(game))
-    return JSONResponse(status_code=200, content={"status": "OK"})
+# Moves are only accepted over the lobby WebSocket, where the sender's seat
+# (colour) is known. There is deliberately no REST move endpoint.
 
 
 async def _handle_ping(ws: WebSocket, msg: PingMessage) -> None:
     await ws.send_json({"type": "pong", "id": msg.id})
 
 
-async def _handle_move(ws: WebSocket, lobby: str, msg: MoveMessage) -> None:
+async def _handle_move(ws: WebSocket, lobby: str, color: str, msg: MoveMessage) -> None:
     move = MoveRequest(src=msg.src, dst=msg.dst, promotion=msg.promotion)
     client_move_id = msg.client_move_id
     try:
-        game = chakes.move(lobby, msg.game_id, move)
+        game = chakes.move(lobby, msg.game_id, move, color=color)
+    except MoveNotAllowedError:
+        await ws.send_json({"type": "move_result", "ok": False, "error": "not_your_piece", "client_move_id": client_move_id})
+        return
     except ValueError:
         await ws.send_json({"type": "move_result", "ok": False, "error": "game_not_found", "game_id": str(msg.game_id), "client_move_id": client_move_id})
         return
@@ -178,7 +195,7 @@ async def lobby_ws(name: str, ws: WebSocket, token: str | None = None) -> None:
                 case PingMessage():
                     await _handle_ping(ws, msg)
                 case MoveMessage():
-                    await _handle_move(ws, name, msg)
+                    await _handle_move(ws, name, join.color, msg)
                 case LegalMovesMessage():
                     await _handle_legal_moves(ws, name, msg)
     except WebSocketDisconnect:

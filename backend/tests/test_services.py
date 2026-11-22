@@ -14,10 +14,11 @@ from chakes.engine.engine import Player
 # LobbyService
 # ---------------------------------------------------------------------------
 
-def test_lobby_service_getitem_auto_creates_missing_lobby():
+def test_lobby_service_get_or_create_creates_missing_lobby():
     svc = LobbyService()
-    lobby = svc["new-lobby"]
+    lobby = svc.get_or_create("new-lobby")
     assert lobby.name == "new-lobby"
+    assert svc["new-lobby"] is lobby
 
 
 def test_lobby_service_create_no_name_returns_adjective_animal():
@@ -47,7 +48,7 @@ def test_lobby_service_remove_deletes_lobby():
 def test_chakes_service_legal_moves_for_center_pawn_non_empty():
     lobbies = LobbyService()
     svc = ChakesService(lobbies)
-    lobbies["test-lobby"]
+    lobbies.create("test-lobby")
     game = svc.create_game("test-lobby", GameDef())
     moves = svc.get_legal_moves("test-lobby", game.id, Pos(x=4, y=1))
     assert len(moves) > 0
@@ -56,14 +57,14 @@ def test_chakes_service_legal_moves_for_center_pawn_non_empty():
 def test_chakes_service_applying_legal_move_mutates_board():
     lobbies = LobbyService()
     svc = ChakesService(lobbies)
-    lobbies["test-lobby"]
+    lobbies.create("test-lobby")
     game = svc.create_game("test-lobby", GameDef())
 
     src = Pos(x=4, y=1)
     [[dx, dy]] = svc.get_legal_moves("test-lobby", game.id, src)[:1]
 
     from chakes.backend.models import MoveRequest
-    result = svc.move("test-lobby", game.id, MoveRequest(src=src, dst=Pos(x=dx, y=dy)))
+    result = svc.move("test-lobby", game.id, MoveRequest(src=src, dst=Pos(x=dx, y=dy)), color="white")
 
     assert result is not None
     assert result._get_piece(Pos(x=dx, y=dy)) is not None
@@ -132,7 +133,7 @@ def test_server_name_constant_is_stable_within_process():
 def _service_with_game(game_def: GameDef = GameDef()):
     lobbies = LobbyService()
     svc = ChakesService(lobbies)
-    lobbies["test"]
+    lobbies.create("test")
     game = svc.create_game("test", game_def)
     return svc, game
 
@@ -140,30 +141,30 @@ def _service_with_game(game_def: GameDef = GameDef()):
 def test_active_game_winner_cached_after_terminal_snapshot():
     svc, game = _service_with_game()
     game.snapshot = lambda: ({}, Player.WHITE)  # type: ignore[method-assign]
-    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
+    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)), color="white")
     assert game.winner == "white"
 
 
 def test_active_game_timestamp_end_set_when_winner_decided():
     svc, game = _service_with_game()
     game.snapshot = lambda: ({}, Player.WHITE)  # type: ignore[method-assign]
-    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
+    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)), color="white")
     assert game.timestamp_end is not None
 
 
 def test_active_game_timestamp_end_not_overwritten_on_subsequent_snapshots():
     svc, game = _service_with_game()
     game.snapshot = lambda: ({}, Player.WHITE)  # type: ignore[method-assign]
-    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
+    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)), color="white")
     first_ts = game.timestamp_end
     # game.winner is now set; caching branch is skipped on the next move
-    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=6), dst=Pos(x=4, y=5)))
+    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=6), dst=Pos(x=4, y=5)), color="black")
     assert game.timestamp_end is first_ts
 
 
 def test_active_game_winner_remains_none_while_game_in_progress():
     svc, game = _service_with_game()
-    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
+    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)), color="white")
     assert game.winner is None
 
 

@@ -2,7 +2,11 @@ import type {
   GameType, InitialBoardResponse, LobbyListResponse, PieceDef,
 } from './types'
 
-/** Thrown for non-2xx responses. Network failures surface as the `fetch` TypeError. */
+/**
+ * Thrown for non-2xx responses. Network failures surface as the `fetch` TypeError.
+ * `detail` is the server's human-readable `detail` string when it sent one
+ * (FastAPI's `{"detail": "..."}`), otherwise the raw response body.
+ */
 export class ApiError extends Error {
   readonly status: number
   readonly detail: string
@@ -15,10 +19,22 @@ export class ApiError extends Error {
   }
 }
 
+function errorDetail(body: string): string {
+  try {
+    const parsed: unknown = JSON.parse(body)
+    if (parsed && typeof parsed === 'object' && 'detail' in parsed && typeof parsed.detail === 'string') {
+      return parsed.detail
+    }
+  } catch {
+    // not JSON; fall through to the raw body
+  }
+  return body
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
   if (!res.ok) {
-    const detail = await res.text().catch(() => '')
+    const detail = errorDetail(await res.text().catch(() => ''))
     throw new ApiError(
       `${init?.method ?? 'GET'} ${url} failed: ${res.status} ${res.statusText}${detail ? ` — ${detail}` : ''}`,
       res.status,
@@ -28,6 +44,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T
 }
 
+/** Create a lobby. Rejects with ApiError 409 if the name is taken, 422 if it is invalid. */
 export async function createLobby(name?: string): Promise<string> {
   const url = name ? `/api/lobby?name=${encodeURIComponent(name)}` : '/api/lobby'
   const data = await fetchJson<{ lobby: string }>(url, { method: 'POST' })
