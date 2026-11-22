@@ -25,7 +25,8 @@ const props = defineProps<{
   /** Side the board is viewed from (spectators pass 'white'). */
   viewer: Color
   selected: Square | null
-  legalMoves: Set<string>
+  /** null: the selection's legal moves are not known yet (nothing highlighted). */
+  legalMoves: ReadonlySet<string> | null
   rejectedSquares: Set<string>
   /** Moves to highlight (see useRecentMoves); later entries win on a shared square. */
   recentMoves?: readonly RecentMove[]
@@ -196,7 +197,7 @@ onBeforeUnmount(() => {
         :piece="pieceAt(sq)"
         :is-light="isLightSquare(sq)"
         :is-selected="sameSquare(selected, sq)"
-        :is-legal-move="legalMoves.has(squareKey(sq))"
+        :is-legal-move="legalMoves?.has(squareKey(sq)) ?? false"
         :is-rejected="rejectedSquares.has(squareKey(sq))"
         :cooldown="cooldowns[sq[0]]?.[sq[1]] ?? 0"
         :max-cooldown="maxCooldowns[pieceAt(sq)?.name ?? ''] ?? 1"

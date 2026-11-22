@@ -1,7 +1,6 @@
 import uuid
 from collections.abc import ValuesView
 from dataclasses import dataclass
-from datetime import datetime
 
 from fastapi import WebSocket
 from pydantic import BaseModel
@@ -145,23 +144,27 @@ class ChakesService:
         lobby = self._lobbies[lobby_name]  # KeyError if missing
         return lobby.create_game(game_def)
 
-    def _game(self, lobby_name: str, game_id: uuid.UUID) -> ActiveGame:
+    def get_game(self, lobby_name: str, game_id: uuid.UUID) -> ActiveGame:
         lobby = self._lobbies.get(lobby_name)
         if lobby is None or not lobby.game or lobby.game.id != game_id:
             raise ValueError("Game not found")
         return lobby.game
 
     def get_legal_moves(self, lobby_name: str, game_id: uuid.UUID, pos: Pos) -> list[list[int]]:
-        return self._game(lobby_name, game_id).get_legal_moves(pos)
+        return self.get_game(lobby_name, game_id).get_legal_moves(pos)
 
     def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest, *, color: str) -> ActiveGame | None:
-        """Apply `move` on behalf of a connection seated as `color`.
+        """Validate and apply a move on behalf of a connection seated as `color`,
+        bumping the game version on success.
 
         Raises ValueError if the game is not found and MoveNotAllowedError if
         `color` does not own the piece on the source square (spectators own
         nothing). Returns None for an illegal move (including an empty source).
+
+        Deliberately does no snapshot / winner detection: that is the caller's
+        job (see api._push_legal_moves), so the move path stays cheap.
         """
-        game = self._game(lobby_name, game_id)
+        game = self.get_game(lobby_name, game_id)
         piece = game.state.piece_at(EnginePos(move.src.x, move.src.y))
         if piece is not None and piece.owner != _COLOR_PLAYERS.get(color):
             raise MoveNotAllowedError(f"{color} may not move {piece.owner.name.lower()}'s piece")
@@ -169,9 +172,5 @@ class ChakesService:
             game.state.move_piece(EnginePos(move.src.x, move.src.y), EnginePos(move.dst.x, move.dst.y), info=move.promotion or '')
         except ValueError:
             return None
-        if game.winner is None:
-            _, winner = game.snapshot()
-            if winner is not None:
-                game.winner = "white" if winner.name == "WHITE" else "black"
-                game.timestamp_end = datetime.now()
+        game.bump_version()
         return game
