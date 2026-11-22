@@ -132,6 +132,41 @@ class Game(BaseModel):
     timestamp_end: datetime | None = None
 
 
+# --- Snapshot (pure functions of a Board, safe to run on a copy in a thread) ---
+
+
+def winner_name(winner: Player) -> str:
+    # NEUTRAL (draw) currently maps to "black"; see tests/test_known_issues.py.
+    return "white" if winner == Player.WHITE else "black"
+
+
+def serialize_legal_moves(all_moves: dict[EnginePos, set[EnginePos]]) -> dict[str, list[list[int]]]:
+    return {
+        f"{src.x},{src.y}": sorted([p.x, p.y] for p in dests)
+        for src, dests in all_moves.items()
+    }
+
+
+def _winner_from(board: GameState, all_moves: dict[EnginePos, set[EnginePos]]) -> Player | None:
+    for player in (Player.WHITE, Player.BLACK):
+        player_dests: set[EnginePos] = set()
+        for src, dests in all_moves.items():
+            piece = board.piece_at(src)
+            if piece is not None and piece.owner == player:
+                player_dests |= dests
+        if player_dests == set():
+            if not board.is_in_check(player) and not board.is_in_anti_check(player):
+                return Player.NEUTRAL
+            return player.other()
+    return None
+
+
+def compute_snapshot(board: GameState) -> tuple[dict[EnginePos, set[EnginePos]], Player | None]:
+    """All legal moves plus the winner they imply. Reads only `board`."""
+    all_moves = board.all_legal_moves()
+    return all_moves, _winner_from(board, all_moves)
+
+
 # --- Internal state ---
 
 
@@ -143,7 +178,10 @@ class ActiveGame:
         self.game_def = game_def
         self.timestamp_start = datetime.now()
         self.timestamp_end: datetime | None = None
-        self.winner: str | None = None  # cached after first compute
+        self.winner: str | None = None  # latched by record_winner() once decided
+        # Bumped on every applied move; lets clients and background snapshot
+        # tasks tell which board a legal-move result belongs to.
+        self.version: int = 0
 
         if game_def.upside_down:
             self.state.upside_down()
@@ -178,33 +216,19 @@ class ActiveGame:
             for r in range(self.state.size_y)
         ]
 
-    def serialize_legal_moves(
-        self, all_moves: dict[EnginePos, set[EnginePos]]
-    ) -> dict[str, list[list[int]]]:
-        return {
-            f"{src.x},{src.y}": sorted([p.x, p.y] for p in dests)
-            for src, dests in all_moves.items()
-        }
-
-    def _winner_from(
-        self, all_moves: dict[EnginePos, set[EnginePos]]
-    ) -> "Player | None":
-        for player in (Player.WHITE, Player.BLACK):
-            player_dests: set[EnginePos] = set()
-            for src, dests in all_moves.items():
-                piece = self.state.piece_at(src)
-                if piece is not None and piece.owner == player:
-                    player_dests |= dests
-            if player_dests == set():
-                if not self.state.is_in_check(player) and not self.state.is_in_anti_check(player):
-                    return Player.NEUTRAL
-                return player.other()
-        return None
-
     def snapshot(self) -> tuple[dict[EnginePos, set[EnginePos]], "Player | None"]:
-        all_moves = self.state.all_legal_moves()
-        winner = self._winner_from(all_moves)
-        return all_moves, winner
+        return compute_snapshot(self.state)
+
+    def bump_version(self) -> int:
+        self.version += 1
+        return self.version
+
+    def record_winner(self, winner: "Player | None") -> None:
+        """Latch the first decided winner; later results never overwrite it."""
+        if winner is None or self.winner is not None:
+            return
+        self.winner = winner_name(winner)
+        self.timestamp_end = datetime.now()
 
     def get_legal_moves(self, pos: Pos) -> list[list[int]]:
         piece = self._get_piece(pos)

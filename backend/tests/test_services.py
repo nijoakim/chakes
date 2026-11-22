@@ -138,33 +138,86 @@ def _service_with_game(game_def: GameDef = GameDef()):
 
 
 def test_active_game_winner_cached_after_terminal_snapshot():
-    svc, game = _service_with_game()
-    game.snapshot = lambda: ({}, Player.WHITE)  # type: ignore[method-assign]
-    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
+    _, game = _service_with_game()
+    game.record_winner(Player.WHITE)
     assert game.winner == "white"
 
 
 def test_active_game_timestamp_end_set_when_winner_decided():
-    svc, game = _service_with_game()
-    game.snapshot = lambda: ({}, Player.WHITE)  # type: ignore[method-assign]
-    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
+    _, game = _service_with_game()
+    game.record_winner(Player.WHITE)
     assert game.timestamp_end is not None
 
 
 def test_active_game_timestamp_end_not_overwritten_on_subsequent_snapshots():
-    svc, game = _service_with_game()
-    game.snapshot = lambda: ({}, Player.WHITE)  # type: ignore[method-assign]
-    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
+    _, game = _service_with_game()
+    game.record_winner(Player.WHITE)
     first_ts = game.timestamp_end
-    # game.winner is now set; caching branch is skipped on the next move
-    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=6), dst=Pos(x=4, y=5)))
+    game.record_winner(Player.BLACK)
     assert game.timestamp_end is first_ts
+    assert game.winner == "white"
+
+
+def test_active_game_record_winner_none_is_noop():
+    _, game = _service_with_game()
+    game.record_winner(None)
+    assert game.winner is None
+    assert game.timestamp_end is None
 
 
 def test_active_game_winner_remains_none_while_game_in_progress():
     svc, game = _service_with_game()
     svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=2)))
     assert game.winner is None
+
+
+# ---------------------------------------------------------------------------
+# ChakesService.move — versioning, no snapshot on the move path
+# ---------------------------------------------------------------------------
+
+def test_new_game_starts_at_version_zero():
+    _, game = _service_with_game()
+    assert game.version == 0
+
+
+def test_move_bumps_version():
+    svc, game = _service_with_game()
+    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=3)))
+    assert game.version == 1
+    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=6), dst=Pos(x=4, y=4)))
+    assert game.version == 2
+
+
+def test_illegal_move_does_not_bump_version():
+    svc, game = _service_with_game()
+    assert svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=4))) is None
+    assert game.version == 0
+
+
+def test_move_does_not_compute_snapshot():
+    svc, game = _service_with_game()
+
+    def boom(*_a, **_k):
+        raise AssertionError("snapshot computed on the move path")
+
+    game.snapshot = boom  # type: ignore[method-assign]
+    game.state.all_legal_moves = boom  # type: ignore[method-assign]
+    assert svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=3))) is not None
+
+
+def test_compute_snapshot_reads_only_given_board():
+    # A snapshot of a copy must reflect the copy, not the game it came from.
+    from copy import deepcopy
+    from chakes.backend.models import compute_snapshot
+    from chakes.engine.engine import Pos as EnginePos
+
+    svc, game = _service_with_game()
+    board = deepcopy(game.state)
+    svc.move("test", game.id, MoveRequest(src=Pos(x=4, y=1), dst=Pos(x=4, y=3)))
+    moves, winner = compute_snapshot(board)
+    assert EnginePos(4, 1) in moves
+    assert EnginePos(4, 3) not in moves
+    assert winner is None
 
 
 # ---------------------------------------------------------------------------

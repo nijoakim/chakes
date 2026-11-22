@@ -1,5 +1,9 @@
+import asyncio
 import json
+import logging
 import uuid
+from collections.abc import Coroutine
+from copy import deepcopy
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -8,9 +12,9 @@ from pydantic import ValidationError
 
 from chakes.backend.messages import AllLegalMovesMessage, GameStateMessage, LobbyJoinedMessage
 from chakes.backend.models import (
-    GameDef, MoveRequest, Pos, _DEFAULT_PIECE_NAMES, GAME_TYPES,
+    ActiveGame, GameDef, MoveRequest, Pos, _DEFAULT_PIECE_NAMES, GAME_TYPES,
     INCOMING_ADAPTER, IncomingMessage, PingMessage, MoveMessage, LegalMovesMessage,
-    summarize,
+    compute_snapshot, serialize_legal_moves, summarize,
 )
 from chakes.engine.engine import Pos as EnginePos, piece_defs as engine_piece_defs
 from chakes.backend.server_identity import SERVER_NAME
@@ -22,7 +26,52 @@ lobbies = LobbyService()
 connections = ConnectionManager()
 chakes = ChakesService(lobbies)
 
+logger = logging.getLogger(__name__)
+
 print(f"Server name: {SERVER_NAME}")
+
+# Strong references to in-flight background tasks: the event loop only keeps
+# weak ones, so an unreferenced task can be garbage-collected mid-flight.
+_background_tasks: set[asyncio.Task[None]] = set()
+
+
+def _spawn(coro: Coroutine[Any, Any, None]) -> asyncio.Task[None]:
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    return task
+
+
+async def drain_background_tasks() -> None:
+    """Await all in-flight background tasks. For tests."""
+    while _background_tasks:
+        await asyncio.gather(*_background_tasks, return_exceptions=True)
+
+
+async def _push_legal_moves(lobby_name: str, game: ActiveGame) -> None:
+    """Compute all legal moves off the event loop and broadcast them if still current.
+
+    Runs on a deep copy of the board taken on the event loop, so moves applied
+    meanwhile cannot race the computation. A winner found is always latched
+    (even if the result is otherwise stale); the legal moves are only
+    broadcast if no newer move has been applied and the lobby still runs
+    this game.
+    """
+    try:
+        version = game.version
+        board = deepcopy(game.state)
+        all_moves, winner = await asyncio.to_thread(compute_snapshot, board)
+        game.record_winner(winner)
+        lobby = lobbies.get(lobby_name)
+        if game.version != version or lobby is None or lobby.game is not game:
+            return
+        await connections.broadcast(lobby_name, AllLegalMovesMessage(
+            legal_moves=serialize_legal_moves(all_moves),
+            version=version,
+            winner=game.winner,
+        ))
+    except Exception:
+        logger.exception("Legal-moves push failed for lobby %r, game %s", lobby_name, game.id)
 
 
 async def _parse_incoming(ws: WebSocket, raw_text: str) -> IncomingMessage | None:
@@ -119,8 +168,8 @@ async def game_create(name: str, game_def: GameDef | None = None) -> dict[str, s
 
 @router.get("/lobby/{name}/game/{game_id}/legal-moves")
 def game_legal_moves(name: str, game_id: uuid.UUID, r: int, c: int) -> dict[str, Any]:
-    moves = chakes.get_legal_moves(name, game_id, Pos(x=c, y=r))
-    return {"moves": moves}
+    game = chakes.get_game(name, game_id)
+    return {"version": game.version, "moves": game.get_legal_moves(Pos(x=c, y=r))}
 
 
 @router.post("/lobby/{name}/game/{game_id}/move")
@@ -128,7 +177,10 @@ async def game_move(name: str, game_id: uuid.UUID, move: MoveRequest) -> JSONRes
     game = chakes.move(name, game_id, move)
     if game is None:
         return JSONResponse(status_code=400, content={"error": "Illegal move"})
-    await connections.broadcast(name, GameStateMessage.from_active_game(game))
+    # One snapshot serves both winner detection and the broadcast legal moves.
+    snapshot = game.snapshot()
+    game.record_winner(snapshot[1])
+    await connections.broadcast(name, GameStateMessage.from_active_game(game, snapshot=snapshot))
     return JSONResponse(status_code=200, content={"status": "OK"})
 
 
@@ -149,17 +201,20 @@ async def _handle_move(ws: WebSocket, lobby: str, msg: MoveMessage) -> None:
     else:
         await ws.send_json({"type": "move_result", "ok": True, "client_move_id": client_move_id})
         await connections.broadcast(lobby, GameStateMessage.from_active_game(game, include_immutables=False, include_legal_moves=False))
-        all_moves, _ = game.snapshot()
-        await connections.broadcast(lobby, AllLegalMovesMessage(legal_moves=game.serialize_legal_moves(all_moves)))
+        # Legal moves + winner detection are slow; compute them in the
+        # background so this socket's receive loop is free right away.
+        _spawn(_push_legal_moves(lobby, game))
 
 
 async def _handle_legal_moves(ws: WebSocket, lobby: str, msg: LegalMovesMessage) -> None:
     try:
-        moves = chakes.get_legal_moves(lobby, msg.game_id, msg.pos)
+        game = chakes.get_game(lobby, msg.game_id)
     except ValueError:
         await ws.send_json({"type": "legal_moves", "error": "game_not_found", "game_id": str(msg.game_id)})
         return
-    await ws.send_json({"type": "legal_moves", "pos": msg.pos.model_dump(), "moves": moves})
+    # Cheap: only this one piece's legal moves, on the current board.
+    moves = game.get_legal_moves(msg.pos)
+    await ws.send_json({"type": "legal_moves", "version": game.version, "pos": msg.pos.model_dump(), "moves": moves})
 
 
 @router.websocket("/lobby/{name}/ws")

@@ -1,7 +1,6 @@
 import uuid
 from collections.abc import ValuesView
 from dataclasses import dataclass
-from datetime import datetime
 
 from fastapi import WebSocket
 from pydantic import BaseModel
@@ -97,24 +96,25 @@ class ChakesService:
         lobby = self._lobbies[lobby_name]
         return lobby.create_game(game_def)
 
-    def get_legal_moves(self, lobby_name: str, game_id: uuid.UUID, pos: Pos) -> list[list[int]]:
+    def get_game(self, lobby_name: str, game_id: uuid.UUID) -> ActiveGame:
         lobby = self._lobbies[lobby_name]
         if not lobby.game or lobby.game.id != game_id:
             raise ValueError("Game not found")
-        return lobby.game.get_legal_moves(pos)
+        return lobby.game
+
+    def get_legal_moves(self, lobby_name: str, game_id: uuid.UUID, pos: Pos) -> list[list[int]]:
+        return self.get_game(lobby_name, game_id).get_legal_moves(pos)
 
     def move(self, lobby_name: str, game_id: uuid.UUID, move: MoveRequest) -> ActiveGame | None:
-        lobby = self._lobbies[lobby_name]
-        if not lobby.game or lobby.game.id != game_id:
-            raise ValueError("Game not found")
-        game = lobby.game
+        """Validate and apply a move, bumping the game version on success.
+
+        Deliberately does no snapshot / winner detection: that is the caller's
+        job (see api._push_legal_moves), so the move path stays cheap.
+        """
+        game = self.get_game(lobby_name, game_id)
         try:
             game.state.move_piece(EnginePos(move.src.x, move.src.y), EnginePos(move.dst.x, move.dst.y), info=move.promotion or '')
         except ValueError:
             return None
-        if game.winner is None:
-            _, winner = game.snapshot()
-            if winner is not None:
-                game.winner = "white" if winner.name == "WHITE" else "black"
-                game.timestamp_end = datetime.now()
+        game.bump_version()
         return game
