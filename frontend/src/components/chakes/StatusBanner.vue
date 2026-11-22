@@ -53,19 +53,38 @@ const status = computed<{ text: string; kind: StatusKind }>(() => {
   font-size: 24px;
   font-weight: 700;
   text-align: center;
-  border-radius: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
   box-sizing: border-box;
   min-height: 56px;
-  min-width: 360px;
+  min-width: min(360px, 100%);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .status-banner.empty      { visibility: hidden; }
-.status-banner.check      { background: #fde2e2; color: #7a1f1f; }
-.status-banner.anti-check { background: #ffe7c2; color: #6b3a07; }
-.status-banner.both       { background: #fde2e2; color: #5a0b0b; }
-.status-banner.mate       { background: #f6f669; color: #3d3a00; }
-.status-banner.anti-mate  { background: #f6f669; color: #3d3a00; }
-.status-banner.win        { background: #f6f669; color: #3d3a00; }
+@media (max-width: 480px) {
+  .status-banner {
+    font-size: 19px;
+    padding: 10px 16px;
+  }
+}
+.status-banner.check,
+.status-banner.both {
+  background: var(--status-check-bg);
+  border-color: var(--status-check-border);
+  color: var(--status-check-fg);
+}
+.status-banner.anti-check {
+  background: var(--status-anti-bg);
+  border-color: var(--status-anti-border);
+  color: var(--status-anti-fg);
+}
+.status-banner.mate,
+.status-banner.anti-mate,
+.status-banner.win {
+  background: var(--status-win-bg);
+  border-color: var(--status-win-border);
+  color: var(--status-win-fg);
+}
 </style>
